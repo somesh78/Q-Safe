@@ -1,9 +1,11 @@
 from io import BytesIO
+import logging
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.http import HttpResponse
 from django.contrib.auth.models import User
+from django.views.decorators.csrf import csrf_exempt
 
 from transfers.serializers import DownloadAuditSerializer
 from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile
@@ -11,7 +13,7 @@ from .services.encryption import encrypt_file, decrypt_file
 from .services.qr_generator import generate_qr, generate_qr_url
 from .services.chunking import chunk_bytes
 from .services.zipper import create_zip
-import base64, uuid,zipfile, json, base64
+import base64, uuid,zipfile, json, base64, hashlib
 from pyzbar.pyzbar import decode as qr_decode
 from PIL import Image as PILImage
 from decouple import config
@@ -21,6 +23,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.core.signing import TimestampSigner, BadSignature, SignatureExpired
 from django_ratelimit.decorators import ratelimit
 from rest_framework_simplejwt.tokens import RefreshToken
+
+logger = logging.getLogger(__name__)
 
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
 
@@ -45,12 +49,16 @@ def signup(request):
     if not username or not password:
         return Response({'error': 'Username and password are required'}, status=400)
 
+    if len(password) < 8:
+        return Response({"error": "Weak password"}, status=400)
+
     if User.objects.filter(username=username).exists():
         return Response({'error': 'Username already exists'}, status=400)
 
     user = User.objects.create_user(username=username, password=password)
     return Response({'message': 'Account created successfully'})
 
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout(request):
@@ -62,6 +70,7 @@ def logout(request):
     except Exception as e:
         return Response({"error": str(e)}, status=400)
 
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_session(request):
@@ -78,8 +87,9 @@ def create_session(request):
         'created_at': session.created_at
         })
 
-@permission_classes([IsAuthenticated])
+@csrf_exempt
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def upload_file(request):
     session_id = request.data.get("session_id")
     password = request.data.get("password")
@@ -134,17 +144,21 @@ def upload_file(request):
         })
     
     if session.mode == "OFFLINE":
-        print("[OFFLINE MODE] Starting...")
+        logger.info("[OFFLINE MODE] Starting...")
         password = request.data.get("password")
-        print(f"[OFFLINE MODE] File size: {file.size} bytes")
+        logger.info(f"[OFFLINE MODE] File size: {file.size} bytes")
         encrypted_data = encrypt_file(file.read(), password )
-        print(f"[OFFLINE MODE] Encrypted data size: {len(encrypted_data)} bytes")
+        logger.info(f"[OFFLINE MODE] Encrypted data size: {len(encrypted_data)} bytes")
 
         session.is_active = False
         session.save()
 
         chunks = chunk_bytes(encrypted_data)
-        print(f"[OFFLINE MODE] Created {len(chunks)} chunks")
+        logger.info(f"[OFFLINE MODE] Created {len(chunks)} chunks")
+
+        # Calculate checksum for integrity verification
+        checksum = hashlib.sha256(encrypted_data).hexdigest()
+        logger.info(f"[OFFLINE MODE] Checksum: {checksum}")
 
         file_id = str(uuid.uuid4())
         qr_images = []
@@ -152,10 +166,11 @@ def upload_file(request):
             "original_filename": file.name,
             "content_type": file.content_type,
             "file_id": file_id,
-            "total_chunks": len(chunks)
+            "total_chunks": len(chunks),
+            "checksum": checksum
         }
         qr_images.append(("metadata.json", json.dumps(metadata).encode("utf-8")))
-        print(f"[OFFLINE MODE] Generating {len(chunks)} QR codes...")
+        logger.info(f"[OFFLINE MODE] Generating {len(chunks)} QR codes...")
         for idx, chunk in enumerate(chunks):
             payload = {
                 "file_id": file_id,
@@ -167,19 +182,20 @@ def upload_file(request):
             filename = f"qr_{chunk['index']:03}.png"
             qr_images.append((filename, qr_png))
             if (idx + 1) % 5 == 0:
-                print(f"[OFFLINE MODE] Generated {idx + 1}/{len(chunks)} QR codes")
+                logger.debug(f"[OFFLINE MODE] Generated {idx + 1}/{len(chunks)} QR codes")
         
-        print(f"[OFFLINE MODE] Creating ZIP with {len(qr_images)} files...")
+        logger.info(f"[OFFLINE MODE] Creating ZIP with {len(qr_images)} files...")
         zip_bytes = create_zip(qr_images)
-        print(f"[OFFLINE MODE] ZIP created: {len(zip_bytes)} bytes")
+        logger.info(f"[OFFLINE MODE] ZIP created: {len(zip_bytes)} bytes")
 
         response = HttpResponse(zip_bytes, content_type='application/zip')
         response['Content-Disposition'] = f'attachment; filename="offline_qr_{file.name}.zip"'
-        print("[OFFLINE MODE] Returning response")
+        logger.info("[OFFLINE MODE] Returning response")
         return response
 
-@permission_classes([IsAuthenticated])
+@csrf_exempt
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def reconstruct_from_zip(request):
     zip_file = request.FILES.get("zip")
     password = request.data.get("password")
@@ -256,6 +272,19 @@ def reconstruct_from_zip(request):
             for i in sorted(chunks.keys())
         )
 
+        # 🔑 4.5. VERIFY FILE INTEGRITY
+        expected_checksum = metadata.get("checksum")
+        if expected_checksum:
+            calculated_checksum = hashlib.sha256(encrypted_bytes).hexdigest()
+            if calculated_checksum != expected_checksum:
+                return Response(
+                    {"error": "File corrupted - checksum mismatch"},
+                    status=400
+                )
+            logger.info(f"[RECONSTRUCT] Checksum verified: {calculated_checksum}")
+        else:
+            logger.warning("[RECONSTRUCT] Warning: No checksum in metadata (old format)")
+
         reconstructed_data = decrypt_file(encrypted_bytes, password)
 
         # 🔑 5. RETURN FILE WITH ORIGINAL METADATA
@@ -269,7 +298,7 @@ def reconstruct_from_zip(request):
         return response
 
     except Exception as e:
-        print("RECONSTRUCTION ERROR:", e)
+        logger.error("Reconstruction failed", exc_info=True)
         return Response(
             {"error": f"Reconstruction failed: {str(e)}"},
             status=500
@@ -354,6 +383,7 @@ def download_online_file(request, signed_token):
     response["Content-Disposition"] = f'attachment; filename="{encrypted_file.original_filename}"'
     return response
 
+@csrf_exempt
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def audit_logs(request):
@@ -365,6 +395,7 @@ def audit_logs(request):
     return Response(serializer.data)
 
 
+@csrf_exempt
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def user_files(request):

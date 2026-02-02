@@ -7,3 +7,10 @@ Pillow>=10.2,<11
 pyzbar
 djangorestframework-simplejwt
 django-redis
+gunicorn
+whitenoise
+psycopg2-binary
+redis
+django-ratelimit
+python-decouple
+dj-database-url
