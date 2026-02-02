@@ -7,7 +7,7 @@ urlpatterns = [
     path('download/<str:signed_token>/', download_online_file),
     path('reconstruct/', reconstruct_from_zip),
     path('audit/', audit_logs),
-    path('auth/signup/', signup), 
+    path('signup/', signup),  # Consistent with /api/token/ pattern
     path('logout/', logout),
     path('dashboard/', user_files),
 ]
