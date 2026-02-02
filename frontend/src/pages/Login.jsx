@@ -39,7 +39,7 @@ export default function Login() {
         onChange={e => setPassword(e.target.value)} /><br/><br/>
 
       <button onClick={handleLogin}>Login</button>
-      <button onClick={() => window.location.href = '/signup'} style={{ marginLeft: 10 }}>Signup</button>
+      <button onClick={() => navigate('/signup')} style={{ marginLeft: 10 }}>Signup</button>
     </div>
   );
 }
