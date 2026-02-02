@@ -20,4 +20,7 @@ COPY . .
 
 RUN python manage.py collectstatic --noinput || true
 
-CMD ["gunicorn", "backend.wsgi:application", "--bind", "0.0.0.0:8000"]
+# Make entrypoint executable
+RUN chmod +x /app/entrypoint.sh
+
+CMD ["/app/entrypoint.sh"]
