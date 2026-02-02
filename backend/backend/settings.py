@@ -120,6 +120,13 @@ CORS_ALLOWED_ORIGINS = [
     "https://q-safe-frontend.onrender.com",  # Production frontend
 ]
 
+if config('CORS_ALLOWED_ORIGINS', default=''):
+    CORS_ALLOWED_ORIGINS += config('CORS_ALLOWED_ORIGINS').split(',')
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.onrender\.com$",
+]
+
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
@@ -129,7 +136,11 @@ CSRF_TRUSTED_ORIGINS = [
     "http://172.16.178.217:3000",  # for college wifi
     "https://q-safe-frontend.onrender.com",  # Production frontend
     "https://q-safe.onrender.com",  # Production backend
+    "https://*.onrender.com",
 ]
+
+if config('CSRF_TRUSTED_ORIGINS', default=''):
+    CSRF_TRUSTED_ORIGINS += config('CSRF_TRUSTED_ORIGINS').split(',')
 
 CORS_EXPOSE_HEADERS = ['Content-Disposition',"Content-Type"]
 
