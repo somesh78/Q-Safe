@@ -5,3 +5,5 @@ cryptography==42.0.1
 qrcode==7.4.2
 Pillow>=10.2,<11
 pyzbar
+djangorestframework-simplejwt
+django-redis

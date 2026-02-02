@@ -1,6 +1,6 @@
 ================================================================================
 Q_SAFE - ISSUES STATUS CHECK
-Generated: January 27, 2026
+Updated: February 2, 2026
 Checking current codebase against original 38 logical issues
 ================================================================================
 
@@ -8,6 +8,7 @@ LEGEND:
 ✅ FIXED - Issue has been resolved
 ❌ STILL PRESENT - Issue remains in codebase
 ⚠️ PARTIALLY FIXED - Some aspects fixed, others remain
+🔧 RECENTLY FIXED - Fixed since last check
 ================================================================================
 
 ================================================================================
@@ -25,10 +26,10 @@ CRITICAL ISSUES (15 Total)
    Finding: /download/:token route is now outside PrivateRoute wrapper
 
 3. PASSWORD VALIDATION MISSING
-   Status: ❌ STILL PRESENT
-   Location: frontend/src/pages/Home.jsx (Lines 28-30)
-   Finding: Alert shows but no return statement - upload continues anyway
-   Code: if (!password){ alert("..."); } setLoading(true); // continues!
+   Status: 🔧 RECENTLY FIXED
+   Location: frontend/src/pages/Home.jsx (Line 30-33)
+   Finding: Now has return statement after alert
+   Code: if (!password){ alert("..."); return; } // prevents upload!
 
 4. NO PASSWORD STRENGTH REQUIREMENTS
    Status: ❌ STILL PRESENT
@@ -36,9 +37,9 @@ CRITICAL ISSUES (15 Total)
    Finding: No minimum length, complexity, or confirmation validation anywhere
 
 5. FILE UPLOAD RACE CONDITION
-   Status: ❌ STILL PRESENT
-   Location: frontend/src/pages/Home.jsx (Lines 28-34)
-   Finding: Password check doesn't prevent upload - same as issue #3
+   Status: 🔧 RECENTLY FIXED
+   Location: frontend/src/pages/Home.jsx (Lines 30-33)
+   Finding: Fixed by adding return statement in password check (same fix as #3)
 
 6. TOKEN EXPIRY DOUBLE-CHECK CONFLICT
    Status: ⚠️ PARTIALLY ADDRESSED
@@ -75,10 +76,10 @@ CRITICAL ISSUES (15 Total)
     Finding: Duplicate password request removed from online mode
 
 12. JWT TOKEN NEVER REFRESHED
-    Status: ⚠️ PARTIALLY FIXED
-    Location: frontend/src/services/api.js (Lines 15-23)
-    Finding: Response interceptor clears localStorage on 401 but doesn't refresh
-    Note: Logs user out instead of refreshing - not ideal but functional
+    Status: 🔧 RECENTLY FIXED
+    Location: frontend/src/services/api.js (Lines 15-40)
+    Finding: Full JWT refresh logic implemented with retry mechanism
+    Note: On 401, attempts refresh with refresh token, retries original request
 
 13. CHUNK RECONSTRUCTION GAPS IGNORED
     Status: ✅ FIXED
@@ -86,13 +87,15 @@ CRITICAL ISSUES (15 Total)
     Finding: Now validates len(chunks) == metadata["total_chunks"]
 
 14. NO FILE SIZE LIMITS
-    Status: ❌ STILL PRESENT
-    Location: backend/transfers/views.py (upload_file)
-    Finding: No MAX_FILE_SIZE validation - entire file in memory
+    Status: 🔧 RECENTLY FIXED
+    Location: backend/transfers/views.py (Lines 24, 93-97)
+    Finding: MAX_FILE_SIZE = 20MB enforced before file reading
+    Code: if file.size > MAX_FILE_SIZE: return 413 error
 
-15. BARE EXCEPTION HANDLER
-    Status: ❌ STILL PRESENT
-    Location: backend/transfers/views.py (Line 296)
+15. BARE EXC🔧 RECENTLY FIXED
+    Location: backend/transfers/views.py (Line 335)
+    Finding: Changed to except Exception: (proper exception handling)
+    Note: Line 271 still has print() but exception handling is proper
     Finding: except: (bare) still used - should be except Exception as e:
 
 
@@ -121,13 +124,15 @@ MAJOR ISSUES (7 Total)
     Location: backend/transfers/models.py (Line 48)
     Finding: DownloadAudit now has user ForeignKey field
     Note: log_audit() needs request parameter (has bug - see below)
-
-20. FILES NOT DELETED AFTER MAX DOWNLOADS
-    Status: ❌ STILL PRESENT
+🔧 RECENTLY FIXED
+    Location: backend/transfers/views.py (Lines 344-348)
+    Finding: File deleted after reaching 3 downloads
+    Code: if download_count >= 3: encrypted_file.delete()
     Location: backend/transfers/views.py (download_online_file)
-    Finding: File stays in DB after 3 downloads - no deletion logic
-
-21. SECURITY THROUGH OBSCURITY
+    Finding:🔧 RECENTLY FIXED
+    Location: backend/transfers/views.py (download_online_file)
+    Finding: All error messages changed to generic "Download failed"
+    Note: Prevents attackers from enumerating file states
     Status: ❌ STILL PRESENT
     Location: backend/transfers/views.py (error messages)
     Finding: Still returns detailed errors ("IP locked", "Wrong password")
@@ -149,8 +154,10 @@ MODERATE ISSUES (16 Total)
 24. NO AUTO-LOGIN AFTER SIGNUP
     Status: ❌ STILL PRESENT
     Location: frontend/src/pages/Signup.jsx
-    Finding: Still redirects to /login - no auto token generation
-
+    Finding:🔧 RECENTLY FIXED
+    Location: frontend/src/components/LogoutButton.jsx + backend/transfers/views.py
+    Finding: Full logout implementation with token blacklisting
+    Note: Backend endpoint blacklists refresh token, frontend clears localStorage
 25. NO LOGOUT FUNCTIONALITY
     Status: ❌ STILL PRESENT
     Finding: No logout button/function anywhere in frontend
@@ -189,9 +196,10 @@ MODERATE ISSUES (16 Total)
     Finding: No React error boundary components implemented
 
 33. CORS HARDCODED IPS
-    Status: ❌ STILL PRESENT
-    Location: backend/backend/settings.py
-    Finding: Need to check settings.py - likely still hardcoded
+    Status: 🔧 RECENTLY FIXED
+    Location: frontend/src/services/api.js (Line 65)
+    Finding: Timeout added to uploadFile: 120000ms (2 minutes)
+    Note: Needed for large files with QR generationill hardcoded
 
 34. NO REQUEST TIMEOUT CONFIGURATION
     Status: ❌ STILL PRESENT
@@ -199,8 +207,10 @@ MODERATE ISSUES (16 Total)
     Finding: No timeout property in axios.create()
 
 35. PRINT STATEMENTS IN PRODUCTION CODE
-    Status: ❌ STILL PRESENT
-    Location: backend/transfers/views.py (Line 241)
+    Status: ⚠️ PARTIALLY IMPLEMENTED
+    Location: backend/transfers/views.py (Line 283) + settings.py
+    Finding: @ratelimit(key="ip", rate="10/m") added to download endpoint
+    Note: RATELIMIT_ENABLE = False in settings - needs to be enabled in production
     Finding: print("RECONSTRUCTION ERROR:", e) still present
 
 36. NO RATE LIMITING
@@ -211,23 +221,22 @@ MODERATE ISSUES (16 Total)
     Status: ❌ STILL PRESENT
     Finding: No file type whitelist/blacklist
 
-38. SESSION ID EXPOSED IN RESPONSE
-    Status: ❌ STILL PRESENT
-    Location: backend/transfers/views.py (create_session)
-    Finding: Still returns raw UUID session_id
-
-
-================================================================================
-NEW ISSUES FOUND DURING REVIEW
+PREVIOUSLY IDENTIFIED BUGS (NOW FIXED)
 ================================================================================
 
 39. LOG_AUDIT FUNCTION SIGNATURE ERROR
-    Status: ❌ NEW BUG INTRODUCED
-    Location: backend/transfers/views.py (Lines 26-32)
-    Issue: log_audit() expects (file, ip, status, reason) but called as:
-           log_audit(encrypted_file, ip, request, "IP locked")
-           Should be: log_audit(encrypted_file, ip, "FAILED", "IP locked")
-    Impact: Will crash on any audit logging attempt
+    Status: 🔧 FIXED
+    Location: backend/transfers/views.py (Line 29)
+    Finding: Function signature changed to: log_audit(file, ip, request, status, reason)
+    Note: Properly handles request parameter for user extraction
+
+40. LOCKED_UNTIL COMPARISON BUG
+    Status: 🔧 FIXED
+    Location: backend/transfers/views.py (Lines 295-299, 303-306)
+    Finding: Two separate checks now:
+             - Line 295: if locked_until > now(): deny access (CORRECT)
+             - Line 303: if locked_until < now(): reset lock (CORRECT)
+    Impact: Lock logic now works properly
 
 40. LOCKED_UNTIL COMPARISON BUG
     Status: ❌ LOGIC ERROR
@@ -238,65 +247,78 @@ NEW ISSUES FOUND DURING REVIEW
 
 
 ================================================================================
-SUMMARY STATISTICS
-================================================================================
+SUCOMPLETELY FIXED: 20 issues
+   - Issues: 1, 2, 3, 5, 7, 9, 10, 11, 12, 13, 14, 15, 17, 19, 20, 21, 25, 27, 30, 34
+   - 🔧 Recently Fixed: 3, 5, 12, 14, 15, 20, 21, 25, 34
 
-Total Original Issues: 38
+⚠️ PARTIALLY FIXED: 3 issues
+   - Issues: 6, 18, 36 (28 moved to fixed)
 
-✅ FIXED: 11 issues
-   - Issues: 1, 2, 7, 9, 10, 11, 13, 17, 19, 27, 30
+❌ STILL PRESENT: 15 issues
+   - Issues: 4, 16, 22, 23, 24, 26, 29, 31, 32, 33, 35, 37, 38
 
-⚠️ PARTIALLY FIXED: 4 issues
-   - Issues: 6, 12, 18, 28
+🔧 PREVIOUSLY IDENTIFIED BUGS (NOW FIXED): 2
+   - Issues: 39 (log_audit signature), 40 (locked_until logic)
 
-❌ STILL PRESENT: 23 issues
-   - Issues: 3, 4, 5, 14, 15, 16, 20, 21, 22, 23, 24, 25, 26, 29, 31, 32, 33,
-             34, 35, 36, 37, 38
-
+FIX RATE: 52.6% (20/38) - UP FROM 28.9%
+IMPROVEMENT: +9 issues fixed since last check (January 27)
+REGRESSION RATE: 0 new bugs (2 previous bugs fixed)
 🆕 NEW BUGS INTRODUCED: 2 issues
    - Issues: 39 (log_audit signature), 40 (locked_until logic)
 
-FIX RATE: 28.9% (11/38)
-REGRESSION RATE: 2 new bugs introduced
-
-
-================================================================================
-CRITICAL BUGS THAT NEED IMMEDIATE ATTENTION
+REMAINING CRITICAL ISSUES
 ================================================================================
 
-🔴 HIGHEST PRIORITY - WILL CRASH:
-1. Issue #39: log_audit() signature mismatch - ALL audit logging will crash
-   Location: backend/transfers/views.py (Lines 279, 289, 292, 300, 309)
-   Fix: Change log_audit(file, ip, request, reason) to log_audit(file, ip, "STATUS", reason)
+🟡 MEDIUM PRIORITY - FUNCTIONALITY GAPS:
+1. Issue #4: No password strength requirements
+   Location: All password inputs (Signup, Login, Upload)
+   Fix: Add minimum 8 chars, require complexity validation
 
-🔴 HIGH PRIORITY - SECURITY FLAW:
-2. Issue #40: locked_until check inverted - allows access during lock!
-   Location: backend/transfers/views.py (Line 282)
-   Fix: Change < to > in comparison
+2. Issue #16: No automated cleanup
+   Location: backend/transfers/management/commands/cleanup_expired_files.py
+   Fix: Add Celery/cron scheduling for periodic cleanup
 
-3. Issue #3/#5: Password validation missing - files upload without password
-   Location: frontend/src/pages/Home.jsx (Line 28-30)
+3. Issue #22: CSRF vulnerability
+   Location: backend/transfers/views.py (file upload)
+   Fix: Add proper CSRF handling or exemption with documentation
+
+🟢 LOW PRIORITY - ENHANCEMENTS:
+4. Issue #23: UTC timezone confusion
+5. Issue #24: No auto-login after signup
+6. Issue #29: No file integrity verification (checksums)
+7. Issue #31: Token validation incomplete on client
+8. Issue #35: Print statements instead of loggne 28-30)
    Fix: Add return statement after alert
-
-4. Issue #14: No file size limits - memory exhaustion possible
-   Location: backend/transfers/views.py (upload_file)
-   Fix: Add file.size validation before reading
-
-
-================================================================================
-RECOMMENDED IMMEDIATE FIXES
+MAINING WORK TO DO
 ================================================================================
 
-Priority 1 (System Breaking):
-- Fix log_audit signature calls (Issue #39)
-- Fix locked_until comparison (Issue #40)
+HIGH PRIORITY (Should fix soon):
+1. Add password strength validation (Issue #4)
+   - Minimum 8 characters
+   - Mix of letters, numbers, special chars
+   - Password confirmation field on signup
 
-Priority 2 (Security Critical):
-- Add password validation return (Issue #3/#5)
-- Add file size limits (Issue #14)
-- Fix bare exception handler (Issue #15)
+2. Set up automated cleanup (Issue #16)
+   - Celery Beat task or system cron
+   - Run cleanup_expired_files.py daily
 
-Priority 3 (Data Integrity):
+3. Enable rate limiting in production (Issue #36)
+   - Set RATELIMIT_ENABLE = True
+   - Configure Redis cache for production
+
+MEDIUM PRIORITY (Nice to have):
+4. Add auto-login after signup (Issue #24)
+5. Add file integrity checksums (Issue #29)
+6. Replace print() with logging (Issue #35)
+7. Add proper CSRF handling (Issue #22)
+8. Add client-side JWT validation (Issue #31)
+
+LOW PRIORITY (Can defer):
+9. Timezone conversion for user display (Issue #23)
+10. Error boundaries in React (Issue #32)
+11. Move CORS to environment variables (Issue #33)
+12. File type validation (Issue #37)
+13. Sign session IDs (Issue #38
 - Validate chunk index sequence (Issue #28)
 - Remove print statements (Issue #35)
 

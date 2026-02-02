@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import ModeSelector from "../components/ModeSelector";
 import FileUploader from "../components/FileUploader";
 import { createSession, uploadFile } from "../services/api";
+import LogoutButton from "../components/LogoutButton";
+
 
 export default function Home() {
     const [session, setSession] = useState(null);
@@ -28,18 +30,24 @@ export default function Home() {
     const handleFileUpload = async (file) => {
         if (!password){
             alert("Please enter a password before uploading the file.");
+            return;
         }
 
         setLoading(true);
 
         try {
             const response = await uploadFile(file, session.session_id, password);
+            
+            console.log("Upload response:", response);
+            console.log("Session mode:", session.mode);
 
             // 🔵 OFFLINE MODE → ZIP DOWNLOAD
             if (session.mode === "OFFLINE") {
+                console.log("Processing OFFLINE mode...");
                 const blob = new Blob([response.data], {
                     type: "application/zip",
                 });
+                console.log("Blob created:", blob.size, "bytes");
                 setZipBlob(blob);
                 setZipName(`${file.name}_qr_bundle.zip`);
                 setLoading(false);
@@ -47,16 +55,19 @@ export default function Home() {
             }
 
             // 🔵 ONLINE MODE → JSON RESPONSE
+            console.log("Processing ONLINE mode...");
             const text = await response.data.text();
             const json = JSON.parse(text);
+            console.log("Parsed JSON:", json);
             setUploadResult(json);
+            setLoading(false);
 
         } catch (err) {
             console.error("Upload failed:", err);
+            console.error("Error details:", err.response?.data);
             alert("File upload failed. Check console for details.");
+            setLoading(false);
         }
-
-        setLoading(false);
     };
 
     const handleZipDownload = () => {
@@ -72,7 +83,23 @@ export default function Home() {
 
     return (
         <div style={{ padding: "20px", maxWidth: "700px", margin: "auto" }}>
-            <h2>QR Vault – Secure File Transfer</h2>
+            
+            {/* Top Bar */}
+            <div className="home-header">
+                <h2>Q-Safe</h2>
+
+                <div className="home-actions">
+                    <button onClick={() => navigate("/dashboard")}>
+                        📊 Dashboard
+                    </button>
+
+                    <button onClick={() => navigate("/audit")}>
+                        🧾 Audit Logs
+                    </button>
+                    
+                    <LogoutButton />
+                </div>
+            </div>
 
             {/* Reconstruct Button */}
             <button

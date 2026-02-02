@@ -13,18 +13,38 @@ API.interceptors.request.use((config => {
 }));
 
 API.interceptors.response.use(
-  res => res,
-  async error => {
-    if (error.response?.status === 401) {
-      localStorage.clear();
-      window.location.href = "/login";
+    (response)=> response,
+    async (error) => {
+        const originalRequest = error.config;
+        if (error.response && error.response.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+            const refresh = localStorage.getItem('refresh');
+            if (!refresh) {
+                window.location.href = '/login';
+                return Promise.reject(error);
+            }
+            try {
+                const res= await API.post('/token/refresh/', { refresh });
+
+                localStorage.setItem('access', res.data.access);
+
+                originalRequest.headers.Authorization = `Bearer ${res.data.access}`;
+                return API(originalRequest);
+            } catch (err) {
+                window.location.href = '/login';
+                return Promise.reject(err);
+            }
+        }
+        return Promise.reject(error);
     }
-    return Promise.reject(error);
-  }
 );
 
 export const signup = (username, password) => {
     return API.post('/signup/', { username, password });
+};
+
+export const logoutUser=(refresh)=>{
+    return API.post('/logout/', { refresh });
 };
 
 export const createSession = (mode) => {
@@ -40,6 +60,7 @@ export const uploadFile = (file, sessionId, password) => {
 
     return API.post('/upload/', form, {
         responseType: 'blob',
+        timeout: 120000, // 2 minutes for large files with QR generation
     });
 };
 

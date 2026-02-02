@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 from decouple import config
 
@@ -38,9 +39,22 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
+    'rest_framework_simplejwt.token_blacklist',
+    # "django_ratelimit",
     'rest_framework',
     'transfers',
 ]
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=10),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+}
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -48,7 +62,30 @@ REST_FRAMEWORK = {
     ),
 }
 
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": config('REDIS_URL', default='redis://127.0.0.1:6379/1'),
+#         "OPTIONS": {
+#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+#         }
+#     }
+# }
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "ratelimit_cache",
+    }
+}
+
+
+RATELIMIT_USE_CACHE = 'default'
+RATELIMIT_ENABLE = False
+
+
 MIDDLEWARE = [
+    'django_ratelimit.middleware.RatelimitMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -64,7 +101,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://192.168.29.13:3000",
-    "http://172.16.187.154:3000",#for college wifi
+    "http://172.16.178.217:3000",#for college wifi
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -73,7 +110,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://192.168.29.13:3000",
-    "http://172.16.187.154:3000",#for college wifi
+    "http://172.16.178.217:3000",#for college wifi
 ]
 
 CORS_EXPOSE_HEADERS = ['Content-Disposition',"Content-Type"]

@@ -19,7 +19,10 @@ from django.utils import timezone
 from django.utils.timezone import now, timedelta
 from rest_framework.permissions import IsAuthenticated
 from django.core.signing import TimestampSigner, BadSignature, SignatureExpired
+from django_ratelimit.decorators import ratelimit
+from rest_framework_simplejwt.tokens import RefreshToken
 
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
 
 signer = TimestampSigner()
 
@@ -48,6 +51,16 @@ def signup(request):
     user = User.objects.create_user(username=username, password=password)
     return Response({'message': 'Account created successfully'})
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout(request):
+    try:
+        refresh_token = request.data.get('refresh')
+        token = RefreshToken(refresh_token)
+        token.blacklist()
+        return Response({"message": "Logged out successfully"})
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -76,6 +89,12 @@ def upload_file(request):
     if not session_id or not file or not password:
         return Response({"error": "Session ID, file, and password are required"}, status=400)
     
+    if file.size > MAX_FILE_SIZE:
+        return Response(
+            {"error": "File too large"},
+            status=413
+    )
+
     try:
         session = UploadSession.objects.get(session_id=session_id, is_active=True, user=request.user)
     except UploadSession.DoesNotExist:
@@ -115,13 +134,17 @@ def upload_file(request):
         })
     
     if session.mode == "OFFLINE":
+        print("[OFFLINE MODE] Starting...")
         password = request.data.get("password")
+        print(f"[OFFLINE MODE] File size: {file.size} bytes")
         encrypted_data = encrypt_file(file.read(), password )
+        print(f"[OFFLINE MODE] Encrypted data size: {len(encrypted_data)} bytes")
 
         session.is_active = False
         session.save()
 
         chunks = chunk_bytes(encrypted_data)
+        print(f"[OFFLINE MODE] Created {len(chunks)} chunks")
 
         file_id = str(uuid.uuid4())
         qr_images = []
@@ -132,7 +155,8 @@ def upload_file(request):
             "total_chunks": len(chunks)
         }
         qr_images.append(("metadata.json", json.dumps(metadata).encode("utf-8")))
-        for chunk in chunks:
+        print(f"[OFFLINE MODE] Generating {len(chunks)} QR codes...")
+        for idx, chunk in enumerate(chunks):
             payload = {
                 "file_id": file_id,
                 "index": chunk["index"],
@@ -142,11 +166,16 @@ def upload_file(request):
             qr_png = generate_qr(payload)
             filename = f"qr_{chunk['index']:03}.png"
             qr_images.append((filename, qr_png))
+            if (idx + 1) % 5 == 0:
+                print(f"[OFFLINE MODE] Generated {idx + 1}/{len(chunks)} QR codes")
         
+        print(f"[OFFLINE MODE] Creating ZIP with {len(qr_images)} files...")
         zip_bytes = create_zip(qr_images)
+        print(f"[OFFLINE MODE] ZIP created: {len(zip_bytes)} bytes")
 
         response = HttpResponse(zip_bytes, content_type='application/zip')
         response['Content-Disposition'] = f'attachment; filename="offline_qr_{file.name}.zip"'
+        print("[OFFLINE MODE] Returning response")
         return response
 
 @permission_classes([IsAuthenticated])
@@ -249,6 +278,7 @@ def reconstruct_from_zip(request):
 MAX_ATTEMPTS = 5
 LOCK_DURATION = 10
 
+@ratelimit(key="ip", rate="10/m", block=True)
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([AllowAny])
@@ -277,8 +307,12 @@ def download_online_file(request, signed_token):
             encrypted_file.save()
         elif encrypted_file.allowed_ip != ip and encrypted_file.download_count > 0:
             log_audit(encrypted_file, ip, request, "FAILED", "IP locked")
-            return Response({"error": "This file is locked to a different device"}, status=403)
+            return Response({"error": "Download failed"}, status=403)
 
+    if encrypted_file.locked_until and encrypted_file.locked_until > timezone.now():
+        log_audit(encrypted_file, ip, request, "FAILED", "Temporarily locked")
+        return Response({"error": "Download failed"}, status=403)
+    
     if encrypted_file.locked_until and encrypted_file.locked_until < timezone.now():
         encrypted_file.failed_attempts = 0
         encrypted_file.locked_until = None
@@ -286,28 +320,33 @@ def download_online_file(request, signed_token):
     
     if encrypted_file.expires_at < timezone.now():
         log_audit(encrypted_file, ip, request, "FAILED", "Expired")
-        return Response({"error": "Link has expired"}, status=410)
+        return Response({"error": "Download failed"}, status=410)
 
     if encrypted_file.download_count >= 3:
         log_audit(encrypted_file, ip, request, "FAILED", "Download limit reached")
-        return Response({"error": "Download limit exceeded"}, status=429)
+        return Response({"error": "Download failed"}, status=429)
 
     try:
         decrypted = decrypt_file(encrypted_file.encrypted_data, password)
 
         encrypted_file.failed_attempts = 0
         encrypted_file.locked_until = None
-    except:
+    except Exception:
         encrypted_file.failed_attempts += 1
         if encrypted_file.failed_attempts >= MAX_ATTEMPTS:
             encrypted_file.locked_until = timezone.now() + timedelta(minutes=LOCK_DURATION)
 
         encrypted_file.save()
         log_audit(encrypted_file, ip, request, "FAILED", "Wrong password")
-        return Response({"error": "Wrong password"}, status=400)
+        return Response({"error": "Download failed"}, status=400)
 
     encrypted_file.download_count += 1
-    encrypted_file.save()
+
+    if encrypted_file.download_count >= 3:
+        encrypted_file.delete()
+    else:
+        encrypted_file.save()
+
 
     log_audit(encrypted_file, ip, request, "SUCCESS", None)
 
@@ -324,3 +363,26 @@ def audit_logs(request):
 
     serializer = DownloadAuditSerializer(logs, many=True)
     return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def user_files(request):
+    files = OnlineEncryptedFile.objects.filter(
+        session__user=request.user
+    ).select_related("session").order_by("-uploaded_at")
+
+    result = []
+
+    for f in files:
+        result.append({
+            "id": f.id,
+            "session_id": str(f.session.session_id),
+            "filename": f.original_filename,
+            "downloads": f.download_count,
+            "expires_at": f.expires_at,
+            "ip_lock": f.enable_ip_lock,
+            "created_at": f.uploaded_at,
+        })
+
+    return Response(result)

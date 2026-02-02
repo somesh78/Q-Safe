@@ -1,10 +1,13 @@
 import {useState} from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import API from '../services/api.js';
 
 
-export default function Login({onLogin}) {
+export default function Login() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const location = useLocation();
+    const navigate = useNavigate();
 
     const handleLogin = async (e) => {
         try{
@@ -18,8 +21,8 @@ export default function Login({onLogin}) {
             localStorage.setItem('access', res.data.access);
             localStorage.setItem('refresh', res.data.refresh);
 
-            onLogin();
-            window.location.href = '/';
+            const from = location.state?.from?.pathname || "/";
+            navigate(from, { replace: true });
         } catch (error) {
             console.error("Login failed:", error);
         }

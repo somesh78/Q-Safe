@@ -8,4 +8,6 @@ urlpatterns = [
     path('reconstruct/', reconstruct_from_zip),
     path('audit/', audit_logs),
     path('auth/signup/', signup), 
+    path('logout/', logout),
+    path('dashboard/', user_files),
 ]

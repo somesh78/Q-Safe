@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 import Home from "./pages/Home.jsx";
 import Reconstruct from "./pages/Reconstruct.jsx";
@@ -8,35 +7,26 @@ import Audit from "./pages/Audit.jsx";
 import Login from "./pages/Login.jsx";
 import PrivateRoute from "./components/PrivateRoute.jsx";
 import Signup from "./pages/Signup.jsx";
+import Dashboard from "./pages/Dashboard.jsx";
+
 
 function App() {
-  const [logged, setLogged] = useState(!!localStorage.getItem("access"));
-
   return (
     <BrowserRouter>
       <Routes>
 
-        <Route
-          path="/login"
-          element={<Login onLogin={() => setLogged(true)} />}
-        />
+        {/* Public */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/download/:token" element={<OnlineDownload />} />
 
-        <Route
-          path="/signup"
-          element={<Signup />}
-        />
-
-        {logged ? (
-          <>
-            <Route path="/" element={<PrivateRoute><Home /></PrivateRoute>} />
-            <Route path="/reconstruct" element={<PrivateRoute><Reconstruct /></PrivateRoute>} />
-            <Route path="/download/:token" element={<OnlineDownload />} />
-            <Route path="/audit" element={<PrivateRoute><Audit /></PrivateRoute>} />
-
-          </>
-        ) : (
-          <Route path="*" element={<Navigate to="/login" />} />
-        )}
+        {/* Protected */}
+        <Route element={<PrivateRoute />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/audit" element={<Audit />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/reconstruct" element={<Reconstruct />} />
+        </Route>
 
       </Routes>
     </BrowserRouter>

@@ -6,3 +6,12 @@ class DownloadAuditSerializer(serializers.ModelSerializer):
     class Meta:
         model = DownloadAudit
         fields = '__all__'
+
+class UserFieldSerializer(serializers.ModelSerializer):
+    expiers_at = serializers.DateTimeField()
+    download_count = serializers.IntegerField()
+    enabled_ip_lock = serializers.BooleanField()
+
+    class Meta:
+        model = OnlineEncryptedFile
+        fields = ['original_filename', 'expiers_at', 'download_count', 'enabled_ip_lock']
