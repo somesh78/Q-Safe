@@ -1,0 +1,42 @@
+services:
+  # Backend service
+  - type: web
+    name: q-safe
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: q-safe-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: q-safe-redis
+          type: redis
+          property: connectionString
+
+  # Frontend service
+  - type: web
+    name: q-safe-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/build
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+databases:
+  - name: q-safe-db
+    databaseName: qsafe
+    user: qsafe
+
+services:
+  - type: redis
+    name: q-safe-redis
+    ipAllowList: []
