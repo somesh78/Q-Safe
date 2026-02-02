@@ -176,16 +176,16 @@ if DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=60,  # Reduced to avoid connection timeouts
+            conn_max_age=0,  # Don't persist connections - create fresh each time
             conn_health_checks=True,
-            ssl_require=True,
         )
     }
-    # Add connection pool settings
-    DATABASES['default']['OPTIONS'] = {
+    # Override/add SSL and timeout settings
+    DATABASES['default'].setdefault('OPTIONS', {})
+    DATABASES['default']['OPTIONS'].update({
         'connect_timeout': 10,
-        'options': '-c statement_timeout=30000',  # 30 seconds for queries
-    }
+        'sslmode': 'require',
+    })
 else:
     # Development: SQLite
     DATABASES = {
