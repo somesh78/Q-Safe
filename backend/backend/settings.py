@@ -117,8 +117,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://192.168.29.13:3000",
     "http://172.16.178.217:3000",  # for college wifi
-    # Add your production frontend URL after deployment:
-    # "https://your-frontend-name.onrender.com",
+    "https://q-safe-frontend.onrender.com",  # Production frontend
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -127,7 +126,9 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://192.168.29.13:3000",
-    "http://172.16.178.217:3000",#for college wifi
+    "http://172.16.178.217:3000",  # for college wifi
+    "https://q-safe-frontend.onrender.com",  # Production frontend
+    "https://q-safe.onrender.com",  # Production backend
 ]
 
 CORS_EXPOSE_HEADERS = ['Content-Disposition',"Content-Type"]
