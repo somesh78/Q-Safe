@@ -307,6 +307,7 @@ def reconstruct_from_zip(request):
 MAX_ATTEMPTS = 5
 LOCK_DURATION = 10
 
+@csrf_exempt
 @ratelimit(key="ip", rate="10/m", block=True)
 @api_view(["POST"])
 @authentication_classes([])
