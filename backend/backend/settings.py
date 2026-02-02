@@ -176,9 +176,15 @@ if DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=600,
+            conn_max_age=60,  # Reduced to avoid connection timeouts
             conn_health_checks=True,
+            ssl_require=True,
         )
+    }
+    # Add connection pool settings
+    DATABASES['default']['OPTIONS'] = {
+        'connect_timeout': 10,
+        'options': '-c statement_timeout=30000',  # 30 seconds for queries
     }
 else:
     # Development: SQLite
