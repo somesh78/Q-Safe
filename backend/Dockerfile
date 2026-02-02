@@ -18,8 +18,7 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
 
-RUN python manage.py collectstatic --noinput || true
-
+# Don't run collectstatic during build - will run in entrypoint
 # Make entrypoint executable
 RUN chmod +x /app/entrypoint.sh
 
