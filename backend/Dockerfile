@@ -18,6 +18,6 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
 
-RUN SECRET_KEY=nothing python manage.py collectstatic --noinput
+RUN python manage.py collectstatic --noinput || true
 
 CMD ["gunicorn", "backend.wsgi:application", "--bind", "0.0.0.0:8000"]
