@@ -316,15 +316,25 @@ def download_online_file(request, signed_token):
     password = request.data.get("password")
     ip = request.META.get("REMOTE_ADDR")
 
+    # Debug logging
+    logger.info(f"[DOWNLOAD] Received request - Token: {signed_token[:20]}...")
+    logger.info(f"[DOWNLOAD] Password received: {bool(password)}")
+    logger.info(f"[DOWNLOAD] Request data: {request.data}")
+    logger.info(f"[DOWNLOAD] Request body: {request.body}")
+
     try:
         # Match the expiry time with OnlineEncryptedFile.expires_at (1 hour)
         token = signer.unsign(signed_token, max_age=3600)
+        logger.info(f"[DOWNLOAD] Token unsigned successfully: {token}")
     except SignatureExpired:
+        logger.warning(f"[DOWNLOAD] Token expired: {signed_token}")
         return Response({"error": "Link has expired"}, status=410)
     except BadSignature:
+        logger.warning(f"[DOWNLOAD] Invalid token signature: {signed_token}")
         return Response({"error": "Invalid link"}, status=404)
     
     if not password:
+        logger.warning(f"[DOWNLOAD] No password provided")
         return Response({"error": "Password required"}, status=400)
 
     try:
