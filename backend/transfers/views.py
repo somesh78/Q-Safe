@@ -129,7 +129,7 @@ def upload_file(request):
         session.is_active = False
         session.save()
 
-        BASE_URL = config('FRONTEND_URL')
+        BASE_URL = config('FRONTEND_URL', default='https://q-safe-frontend.onrender.com')
         signed_token = signer.sign(str(encrypted_file.token))
         download_url = f"{BASE_URL}/download/{signed_token}/"
         qr_bytes = generate_qr_url(download_url)
