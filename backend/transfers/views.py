@@ -317,6 +317,7 @@ def download_online_file(request, signed_token):
     ip = request.META.get("REMOTE_ADDR")
 
     try:
+        # Match the expiry time with OnlineEncryptedFile.expires_at (1 hour)
         token = signer.unsign(signed_token, max_age=3600)
     except SignatureExpired:
         return Response({"error": "Link has expired"}, status=410)
@@ -337,11 +338,11 @@ def download_online_file(request, signed_token):
             encrypted_file.save()
         elif encrypted_file.allowed_ip != ip and encrypted_file.download_count > 0:
             log_audit(encrypted_file, ip, request, "FAILED", "IP locked")
-            return Response({"error": "Download failed"}, status=403)
+            return Response({"error": "This file is locked to a different IP address"}, status=403)
 
     if encrypted_file.locked_until and encrypted_file.locked_until > timezone.now():
         log_audit(encrypted_file, ip, request, "FAILED", "Temporarily locked")
-        return Response({"error": "Download failed"}, status=403)
+        return Response({"error": "Too many failed attempts. Please try again later"}, status=403)
     
     if encrypted_file.locked_until and encrypted_file.locked_until < timezone.now():
         encrypted_file.failed_attempts = 0
@@ -350,25 +351,25 @@ def download_online_file(request, signed_token):
     
     if encrypted_file.expires_at < timezone.now():
         log_audit(encrypted_file, ip, request, "FAILED", "Expired")
-        return Response({"error": "Download failed"}, status=410)
+        return Response({"error": "Link has expired"}, status=410)
 
     if encrypted_file.download_count >= 3:
         log_audit(encrypted_file, ip, request, "FAILED", "Download limit reached")
-        return Response({"error": "Download failed"}, status=429)
+        return Response({"error": "Download limit reached"}, status=429)
 
     try:
         decrypted = decrypt_file(encrypted_file.encrypted_data, password)
 
         encrypted_file.failed_attempts = 0
         encrypted_file.locked_until = None
-    except Exception:
+    except Exception as e:
         encrypted_file.failed_attempts += 1
         if encrypted_file.failed_attempts >= MAX_ATTEMPTS:
             encrypted_file.locked_until = timezone.now() + timedelta(minutes=LOCK_DURATION)
 
         encrypted_file.save()
         log_audit(encrypted_file, ip, request, "FAILED", "Wrong password")
-        return Response({"error": "Download failed"}, status=400)
+        return Response({"error": "Wrong password"}, status=400)
 
     encrypted_file.download_count += 1
 
