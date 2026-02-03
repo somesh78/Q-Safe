@@ -171,19 +171,17 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
-    # Production: PostgreSQL with aggressive reconnection strategy
+    # Production: PostgreSQL
     import dj_database_url
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=0,  # No connection pooling
-            conn_health_checks=False,  # Disable health checks for fresh connections
+            conn_max_age=0,  # No connection pooling for Render free tier
+            conn_health_checks=False,
         )
     }
-    # Ensure proper SSL handling
     DATABASES['default'].setdefault('OPTIONS', {})
-    DATABASES['default']['ATOMIC_REQUESTS'] = True  # Wrap each request in transaction
-    DATABASES['default']['AUTOCOMMIT'] = True
+    DATABASES['default']['ATOMIC_REQUESTS'] = True
 else:
     # Development: SQLite
     DATABASES = {
