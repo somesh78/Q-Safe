@@ -19,7 +19,12 @@ export default function OnlineDownload() {
       const response = await axios.post(
         `${process.env.REACT_APP_API_URL}/download/${token}/`,
         { password },
-        { responseType: "blob" }
+        { 
+          responseType: "blob",
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
       );
       
       let filename = "downloaded_file";
