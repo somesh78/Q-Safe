@@ -189,10 +189,6 @@ export default function Home() {
                             </div>
                         </div>
                     )}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        style={{ marginBottom: "10px", display: "block" }}
-                    />
 
                     <FileUploader onUpload={handleFileUpload} />
                     {loading && <p>Processing file…</p>}
