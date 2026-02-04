@@ -27,7 +27,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 logger = logging.getLogger(__name__)
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # Reduce to 10MB for 512MB instance
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
 
 signer = TimestampSigner()
 
