@@ -34,6 +34,7 @@ class OnlineEncryptedFile(models.Model):
 
     expires_at = models.DateTimeField(default=default_expiry)
     download_count = models.IntegerField(default=0)
+    max_downloads = models.IntegerField(default=3)  # Configurable max downloads
 
     failed_attempts = models.IntegerField(default=0)
     locked_until = models.DateTimeField(null=True, blank=True)

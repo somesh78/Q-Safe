@@ -95,9 +95,20 @@ def upload_file(request):
     password = request.data.get("password")
     file = request.FILES.get("file")
     enable_ip_lock = request.data.get("enable_ip_lock") == "true"
+    
+    # Get configurable options with defaults
+    max_downloads = int(request.data.get("max_downloads", 3))  # Default: 3 downloads
+    expiry_hours = int(request.data.get("expiry_hours", 1))    # Default: 1 hour
 
     if not session_id or not file or not password:
         return Response({"error": "Session ID, file, and password are required"}, status=400)
+    
+    # Validate options
+    if max_downloads < 1 or max_downloads > 10:
+        return Response({"error": "Max downloads must be between 1 and 10"}, status=400)
+    
+    if expiry_hours < 1 or expiry_hours > 24:
+        return Response({"error": "Expiry hours must be between 1 and 24"}, status=400)
     
     if file.size > MAX_FILE_SIZE:
         return Response(
@@ -123,7 +134,8 @@ def upload_file(request):
             token=uuid.uuid4(),
             original_filename=file.name,
             enable_ip_lock=enable_ip_lock,
-            expires_at=now() + timedelta(hours=1)
+            expires_at=now() + timedelta(hours=expiry_hours),
+            max_downloads=max_downloads  # Store the max downloads limit
         )
 
         session.is_active = False
@@ -140,7 +152,12 @@ def upload_file(request):
             "filename": encrypted_file.original_filename,
             "mode": session.mode,
             "download_url": download_url,
-            "qr_code": qr_base64
+            "qr_code": qr_base64,
+            "settings": {
+                "max_downloads": max_downloads,
+                "expiry_hours": expiry_hours,
+                "ip_lock_enabled": enable_ip_lock
+            }
         })
     
     if session.mode == "OFFLINE":
@@ -367,7 +384,7 @@ def download_online_file(request, signed_token):
         log_audit(encrypted_file, ip, request, "FAILED", "Expired")
         return Response({"error": "Link has expired"}, status=410)
 
-    if encrypted_file.download_count >= 3:
+    if encrypted_file.download_count >= encrypted_file.max_downloads:
         log_audit(encrypted_file, ip, request, "FAILED", "Download limit reached")
         return Response({"error": "Download limit reached"}, status=429)
 
@@ -393,7 +410,7 @@ def download_online_file(request, signed_token):
     # Log audit BEFORE potentially deleting the file
     log_audit(encrypted_file, ip, request, "SUCCESS", None)
 
-    if encrypted_file.download_count >= 3:
+    if encrypted_file.download_count >= encrypted_file.max_downloads:
         encrypted_file.delete()
     else:
         encrypted_file.save()

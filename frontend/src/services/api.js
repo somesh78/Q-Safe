@@ -51,12 +51,14 @@ export const createSession = (mode) => {
     return API.post('/session/create/', { mode });
 };
 
-export const uploadFile = (file, sessionId, password) => {
+export const uploadFile = (file, sessionId, password, options = {}) => {
     const form = new FormData();
     form.append('file', file);
     form.append('password', password);
     form.append('session_id', sessionId);
-    form.append('enable_ip_lock', true);
+    form.append('enable_ip_lock', options.enableIpLock !== undefined ? options.enableIpLock : true);
+    form.append('max_downloads', options.maxDownloads || 3);
+    form.append('expiry_hours', options.expiryHours || 1);
 
     return API.post('/upload/', form, {
         responseType: 'blob',

@@ -13,6 +13,11 @@ export default function Home() {
     const [zipName, setZipName] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
+    
+    // Upload options
+    const [maxDownloads, setMaxDownloads] = useState(3);
+    const [expiryHours, setExpiryHours] = useState(1);
+    const [enableIpLock, setEnableIpLock] = useState(true);
 
     const navigate = useNavigate();
 
@@ -36,7 +41,11 @@ export default function Home() {
         setLoading(true);
 
         try {
-            const response = await uploadFile(file, session.session_id, password);
+            const response = await uploadFile(file, session.session_id, password, {
+                maxDownloads,
+                expiryHours,
+                enableIpLock
+            });
             
             console.log("Upload response:", response);
             console.log("Session mode:", session.mode);
@@ -124,6 +133,62 @@ export default function Home() {
                     <input
                         type="password"
                         placeholder="Enter encryption password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        style={{ marginBottom: "10px", width: "100%", padding: "8px" }}
+                    />
+
+                    {/* 🔧 ONLINE MODE OPTIONS */}
+                    {session.mode === "ONLINE" && (
+                        <div style={{ 
+                            padding: "15px", 
+                            background: "#f5f5f5", 
+                            borderRadius: "5px",
+                            marginBottom: "15px" 
+                        }}>
+                            <h4 style={{ marginTop: 0 }}>Security Options</h4>
+                            
+                            <div style={{ marginBottom: "10px" }}>
+                                <label style={{ display: "block", marginBottom: "5px" }}>
+                                    Max Downloads (1-10):
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    value={maxDownloads}
+                                    onChange={(e) => setMaxDownloads(parseInt(e.target.value) || 3)}
+                                    style={{ width: "100%", padding: "8px" }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: "10px" }}>
+                                <label style={{ display: "block", marginBottom: "5px" }}>
+                                    Expiry Time (1-24 hours):
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="24"
+                                    value={expiryHours}
+                                    onChange={(e) => setExpiryHours(parseInt(e.target.value) || 1)}
+                                    style={{ width: "100%", padding: "8px" }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: "10px" }}>
+                                <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={enableIpLock}
+                                        onChange={(e) => setEnableIpLock(e.target.checked)}
+                                        style={{ marginRight: "8px" }}
+                                    />
+                                    Enable IP Lock (restrict to first downloader's IP)
+                                </label>
+                            </div>
+                        </div>
+                    )}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         style={{ marginBottom: "10px", display: "block" }}
