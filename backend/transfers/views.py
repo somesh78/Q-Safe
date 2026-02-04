@@ -28,7 +28,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 logger = logging.getLogger(__name__)
 
-MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB for online mode
+MAX_OFFLINE_FILE_SIZE = 5 * 1024 * 1024  # 5MB for offline mode (QR generation constraints)
 
 signer = TimestampSigner()
 
@@ -122,6 +123,14 @@ def upload_file(request):
         session = UploadSession.objects.get(session_id=session_id, is_active=True, user=request.user)
     except UploadSession.DoesNotExist:
         return Response({"error": "Invalid or inactive session ID"}, status=404)
+    
+    # Check file size limits based on mode
+    if session.mode == "OFFLINE":
+        if file.size > MAX_OFFLINE_FILE_SIZE:
+            return Response({
+                "error": f"Offline mode limited to {MAX_OFFLINE_FILE_SIZE // (1024*1024)}MB due to QR generation constraints. Use Online mode for larger files.",
+                "max_size_mb": MAX_OFFLINE_FILE_SIZE // (1024*1024)
+            }, status=413)
     
     if session.mode == "ONLINE":
         password = request.data.get("password")

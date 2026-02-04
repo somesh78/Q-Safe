@@ -22,4 +22,4 @@ echo "Cleaning up expired files..."
 python manage.py cleanup_expired_files || echo "Cleanup failed, continuing..."
 
 echo "Starting Gunicorn..."
-exec gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --timeout 120 --workers 1 --max-requests 100 --max-requests-jitter 10
+exec gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --timeout 300 --workers 1 --max-requests 100 --max-requests-jitter 10

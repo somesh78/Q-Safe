@@ -2,7 +2,7 @@ import hashlib
 import math
 import base64
 
-CHUNK_SIZE = 800
+CHUNK_SIZE = 2500  # Increased from 800 to reduce QR count and memory usage
 
 def chunk_bytes(data: bytes):
     chunks = []
