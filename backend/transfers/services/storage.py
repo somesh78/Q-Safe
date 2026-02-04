@@ -14,10 +14,10 @@ class SupabaseStorage:
     
     def __init__(self):
         supabase_url = config('SUPABASE_URL', default='')
-        supabase_key = config('SUPABASE_KEY', default='')
+        supabase_key = config('SUPABASE_SERVICE_KEY', default='')  # Use service_role key for server-side
         
         if not supabase_url or not supabase_key:
-            raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment")
+            raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_KEY must be set in environment")
         
         self.client: Client = create_client(supabase_url, supabase_key)
         self.bucket_name = config('SUPABASE_BUCKET', default='encrypted-files')
