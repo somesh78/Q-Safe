@@ -320,7 +320,6 @@ def download_online_file(request, signed_token):
     logger.info(f"[DOWNLOAD] Received request - Token: {signed_token[:20]}...")
     logger.info(f"[DOWNLOAD] Password received: {bool(password)}")
     logger.info(f"[DOWNLOAD] Request data: {request.data}")
-    logger.info(f"[DOWNLOAD] Request body: {request.body}")
 
     try:
         # Match the expiry time with OnlineEncryptedFile.expires_at (1 hour)
