@@ -22,6 +22,10 @@ def encrypt_file(data: bytes, password: str) -> bytes:
     return salt + encrypted
 
 def decrypt_file(encrypted: bytes, password: str) -> bytes:
+    # Convert memoryview to bytes if needed (PostgreSQL BinaryField returns memoryview)
+    if isinstance(encrypted, memoryview):
+        encrypted = bytes(encrypted)
+    
     salt = encrypted[:16]
     encrypted_data = encrypted[16:]
     key = derive_key(password, salt)
