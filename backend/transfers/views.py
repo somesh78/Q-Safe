@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
+from django.db.utils import OperationalError
 
 from transfers.serializers import DownloadAuditSerializer
 from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile
@@ -26,7 +27,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 logger = logging.getLogger(__name__)
 
-MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
+MAX_FILE_SIZE = 10 * 1024 * 1024  # Reduce to 10MB for 512MB instance
 
 signer = TimestampSigner()
 
@@ -127,16 +128,35 @@ def upload_file(request):
         if not password:
             return Response({"error": "Password is required for online mode"}, status=400)
         
-        encrypted_data = encrypt_file(file.read(), password)
-        encrypted_file = OnlineEncryptedFile.objects.create(
-            session=session,
-            encrypted_data=encrypted_data,
-            token=uuid.uuid4(),
-            original_filename=file.name,
-            enable_ip_lock=enable_ip_lock,
-            expires_at=now() + timedelta(hours=expiry_hours),
-            max_downloads=max_downloads  # Store the max downloads limit
-        )
+        # Read file in chunks to avoid memory issues
+        file_data = file.read()
+        encrypted_data = encrypt_file(file_data, password)
+        
+        # Clear file data from memory before database operation
+        del file_data
+        
+        # Retry database operations to handle transient connection issues
+        from django.db import connection
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                encrypted_file = OnlineEncryptedFile.objects.create(
+                    session=session,
+                    encrypted_data=encrypted_data,
+                    token=uuid.uuid4(),
+                    original_filename=file.name,
+                    enable_ip_lock=enable_ip_lock,
+                    expires_at=now() + timedelta(hours=expiry_hours),
+                    max_downloads=max_downloads  # Store the max downloads limit
+                )
+                break  # Success, exit retry loop
+            except OperationalError as e:
+                if attempt == max_retries - 1:
+                    # Last attempt failed, raise the error
+                    raise
+                # Close the bad connection and retry
+                connection.close()
+                logger.warning(f"Database connection error on attempt {attempt + 1}, retrying...")
 
         session.is_active = False
         session.save()

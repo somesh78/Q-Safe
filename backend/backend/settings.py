@@ -175,7 +175,7 @@ if DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=600,  # Reuse connections for 10 minutes to avoid SSL handshake issues
+            conn_max_age=300,  # Reduce to 5 minutes for memory efficiency
             conn_health_checks=True,  # Check connection health before reusing
         )
     }
@@ -183,6 +183,7 @@ if DATABASE_URL:
     # SSL configuration for Render PostgreSQL - prefer SSL but don't fail if unavailable
     DATABASES['default']['OPTIONS']['sslmode'] = 'prefer'
     DATABASES['default']['OPTIONS']['connect_timeout'] = 10
+    DATABASES['default']['OPTIONS']['statement_timeout'] = 30000  # 30 second query timeout
     # Don't use ATOMIC_REQUESTS with connection pooling to avoid blocking
     # DATABASES['default']['ATOMIC_REQUESTS'] = True
 else:

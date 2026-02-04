@@ -19,4 +19,4 @@ until python manage.py migrate --noinput; do
 done
 
 echo "Starting Gunicorn..."
-exec gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --timeout 300 --workers 2
+exec gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --timeout 120 --workers 1 --max-requests 100 --max-requests-jitter 10
