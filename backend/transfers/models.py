@@ -29,7 +29,8 @@ class UploadedFile(models.Model):
 class OnlineEncryptedFile(models.Model):
     session = models.OneToOneField(UploadSession, on_delete=models.CASCADE, related_name='online_encrypted')
     token = models.UUIDField(default=uuid.uuid4, unique=True)
-    encrypted_data = models.BinaryField()
+    encrypted_data = models.BinaryField(null=True, blank=True)  # Legacy: will be migrated to Supabase Storage
+    file_path = models.CharField(max_length=500, null=True, blank=True)  # Supabase Storage path
     original_filename = models.CharField(max_length=255)
 
     expires_at = models.DateTimeField(default=default_expiry)

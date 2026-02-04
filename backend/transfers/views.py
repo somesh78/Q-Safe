@@ -14,6 +14,7 @@ from .services.encryption import encrypt_file, decrypt_file
 from .services.qr_generator import generate_qr, generate_qr_url
 from .services.chunking import chunk_bytes
 from .services.zipper import create_zip
+from .services.storage import get_storage
 import base64, uuid,zipfile, json, base64, hashlib
 from pyzbar.pyzbar import decode as qr_decode
 from PIL import Image as PILImage
@@ -128,35 +129,37 @@ def upload_file(request):
         if not password:
             return Response({"error": "Password is required for online mode"}, status=400)
         
-        # Read file in chunks to avoid memory issues
+        # Encrypt file
         file_data = file.read()
         encrypted_data = encrypt_file(file_data, password)
-        
-        # Clear file data from memory before database operation
         del file_data
         
-        # Retry database operations to handle transient connection issues
-        from django.db import connection
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                encrypted_file = OnlineEncryptedFile.objects.create(
-                    session=session,
-                    encrypted_data=encrypted_data,
-                    token=uuid.uuid4(),
-                    original_filename=file.name,
-                    enable_ip_lock=enable_ip_lock,
-                    expires_at=now() + timedelta(hours=expiry_hours),
-                    max_downloads=max_downloads  # Store the max downloads limit
-                )
-                break  # Success, exit retry loop
-            except OperationalError as e:
-                if attempt == max_retries - 1:
-                    # Last attempt failed, raise the error
-                    raise
-                # Close the bad connection and retry
-                connection.close()
-                logger.warning(f"Database connection error on attempt {attempt + 1}, retrying...")
+        # Generate token first
+        file_token = uuid.uuid4()
+        file_path = f"{file_token}.enc"
+        
+        try:
+            # Upload to Supabase Storage
+            storage = get_storage()
+            storage.upload_file(file_path, encrypted_data)
+            
+            # Clear encrypted data from memory
+            del encrypted_data
+            
+            # Save metadata to database (no encrypted_data field)
+            encrypted_file = OnlineEncryptedFile.objects.create(
+                session=session,
+                file_path=file_path,  # Store Supabase path
+                token=file_token,
+                original_filename=file.name,
+                enable_ip_lock=enable_ip_lock,
+                expires_at=now() + timedelta(hours=expiry_hours),
+                max_downloads=max_downloads
+            )
+        except Exception as e:
+            logger.error(f"Failed to upload file: {e}")
+            return Response({"error": "Failed to upload file"}, status=500)
+
 
         session.is_active = False
         session.save()
@@ -376,7 +379,7 @@ def download_online_file(request, signed_token):
     try:
         encrypted_file = OnlineEncryptedFile.objects.get(token=token)
         logger.info(f"[DOWNLOAD] Found encrypted file: {encrypted_file.original_filename}")
-        logger.info(f"[DOWNLOAD] File size: {len(encrypted_file.encrypted_data)} bytes")
+        logger.info(f"[DOWNLOAD] File path: {encrypted_file.file_path}")
         logger.info(f"[DOWNLOAD] Download count: {encrypted_file.download_count}")
         logger.info(f"[DOWNLOAD] Expires at: {encrypted_file.expires_at}")
     except OnlineEncryptedFile.DoesNotExist:
@@ -409,21 +412,25 @@ def download_online_file(request, signed_token):
         return Response({"error": "Download limit reached"}, status=429)
 
     try:
+        logger.info(f"[DOWNLOAD] Downloading from Supabase Storage...")
+        storage = get_storage()
+        encrypted_data = storage.download_file(encrypted_file.file_path)
+        
         logger.info(f"[DOWNLOAD] Starting decryption...")
-        decrypted = decrypt_file(encrypted_file.encrypted_data, password)
+        decrypted = decrypt_file(encrypted_data, password)
         logger.info(f"[DOWNLOAD] Decryption successful! Decrypted size: {len(decrypted)} bytes")
 
         encrypted_file.failed_attempts = 0
         encrypted_file.locked_until = None
     except Exception as e:
-        logger.error(f"[DOWNLOAD] Decryption failed: {type(e).__name__}: {str(e)}")
+        logger.error(f"[DOWNLOAD] Download or decryption failed: {type(e).__name__}: {str(e)}")
         encrypted_file.failed_attempts += 1
         if encrypted_file.failed_attempts >= MAX_ATTEMPTS:
             encrypted_file.locked_until = timezone.now() + timedelta(minutes=LOCK_DURATION)
 
         encrypted_file.save()
-        log_audit(encrypted_file, ip, request, "FAILED", "Wrong password")
-        return Response({"error": "Wrong password"}, status=400)
+        log_audit(encrypted_file, ip, request, "FAILED", "Wrong password or file error")
+        return Response({"error": "Wrong password or file not found"}, status=400)
 
     encrypted_file.download_count += 1
 
@@ -431,6 +438,14 @@ def download_online_file(request, signed_token):
     log_audit(encrypted_file, ip, request, "SUCCESS", None)
 
     if encrypted_file.download_count >= encrypted_file.max_downloads:
+        # Delete from Supabase Storage
+        try:
+            storage = get_storage()
+            storage.delete_file(encrypted_file.file_path)
+        except Exception as e:
+            logger.error(f"Failed to delete file from Supabase: {e}")
+        
+        # Delete from database
         encrypted_file.delete()
     else:
         encrypted_file.save()

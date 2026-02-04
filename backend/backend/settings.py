@@ -83,16 +83,16 @@ if REDIS_URL:
         }
     }
 else:
-    # Fallback to in-memory cache for local development (database cache doesn't support rate limiting)
+    # Fallback to database cache for local development
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "unique-snowflake",
+            "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+            "LOCATION": "cache_table",
         }
     }
 
 RATELIMIT_USE_CACHE = 'default'
-RATELIMIT_ENABLE = False if not REDIS_URL else True  # Only enable ratelimiting when Redis is available
+RATELIMIT_ENABLE = False  # Disable rate limiting in local development without Redis
 
 
 MIDDLEWARE = [
