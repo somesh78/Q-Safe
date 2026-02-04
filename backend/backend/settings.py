@@ -183,7 +183,6 @@ if DATABASE_URL:
     # SSL configuration for Render PostgreSQL - prefer SSL but don't fail if unavailable
     DATABASES['default']['OPTIONS']['sslmode'] = 'prefer'
     DATABASES['default']['OPTIONS']['connect_timeout'] = 10
-    DATABASES['default']['OPTIONS']['statement_timeout'] = 30000  # 30 second query timeout
     # Don't use ATOMIC_REQUESTS with connection pooling to avoid blocking
     # DATABASES['default']['ATOMIC_REQUESTS'] = True
 else:
