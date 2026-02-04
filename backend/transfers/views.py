@@ -338,7 +338,12 @@ def download_online_file(request, signed_token):
 
     try:
         encrypted_file = OnlineEncryptedFile.objects.get(token=token)
+        logger.info(f"[DOWNLOAD] Found encrypted file: {encrypted_file.original_filename}")
+        logger.info(f"[DOWNLOAD] File size: {len(encrypted_file.encrypted_data)} bytes")
+        logger.info(f"[DOWNLOAD] Download count: {encrypted_file.download_count}")
+        logger.info(f"[DOWNLOAD] Expires at: {encrypted_file.expires_at}")
     except OnlineEncryptedFile.DoesNotExist:
+        logger.warning(f"[DOWNLOAD] File not found for token: {token}")
         return Response({"error": "Invalid link"}, status=404)
 
     if encrypted_file.enable_ip_lock:
@@ -367,11 +372,14 @@ def download_online_file(request, signed_token):
         return Response({"error": "Download limit reached"}, status=429)
 
     try:
+        logger.info(f"[DOWNLOAD] Starting decryption...")
         decrypted = decrypt_file(encrypted_file.encrypted_data, password)
+        logger.info(f"[DOWNLOAD] Decryption successful! Decrypted size: {len(decrypted)} bytes")
 
         encrypted_file.failed_attempts = 0
         encrypted_file.locked_until = None
     except Exception as e:
+        logger.error(f"[DOWNLOAD] Decryption failed: {type(e).__name__}: {str(e)}")
         encrypted_file.failed_attempts += 1
         if encrypted_file.failed_attempts >= MAX_ATTEMPTS:
             encrypted_file.locked_until = timezone.now() + timedelta(minutes=LOCK_DURATION)
