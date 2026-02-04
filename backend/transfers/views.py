@@ -390,13 +390,13 @@ def download_online_file(request, signed_token):
 
     encrypted_file.download_count += 1
 
+    # Log audit BEFORE potentially deleting the file
+    log_audit(encrypted_file, ip, request, "SUCCESS", None)
+
     if encrypted_file.download_count >= 3:
         encrypted_file.delete()
     else:
         encrypted_file.save()
-
-
-    log_audit(encrypted_file, ip, request, "SUCCESS", None)
 
     response = HttpResponse(decrypted, content_type="application/octet-stream")
     response["Content-Disposition"] = f'attachment; filename="{encrypted_file.original_filename}"'
