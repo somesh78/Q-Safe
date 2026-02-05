@@ -509,7 +509,6 @@ def user_files(request):
     return Response(result)
 
 
-@csrf_exempt
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def job_status(request, job_id):
@@ -534,7 +533,6 @@ def job_status(request, job_id):
         return Response({"error": "Job not found"}, status=404)
 
 
-@csrf_exempt
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def job_download(request, job_id):
