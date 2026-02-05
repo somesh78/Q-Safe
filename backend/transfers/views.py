@@ -336,6 +336,7 @@ def reconstruct_from_zip(request):
         if expected_checksum:
             calculated_checksum = hashlib.sha256(encrypted_bytes).hexdigest()
             if calculated_checksum != expected_checksum:
+                logger.error(f"[RECONSTRUCT] Checksum mismatch! Expected: {expected_checksum}, Got: {calculated_checksum}")
                 return Response(
                     {"error": "File corrupted - checksum mismatch"},
                     status=400
@@ -344,6 +345,9 @@ def reconstruct_from_zip(request):
         else:
             logger.warning("[RECONSTRUCT] Warning: No checksum in metadata (old format)")
 
+        logger.info(f"[RECONSTRUCT] Attempting decryption of {len(encrypted_bytes)} bytes")
+        logger.info(f"[RECONSTRUCT] First 50 bytes (hex): {encrypted_bytes[:50].hex()}")
+        
         reconstructed_data = decrypt_file(encrypted_bytes, password)
 
         # 🔑 5. RETURN FILE WITH ORIGINAL METADATA
