@@ -1,5 +1,27 @@
 # Quick Start: Deploy Async Job System to Render
 
+## Important: Free Tier Limitation
+⚠️ **Background Workers are PAID on Render's free tier** ($7/month minimum)
+
+### Two Deployment Options:
+
+**Option A**: Run worker with web service (FREE, but limited)
+- Worker runs in same process as web server
+- Single worker instance only
+- Jobs may be interrupted on service restart
+- **Recommended for testing/development**
+- **Follow instructions below** ⬇️
+
+**Option B**: Separate background worker (PAID)
+- Dedicated worker service ($7/month)
+- Better performance and reliability
+- **For production use**
+- See `PRODUCTION_DEPLOYMENT.md` for instructions
+
+---
+
+## FREE TIER DEPLOYMENT (Option A)
+
 ## Prerequisites
 - ✅ All code changes committed to GitHub
 - ✅ Render account with Q_Safe project
@@ -18,66 +40,32 @@
    - Format: `redis://red-xxxxx:6379`
    - You'll need this in Step 2
 
-## Step 2: Add Environment Variable to Web Service (1 minute)
+## Step 2: Update Web Service to Run Worker (2 minutes)
 
 1. Go to your **q-safe** web service
 2. Click **"Environment"** tab
 3. Add new variable:
    - **Key**: `REDIS_URL`
    - **Value**: `redis://red-xxxxx:6379` (from Step 1)
-4. Click **"Save Changes"**
-5. **Wait for auto-redeploy** (it will auto-deploy)
-
-## Step 3: Create Background Worker Service (3 minutes)
-
-1. Go to [Render Dashboard](https://dashboard.render.com/)
-2. Click **"New +"** → **"Background Worker"**
-3. Connect to your GitHub repository
-4. Settings:
-   - **Name**: `q-safe-worker`
-   - **Environment**: **Python 3**
-   - **Region**: Same as web service
-   - **Branch**: `main` (or your branch)
-   - **Root Directory**: `backend`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `celery -A backend worker --loglevel=info`
-   - **Plan**: **Free** (512MB RAM, 0.1 CPU)
-
-5. **Environment Variables** - Add ALL of these:
-   ```
-   REDIS_URL=redis://red-xxxxx:6379
-   SECRET_KEY=<same as web service>
-   DATABASE_URL=<same as web service>
-   SUPABASE_URL=<same as web service>
-   SUPABASE_SERVICE_KEY=<same as web service>
-   SUPABASE_BUCKET=encrypted-files
-   FRONTEND_URL=https://q-safe-frontend.onrender.com
-   ```
-
-6. Click **"Create Background Worker"**
-
-## Step 4: Run Database Migration (1 minute)
-
-The migration will run automatically on next deploy. To verify:
-
-1. Go to **q-safe** web service
-2. Click **"Logs"** tab
-3. Look for:
-   ```
-   Applying transfers.0013_add_offline_job_and_async_support...
-   ```
-
-If you need to run manually:
-1. Go to **Shell** tab
-2. Run:
+4. Click **"Settings"** tab
+5. Update **Start Command** to:
    ```bash
-   python manage.py migrate
+   bash start-services.sh
    ```
+6. Click **"Save Changes"**
+7. **Wait for auto-redeploy**
 
-## Step 5: Verify Worker is Running (30 seconds)
+## Step 3: Verify Worker is Running (1 minute)
 
-1. Go to **q-safe-worker** service
-2. Click **"Logs"** tab
+1. Go to **q-safe** web service → **"Logs"** tab
+2. Look for these logs:
+   ```
+   celery@worker ready
+   Starting gunicorn
+   ```
+3. Both should appear - this means worker is running!
+
+## Step 4: Test the Async Job System (2 minutes)
 3. Should see:
    ```
    celery@xxxxx ready.
@@ -89,8 +77,6 @@ If you see errors, check:
 - Worker has access to database
 
 ## Step 6: Test End-to-End (2 minutes)
-
-### Test 1: Upload Small File (1MB)
 
 1. Go to https://q-safe-frontend.onrender.com
 2. Login
@@ -111,52 +97,35 @@ If you see errors, check:
    - Completes in ~1-2 minutes
    - ZIP downloads automatically
 
-### Test 3: Check Job Status (Optional)
-
-Using browser or curl:
-```bash
-# Get auth token first
-TOKEN="your-jwt-token"
-
-# Check job status
-curl https://q-safe.onrender.com/api/job-status/<job_id>/ \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-## Step 7: Monitor (Ongoing)
-
-### Check Worker Logs
-- Dashboard → q-safe-worker → Logs
-- Look for:
-  ```
-  Processing job abc-123: 1700000 bytes
-  Created 1329 chunks
-  Processed 100/1329 chunks (7%)
-  ...
-  Completed successfully, ZIP size: 2500000 bytes
-  ```
+## Step 5: Monitor (Ongoing)
 
 ### Check Web Service Logs
 - Dashboard → q-safe → Logs
 - Look for:
   ```
-  [OFFLINE MODE] Starting async job...
-  Queued task abc-123
+  celery@worker ready         # Worker started
+  [OFFLINE MODE] Queued task abc-123
+  Processing job abc-123: 1700000 bytes
+  Processed 100/1329 chunks (7%)
+  Completed successfully
   ```
 
 ### Check Redis Metrics
 - Dashboard → q-safe-redis → Metrics
 - Memory usage should be <5MB
 
+---
+
 ## Troubleshooting
 
 ### Worker Not Starting
 
-**Symptom**: Worker logs show `ImportError` or `ModuleNotFoundError`
+**Symptom**: Web service logs don't show `celery@worker ready`
 
 **Fix**:
-1. Check `requirements.txt` has `celery==5.3.6` and `redis==5.0.1`
-2. Rebuild worker: Dashboard → q-safe-worker → Manual Deploy
+1. Check `start-services.sh` exists in repository
+2. Verify REDIS_URL is set in environment variables
+3. Check logs for Celery errors
 
 ### Tasks Not Processing
 
