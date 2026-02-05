@@ -50,6 +50,12 @@ export default function Home() {
                 }
             } catch (err) {
                 console.error('Failed to fetch job status:', err);
+                // If it's an auth error (401), the interceptor will redirect to login
+                // Stop polling to prevent infinite loop
+                if (err.response && err.response.status === 401) {
+                    clearInterval(interval);
+                    setLoading(false);
+                }
             }
         }, 2000); // Poll every 2 seconds
 
