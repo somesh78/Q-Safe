@@ -23,6 +23,21 @@ app.conf.result_serializer = 'json'
 app.conf.accept_content = ['json']
 app.conf.timezone = 'UTC'
 
+# Connection settings to prevent blocking
+app.conf.broker_connection_retry_on_startup = True
+app.conf.broker_connection_retry = True
+app.conf.broker_connection_max_retries = 10
+app.conf.broker_pool_limit = 10
+app.conf.broker_transport_options = {
+    'visibility_timeout': 3600,
+    'socket_timeout': 10,
+    'socket_connect_timeout': 10,
+}
+app.conf.result_backend_transport_options = {
+    'socket_timeout': 10,
+    'socket_connect_timeout': 10,
+}
+
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
 
