@@ -207,9 +207,6 @@ def upload_file(request):
         logger.info(f"[OFFLINE MODE] Encrypted data size: {len(encrypted_data)} bytes")
         
         # Store encrypted chunks in UploadedFile for the task to process
-        # We need to chunk and save to database so the async task can access it
-        from .services.chunking import chunk_file
-        
         # Store the file data temporarily in UploadedFile chunks
         CHUNK_SIZE = 1 * 1024 * 1024  # 1MB chunks for storage
         total_chunks = (len(encrypted_data) + CHUNK_SIZE - 1) // CHUNK_SIZE
