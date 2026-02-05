@@ -18,12 +18,17 @@ class UploadSession(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions')
     mode = models.CharField(max_length=10, choices=MODE_CHOICES)
     is_active = models.BooleanField(default=True)
+    password = models.CharField(max_length=500, null=True, blank=True)  # For async task access
+    original_filename = models.CharField(max_length=255, null=True, blank=True)  # For async task
     created_at = models.DateTimeField(auto_now_add=True)
 
 class UploadedFile(models.Model):
-    session = models.OneToOneField(UploadSession, on_delete=models.CASCADE, related_name='uploaded_file')
+    session = models.ForeignKey(UploadSession, on_delete=models.CASCADE, related_name='files')
     original_filename = models.CharField(max_length=255)
-    size = models.IntegerField()
+    chunk_index = models.IntegerField(default=0)
+    chunk_data = models.BinaryField(default=b'')
+    total_chunks = models.IntegerField(default=1)
+    size = models.IntegerField(default=0)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
 class OnlineEncryptedFile(models.Model):
@@ -55,3 +60,40 @@ class DownloadAudit(models.Model):
     
     def __str__(self):
         return f"{self.file.original_filename} - {self.status}"
+
+class OfflineJob(models.Model):
+    """Stores async job information for offline QR code generation"""
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('PROCESSING', 'Processing'),
+        ('COMPLETED', 'Completed'),
+        ('FAILED', 'Failed'),
+    )
+    
+    job_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    session = models.OneToOneField(UploadSession, on_delete=models.CASCADE, related_name='offline_job')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='offline_jobs')
+    
+    original_filename = models.CharField(max_length=255)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    
+    # Progress tracking
+    total_chunks = models.IntegerField(default=0)
+    processed_chunks = models.IntegerField(default=0)
+    
+    # Result storage
+    result_file = models.BinaryField(null=True, blank=True)  # Stores the ZIP file
+    error_message = models.TextField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"Job {self.job_id} - {self.status}"
+    
+    @property
+    def progress_percent(self):
+        if self.total_chunks == 0:
+            return 0
+        return int((self.processed_chunks / self.total_chunks) * 100)

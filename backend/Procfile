@@ -1,1 +1,2 @@
-web: gunicorn backend.wsgi:application
+web: gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT --timeout 300 --workers 1 --max-requests 100
+worker: celery -A backend worker --loglevel=info

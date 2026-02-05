@@ -9,12 +9,13 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.utils import OperationalError
 
 from transfers.serializers import DownloadAuditSerializer
-from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile
+from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile, OfflineJob
 from .services.encryption import encrypt_file, decrypt_file
 from .services.qr_generator import generate_qr, generate_qr_url
 from .services.chunking import chunk_bytes
 from .services.zipper import create_zip
 from .services.storage import get_storage
+from .tasks import generate_offline_qr_codes
 import base64, uuid,zipfile, json, base64, hashlib
 from pyzbar.pyzbar import decode as qr_decode
 from PIL import Image as PILImage
@@ -193,54 +194,66 @@ def upload_file(request):
         })
     
     if session.mode == "OFFLINE":
-        logger.info("[OFFLINE MODE] Starting...")
+        logger.info("[OFFLINE MODE] Starting async job...")
         password = request.data.get("password")
         logger.info(f"[OFFLINE MODE] File size: {file.size} bytes")
-        encrypted_data = encrypt_file(file.read(), password )
+        
+        if not password:
+            return Response({"error": "Password is required for offline mode"}, status=400)
+        
+        # Read and encrypt file data
+        file_data = file.read()
+        encrypted_data = encrypt_file(file_data, password)
         logger.info(f"[OFFLINE MODE] Encrypted data size: {len(encrypted_data)} bytes")
-
+        
+        # Store encrypted chunks in UploadedFile for the task to process
+        # We need to chunk and save to database so the async task can access it
+        from .services.chunking import chunk_file
+        
+        # Store the file data temporarily in UploadedFile chunks
+        CHUNK_SIZE = 1 * 1024 * 1024  # 1MB chunks for storage
+        total_chunks = (len(encrypted_data) + CHUNK_SIZE - 1) // CHUNK_SIZE
+        
+        for i in range(total_chunks):
+            start = i * CHUNK_SIZE
+            end = min(start + CHUNK_SIZE, len(encrypted_data))
+            chunk_data = encrypted_data[start:end]
+            
+            UploadedFile.objects.create(
+                session=session,
+                original_filename=file.name,
+                chunk_index=i,
+                chunk_data=chunk_data,
+                total_chunks=total_chunks
+            )
+        
+        # Store password in session for task access
+        session.password = password
+        session.original_filename = file.name
         session.is_active = False
         session.save()
-
-        chunks = chunk_bytes(encrypted_data)
-        logger.info(f"[OFFLINE MODE] Created {len(chunks)} chunks")
-
-        # Calculate checksum for integrity verification
-        checksum = hashlib.sha256(encrypted_data).hexdigest()
-        logger.info(f"[OFFLINE MODE] Checksum: {checksum}")
-
-        file_id = str(uuid.uuid4())
-        qr_images = []
-        metadata = {
-            "original_filename": file.name,
-            "content_type": file.content_type,
-            "file_id": file_id,
-            "total_chunks": len(chunks),
-            "checksum": checksum
-        }
-        qr_images.append(("metadata.json", json.dumps(metadata).encode("utf-8")))
-        logger.info(f"[OFFLINE MODE] Generating {len(chunks)} QR codes...")
-        for idx, chunk in enumerate(chunks):
-            payload = {
-                "file_id": file_id,
-                "index": chunk["index"],
-                "total": chunk["total"],
-                "data": chunk["data"]
-            }
-            qr_png = generate_qr(payload)
-            filename = f"qr_{chunk['index']:03}.png"
-            qr_images.append((filename, qr_png))
-            if (idx + 1) % 5 == 0:
-                logger.debug(f"[OFFLINE MODE] Generated {idx + 1}/{len(chunks)} QR codes")
         
-        logger.info(f"[OFFLINE MODE] Creating ZIP with {len(qr_images)} files...")
-        zip_bytes = create_zip(qr_images)
-        logger.info(f"[OFFLINE MODE] ZIP created: {len(zip_bytes)} bytes")
-
-        response = HttpResponse(zip_bytes, content_type='application/zip')
-        response['Content-Disposition'] = f'attachment; filename="offline_qr_{file.name}.zip"'
-        logger.info("[OFFLINE MODE] Returning response")
-        return response
+        logger.info(f"[OFFLINE MODE] Stored {total_chunks} chunks in database")
+        
+        # Queue async task
+        task = generate_offline_qr_codes.delay(str(session.session_id), request.user.id)
+        logger.info(f"[OFFLINE MODE] Queued task {task.id}")
+        
+        # Create job record
+        job = OfflineJob.objects.create(
+            session=session,
+            user=request.user,
+            original_filename=file.name,
+            status='PENDING'
+        )
+        
+        return Response({
+            "message": "QR code generation started",
+            "job_id": str(job.job_id),
+            "task_id": task.id,
+            "filename": file.name,
+            "mode": "OFFLINE"
+        })
 
 @csrf_exempt
 @api_view(['POST'])
@@ -497,3 +510,60 @@ def user_files(request):
         })
 
     return Response(result)
+
+
+@csrf_exempt
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def job_status(request, job_id):
+    """Get status of an offline QR generation job"""
+    try:
+        job = OfflineJob.objects.get(job_id=job_id, user=request.user)
+        
+        return Response({
+            "job_id": str(job.job_id),
+            "status": job.status,
+            "progress": {
+                "total_chunks": job.total_chunks,
+                "processed_chunks": job.processed_chunks,
+                "percent": job.progress_percent
+            },
+            "original_filename": job.original_filename,
+            "created_at": job.created_at,
+            "completed_at": job.completed_at,
+            "error_message": job.error_message
+        })
+    except OfflineJob.DoesNotExist:
+        return Response({"error": "Job not found"}, status=404)
+
+
+@csrf_exempt
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def job_download(request, job_id):
+    """Download completed QR code ZIP file"""
+    try:
+        job = OfflineJob.objects.get(job_id=job_id, user=request.user)
+        
+        if job.status != 'COMPLETED':
+            return Response({
+                "error": "Job not completed",
+                "status": job.status,
+                "progress": job.progress_percent
+            }, status=400)
+        
+        if not job.result_file:
+            return Response({"error": "Result file not available"}, status=404)
+        
+        # Return ZIP file
+        response = HttpResponse(bytes(job.result_file), content_type='application/zip')
+        response['Content-Disposition'] = f'attachment; filename="offline_qr_{job.original_filename}.zip"'
+        
+        # Optional: Delete job after download to save space
+        # job.delete()
+        
+        return response
+        
+    except OfflineJob.DoesNotExist:
+        return Response({"error": "Job not found"}, status=404)
+

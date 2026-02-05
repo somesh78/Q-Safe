@@ -82,17 +82,17 @@ if REDIS_URL:
             }
         }
     }
+    RATELIMIT_USE_CACHE = 'default'
+    RATELIMIT_ENABLE = True
 else:
-    # Fallback to database cache for local development
+    # Fallback to dummy cache for local development (doesn't support ratelimit)
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.db.DatabaseCache",
-            "LOCATION": "cache_table",
+            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
         }
     }
-
-RATELIMIT_USE_CACHE = 'default'
-RATELIMIT_ENABLE = False  # Disable rate limiting in local development without Redis
+    RATELIMIT_USE_CACHE = 'default'
+    RATELIMIT_ENABLE = False  # Disable rate limiting in local development without Redis
 
 
 MIDDLEWARE = [

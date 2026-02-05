@@ -60,9 +60,20 @@ export const uploadFile = (file, sessionId, password, options = {}) => {
     form.append('max_downloads', options.maxDownloads || 3);
     form.append('expiry_hours', options.expiryHours || 1);
 
+    // For offline mode, don't use blob responseType (we'll get job_id JSON)
+    // For online mode, keep blob for backward compatibility with QR code image
     return API.post('/upload/', form, {
+        timeout: 120000, // 2 minutes
+    });
+};
+
+export const getJobStatus = (jobId) => {
+    return API.get(`/job-status/${jobId}/`);
+};
+
+export const downloadJobResult = (jobId) => {
+    return API.get(`/job-download/${jobId}/`, {
         responseType: 'blob',
-        timeout: 120000, // 2 minutes for large files with QR generation
     });
 };
 

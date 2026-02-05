@@ -10,4 +10,6 @@ urlpatterns = [
     path('signup/', signup),  # Consistent with /api/token/ pattern
     path('logout/', logout),
     path('dashboard/', user_files),
+    path('job-status/<uuid:job_id>/', job_status),
+    path('job-download/<uuid:job_id>/', job_download),
 ]
