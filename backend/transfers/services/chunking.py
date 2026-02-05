@@ -2,7 +2,7 @@ import hashlib
 import math
 import base64
 
-CHUNK_SIZE = 2500  # Increased from 800 to reduce QR count and memory usage
+CHUNK_SIZE = 1800  # Safe size for QR v40: 1800 bytes -> ~2400 base64 -> ~2500 JSON (fits in 2953 limit)
 
 def chunk_bytes(data: bytes):
     chunks = []
