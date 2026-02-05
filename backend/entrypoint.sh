@@ -21,8 +21,8 @@ done
 echo "Cleaning up expired files..."
 python manage.py cleanup_expired_files || echo "Cleanup failed, continuing..."
 
-echo "Starting Celery worker in background..."
-celery -A backend worker --loglevel=info &
+echo "Starting Celery worker in background (single worker for free tier)..."
+celery -A backend worker --loglevel=info --concurrency=1 &
 
 echo "Starting Gunicorn..."
 exec gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --timeout 300 --workers 1 --max-requests 100 --max-requests-jitter 10
