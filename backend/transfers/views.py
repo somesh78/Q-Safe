@@ -266,46 +266,57 @@ def reconstruct_from_zip(request):
     chunks = {}
     original_filename = "reconstructed_file.bin"
     content_type = "application/octet-stream"
+    metadata = None
 
     try:
         with zipfile.ZipFile(zip_file) as z:
-            for name in z.namelist():
+            # First pass: read metadata
+            if "metadata.json" in z.namelist():
+                metadata = json.loads(z.read("metadata.json").decode())
+                original_filename = metadata.get("original_filename", original_filename)
+                content_type = metadata.get("content_type", content_type)
+                logger.info(f"[RECONSTRUCT] Metadata found: {original_filename}, {metadata.get('total_chunks')} chunks expected")
+            
+            # Second pass: process QR images (memory-efficient batch processing)
+            png_files = [name for name in z.namelist() if name.lower().endswith(".png")]
+            logger.info(f"[RECONSTRUCT] Found {len(png_files)} PNG files to process")
+            
+            processed_count = 0
+            for name in png_files:
+                try:
+                    image_bytes = z.read(name)
+                    image = PILImage.open(BytesIO(image_bytes)).convert("RGB")
+                    
+                    # Only scan for QR codes to avoid DataBar errors
+                    decoded_objects = qr_decode(image, symbols=[ZBarSymbol.QRCODE])
+                    
+                    # Close image to free memory
+                    image.close()
+                    
+                    if not decoded_objects:
+                        logger.warning(f"[RECONSTRUCT] No QR code found in {name}")
+                        continue
 
-                # 🔑 1. READ METADATA
-                if name == "metadata.json":
-                    metadata = json.loads(z.read(name).decode())
-                    original_filename = metadata.get(
-                        "original_filename", original_filename
-                    )
-                    content_type = metadata.get(
-                        "content_type", content_type
-                    )
+                    payload = json.loads(decoded_objects[0].data.decode())
+                    index = payload.get("index")
+                    data = payload.get("data")
+
+                    if index is None or data is None:
+                        logger.warning(f"[RECONSTRUCT] Invalid payload in {name}")
+                        continue
+
+                    chunks[index] = data
+                    processed_count += 1
+                    
+                    # Log progress every 100 chunks
+                    if processed_count % 100 == 0:
+                        logger.info(f"[RECONSTRUCT] Processed {processed_count}/{len(png_files)} images")
+                        
+                except Exception as e:
+                    logger.error(f"[RECONSTRUCT] Error processing {name}: {e}")
                     continue
-
-                # 🔑 2. PROCESS QR IMAGES
-                if not name.lower().endswith(".png"):
-                    continue
-
-                image_bytes = z.read(name)
-
-                image = PILImage.open(
-                    BytesIO(image_bytes)
-                ).convert("RGB")
-
-                # Only scan for QR codes to avoid DataBar errors
-                decoded_objects = qr_decode(image, symbols=[ZBarSymbol.QRCODE])
-                if not decoded_objects:
-                    continue
-
-                payload = json.loads(decoded_objects[0].data.decode())
-
-                index = payload.get("index")
-                data = payload.get("data")
-
-                if index is None or data is None:
-                    continue
-
-                chunks[index] = data
+            
+            logger.info(f"[RECONSTRUCT] Successfully decoded {len(chunks)} QR codes")
 
         # 🔑 3. VALIDATE CHUNKS
         if not chunks:
