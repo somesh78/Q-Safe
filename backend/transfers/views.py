@@ -17,7 +17,7 @@ from .services.zipper import create_zip
 from .services.storage import get_storage
 from .tasks import generate_offline_qr_codes
 import base64, uuid,zipfile, json, base64, hashlib
-from pyzbar.pyzbar import decode as qr_decode
+from pyzbar.pyzbar import decode as qr_decode, ZBarSymbol
 from PIL import Image as PILImage
 from decouple import config
 from django.utils import timezone
@@ -292,7 +292,8 @@ def reconstruct_from_zip(request):
                     BytesIO(image_bytes)
                 ).convert("RGB")
 
-                decoded_objects = qr_decode(image)
+                # Only scan for QR codes to avoid DataBar errors
+                decoded_objects = qr_decode(image, symbols=[ZBarSymbol.QRCODE])
                 if not decoded_objects:
                     continue
 
