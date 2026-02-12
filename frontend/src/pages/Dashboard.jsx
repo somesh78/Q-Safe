@@ -25,7 +25,7 @@ export default function Dashboard() {
       <header className="app-header">
         <div className="brand" onClick={() => navigate("/")}>Q-Safe</div>
         <div className="nav-actions">
-          <button className="btn-secondary" onClick={() => navigate("/")}>
+          <button className="btn-secondary" onClick={() => navigate("/app")}>
             ← Back Home
           </button>
           <LogoutButton />
@@ -42,7 +42,7 @@ export default function Dashboard() {
         ) : files.length === 0 ? (
           <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '3rem' }}>
             <p>No active file transfers found.</p>
-            <button className="btn-primary" onClick={() => navigate("/")}>Create Transfer</button>
+            <button className="btn-primary" onClick={() => navigate("/app")}>Create Transfer</button>
           </div>
         ) : (
           <div className="file-grid animate-fade-in">

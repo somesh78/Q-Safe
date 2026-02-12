@@ -29,9 +29,9 @@ export default function Audit() {
   return (
     <div className="app-container">
       <header className="app-header">
-        <div className="brand" onClick={() => navigate("/")}>Q-Safe</div>
+        <div className="brand" onClick={() => navigate("/app")}>Q-Safe</div>
         <div className="nav-actions">
-          <button className="btn-secondary" onClick={() => navigate("/")}>
+          <button className="btn-secondary" onClick={() => navigate("/app")}>
             ← Back Home
           </button>
           <LogoutButton />

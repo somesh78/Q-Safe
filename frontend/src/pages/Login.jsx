@@ -26,7 +26,7 @@ export default function Login() {
       localStorage.setItem('access', res.data.access);
       localStorage.setItem('refresh', res.data.refresh);
 
-      const from = location.state?.from?.pathname || "/";
+      const from = location.state?.from?.pathname || "/app";
       navigate(from, { replace: true });
     } catch (error) {
       console.error("Login failed:", error);

@@ -47,7 +47,7 @@ export default function Signup() {
 
         localStorage.setItem('access', tokenRes.data.access);
         localStorage.setItem('refresh', tokenRes.data.refresh);
-        navigate('/');
+        navigate('/app');
       } catch (loginError) {
         // If auto-login fails, redirect to login page
         navigate('/login');
