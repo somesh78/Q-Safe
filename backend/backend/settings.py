@@ -307,7 +307,7 @@ LOGGING = {
     },
 }
 
-# File Upload Settings (optimized for EC2 with limited RAM)
-# Files larger than 10MB are streamed to disk, preventing memory exhaustion
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB - larger files written to disk
-DATA_UPLOAD_MAX_MEMORY_SIZE = 250 * 1024 * 1024  # 250MB - maximum request body size
+# File Upload Settings (optimized for low-traffic EC2 with ~1GB RAM)
+# Files larger than 5MB are streamed to disk, preventing memory exhaustion
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB - larger files written to disk (saves RAM)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 55 * 1024 * 1024  # 55MB - maximum request body size

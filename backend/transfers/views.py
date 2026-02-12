@@ -29,9 +29,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 logger = logging.getLogger(__name__)
 
-# File size limits optimized for EC2 deployment
-MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB for online mode (stored in Supabase, not EC2 RAM)
-MAX_OFFLINE_FILE_SIZE = 50 * 1024 * 1024  # 50MB for offline mode (~28,000 QR codes, processed by Celery)
+# File size limits optimized for low-traffic deployment on ~1GB RAM EC2
+# With few concurrent users, we can be more aggressive
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB for online mode (streaming to disk + Supabase storage)
+MAX_OFFLINE_FILE_SIZE = 20 * 1024 * 1024  # 20MB for offline mode (~11,000 QR codes)
 
 signer = TimestampSigner()
 
