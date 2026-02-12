@@ -314,13 +314,12 @@ export default function Home() {
 
                         <div style={{ margin: '1rem 0' }}>
                             <a
-                                href={uploadResult.download_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                href={`data:image/png;base64,${uploadResult.qr_code}`}
+                                download={`q_safe_qrcode_${uploadResult.filename}.png`}
                                 className="btn-primary"
                                 style={{ display: 'inline-block' }}
                             >
-                                Open Download Link
+                                Download QR Code
                             </a>
                         </div>
 
