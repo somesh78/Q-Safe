@@ -1,5 +1,9 @@
+
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { reconstructFromZip } from "../services/api";
+import LogoutButton from "../components/LogoutButton";
+import '../App.css';
 
 export default function Reconstruct() {
     const [loading, setLoading] = useState(false);
@@ -7,36 +11,43 @@ export default function Reconstruct() {
     const [fileBlob, setFileBlob] = useState(null);
     const [fileName, setFileName] = useState("");
 
+    const navigate = useNavigate();
+
     const handleZipUpload = async (file) => {
-        if (!password){
+        if (!password) {
             alert("Please enter a password before uploading the file.");
             return;
         }
 
         setLoading(true);
-        try{
-            const response = await reconstructFromZip(file, password);
+        try {
+            const formData = new FormData();
+            formData.append("zip", file);
+            formData.append("password", password);
+
+            const response = await reconstructFromZip(formData);
 
             let filename = "reconstructed_file";
             const disposition = response.headers?.["content-disposition"];
 
             if (disposition && disposition.includes("filename=")) {
-                filename = disposition.split("filename=")[1].replace(/"/g, "").trim();
+                const match = disposition.match(/filename="?([^"]+)"?/);
+                if (match && match[1]) {
+                    filename = match[1];
+                }
             }
 
-
             const blob = new Blob([response.data], { type: response.headers?.['content-type'] || "application/octet-stream" });
-
             setFileBlob(blob);
             setFileName(filename);
-        }
-        catch (error) {
+        } catch (error) {
             console.error("Reconstruction failed:", error);
-            alert("Reconstruction failed. Please try again.");
+            alert("Reconstruction failed. Please check the password or file integrity.");
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
-    
+
     const handleDownload = () => {
         const url = window.URL.createObjectURL(fileBlob);
         const a = document.createElement('a');
@@ -49,33 +60,85 @@ export default function Reconstruct() {
     }
 
     return (
-        <div style={{ padding: "20px", maxWidth: "600px", margin: "auto" }}>
-            <h2>Reconstruct from QR ZIP</h2>
-
-            <input
-                type="password"
-                placeholder="Enter password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{ display: "block", marginBottom: "10px" }}
-            />
-
-            <input
-                type="file"
-                accept=".zip"
-                onChange={(e) => handleZipUpload(e.target.files[0])}
-            />
-
-            {loading && <p>Decrypting & reconstructing…</p>}
-
-            {fileBlob && (
-                <div style={{ marginTop: "20px" }}>
-                    <p>File ready:</p>
-                    <button onClick={handleDownload}>
-                        Download File
+        <div className="app-container">
+            <header className="app-header">
+                <div className="brand" onClick={() => navigate("/")}>Q-Safe</div>
+                <div className="nav-actions">
+                    <button className="btn-secondary" onClick={() => navigate("/")}>
+                        ← Back Home
                     </button>
+                    <LogoutButton />
                 </div>
-            )}
+            </header>
+
+            <main className="main-content">
+                <div style={{ maxWidth: '600px', width: '100%', margin: '0 auto' }}>
+                    <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                        <h2 className="page-title">Reconstruct File</h2>
+                        <p style={{ color: 'var(--text-secondary)' }}>
+                            Upload a ZIP of QR codes (from Offline Mode) to reconstruct your original file.
+                        </p>
+                    </div>
+
+                    <div className="card animate-fade-in">
+                        <div style={{ marginBottom: '2rem' }}>
+                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: '600' }}>
+                                Decryption Password
+                            </label>
+                            <input
+                                className="input-field"
+                                type="password"
+                                placeholder="Enter password used during creation"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                            />
+                        </div>
+
+                        <div style={{ marginBottom: '2rem' }}>
+                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: '600' }}>
+                                Upload QR ZIP
+                            </label>
+                            {!loading ? (
+                                <div className="upload-zone">
+                                    <div className="upload-icon">📦</div>
+                                    <p>Click or Drag ZIP file here</p>
+                                    <input
+                                        type="file"
+                                        accept=".zip"
+                                        onChange={(e) => handleZipUpload(e.target.files[0])}
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                            opacity: 0,
+                                            cursor: 'pointer'
+                                        }}
+                                    />
+                                </div>
+                            ) : (
+                                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                                    <div className="spinner" style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔄</div>
+                                    <p>Decrypting & Reconstructing...</p>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>This happens locally in your browser/server securely.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {fileBlob && (
+                            <div className="result-card" style={{ marginTop: 0, border: 'none', background: 'var(--bg-secondary)' }}>
+                                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🎉</div>
+                                <h3>Reconstruction Successful!</h3>
+                                <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>{fileName}</p>
+                                <button className="btn-primary" onClick={handleDownload}>
+                                    Download Reconstructed File
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </main>
         </div>
     );
 }

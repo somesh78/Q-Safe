@@ -1,10 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import ModeSelector from "../components/ModeSelector";
-import FileUploader from "../components/FileUploader";
 import { createSession, uploadFile, getJobStatus, downloadJobResult } from "../services/api";
 import LogoutButton from "../components/LogoutButton";
-
+import '../App.css';
 
 export default function Home() {
     const [session, setSession] = useState(null);
@@ -13,12 +12,12 @@ export default function Home() {
     const [zipName, setZipName] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
-    
+
     // Async job state (offline mode)
     const [jobId, setJobId] = useState(null);
     const [jobStatus, setJobStatus] = useState(null);
     const [jobProgress, setJobProgress] = useState(0);
-    
+
     // Upload options
     const [maxDownloads, setMaxDownloads] = useState(3);
     const [expiryHours, setExpiryHours] = useState(1);
@@ -34,7 +33,7 @@ export default function Home() {
             try {
                 const response = await getJobStatus(jobId);
                 const data = response.data;
-                
+
                 setJobStatus(data.status);
                 setJobProgress(data.progress.percent);
 
@@ -50,14 +49,12 @@ export default function Home() {
                 }
             } catch (err) {
                 console.error('Failed to fetch job status:', err);
-                // If it's an auth error (401), the interceptor will redirect to login
-                // Stop polling to prevent infinite loop
                 if (err.response && err.response.status === 401) {
                     clearInterval(interval);
                     setLoading(false);
                 }
             }
-        }, 2000); // Poll every 2 seconds
+        }, 2000);
 
         return () => clearInterval(interval);
     }, [jobId, jobStatus]);
@@ -80,7 +77,6 @@ export default function Home() {
         }
     };
 
-    // STEP 1: Create session (ONLINE / OFFLINE)
     const handleModeSelect = async (selectedMode) => {
         setUploadResult(null);
         setZipBlob(null);
@@ -90,9 +86,8 @@ export default function Home() {
         setSession(res.data);
     };
 
-    // STEP 2: Upload file (mode-aware)
     const handleFileUpload = async (file) => {
-        if (!password){
+        if (!password) {
             alert("Please enter a password before uploading the file.");
             return;
         }
@@ -105,20 +100,13 @@ export default function Home() {
                 expiryHours,
                 enableIpLock
             });
-            
-            console.log("Upload response:", response);
-            console.log("Session mode:", session.mode);
 
-            // 🔵 OFFLINE MODE → ASYNC JOB
             if (session.mode === "OFFLINE") {
-                console.log("Processing OFFLINE mode (async)...");
                 const data = response.data;
-                
                 if (data.job_id) {
                     setJobId(data.job_id);
                     setJobStatus('PENDING');
                     setZipName(`${file.name}_qr_bundle.zip`);
-                    // Keep loading=true, will be set to false when job completes
                 } else {
                     alert('Failed to start job');
                     setLoading(false);
@@ -126,216 +114,222 @@ export default function Home() {
                 return;
             }
 
-            // 🔵 ONLINE MODE → JSON RESPONSE
-            console.log("Processing ONLINE mode...");
             setUploadResult(response.data);
             setLoading(false);
 
         } catch (err) {
             console.error("Upload failed:", err);
-            console.error("Error details:", err.response?.data);
-            alert("File upload failed. Check console for details.");
+            alert("File upload failed. Check the file size or connection.");
             setLoading(false);
         }
     };
 
-    const handleZipDownload = () => {
-        const url = window.URL.createObjectURL(zipBlob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = zipName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-    };
-
     return (
-        <div style={{ padding: "20px", maxWidth: "700px", margin: "auto" }}>
-            
-            {/* Top Bar */}
-            <div className="home-header">
-                <h2>Q-Safe</h2>
-
-                <div className="home-actions">
-                    <button onClick={() => navigate("/dashboard")}>
-                        📊 Dashboard
+        <div className="app-container">
+            {/* Header */}
+            <header className="app-header">
+                <div className="brand">Q-Safe</div>
+                <div className="nav-actions">
+                    <button className="btn-secondary" onClick={() => navigate("/dashboard")}>
+                        Dashboard
                     </button>
-
-                    <button onClick={() => navigate("/audit")}>
-                        🧾 Audit Logs
+                    <button className="btn-secondary" onClick={() => navigate("/audit")}>
+                        Audit Logs
                     </button>
-                    
                     <LogoutButton />
                 </div>
-            </div>
+            </header>
 
-            {/* Reconstruct Button */}
-            <button
-                style={{ marginBottom: "20px" }}
-                onClick={() => navigate("/reconstruct")}
-            >
-                Reconstruct File from QR ZIP
-            </button>
+            <main className="main-content">
 
-            {/* Mode Selection */}
-            {!session && (
-                <ModeSelector onSelect={handleModeSelect} />
-            )}
-
-            {/* Upload Section */}
-            {session && !uploadResult && !zipBlob && (
-                <>
-                    <p><strong>Session ID:</strong> {session.session_id}</p>
-                    <p><strong>Mode:</strong> {session.mode}</p>
-
-                    {/* 🔐 PASSWORD INPUT */}
-                    <input
-                        type="password"
-                        placeholder="Enter encryption password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        style={{ marginBottom: "10px", width: "100%", padding: "8px" }}
-                    />
-
-                    {/* 🔧 ONLINE MODE OPTIONS */}
-                    {session.mode === "ONLINE" && (
-                        <div style={{ 
-                            padding: "15px", 
-                            background: "#f5f5f5", 
-                            borderRadius: "5px",
-                            marginBottom: "15px" 
-                        }}>
-                            <h4 style={{ marginTop: 0 }}>Security Options</h4>
-                            
-                            <div style={{ marginBottom: "10px" }}>
-                                <label style={{ display: "block", marginBottom: "5px" }}>
-                                    Max Downloads (1-10):
-                                </label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="10"
-                                    value={maxDownloads}
-                                    onChange={(e) => setMaxDownloads(parseInt(e.target.value) || 3)}
-                                    style={{ width: "100%", padding: "8px" }}
-                                />
-                            </div>
-
-                            <div style={{ marginBottom: "10px" }}>
-                                <label style={{ display: "block", marginBottom: "5px" }}>
-                                    Expiry Time (1-24 hours):
-                                </label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="24"
-                                    value={expiryHours}
-                                    onChange={(e) => setExpiryHours(parseInt(e.target.value) || 1)}
-                                    style={{ width: "100%", padding: "8px" }}
-                                />
-                            </div>
-
-                            <div style={{ marginBottom: "10px" }}>
-                                <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={enableIpLock}
-                                        onChange={(e) => setEnableIpLock(e.target.checked)}
-                                        style={{ marginRight: "8px" }}
-                                    />
-                                    Enable IP Lock (restrict to first downloader's IP)
-                                </label>
-                            </div>
+                {/* Hero / Mode Selection */}
+                {!session && (
+                    <div className="mode-grid">
+                        {/* Online Mode Card */}
+                        <div className="mode-card" onClick={() => handleModeSelect("ONLINE")}>
+                            <h3>🌐 Online Secure Share</h3>
+                            <p>Upload files (max 50MB) and generate a secure, self-destructing QR link. Perfect for quick internet-based sharing.</p>
                         </div>
-                    )}
 
-                    <FileUploader onUpload={handleFileUpload} />
-                    {loading && <p>Processing file…</p>}
-                </>
-            )}
+                        {/* Offline Mode Card */}
+                        <div className="mode-card" onClick={() => handleModeSelect("OFFLINE")}>
+                            <h3>📴 Offline Air-Gap</h3>
+                            <p>Convert sensitive files into a series of QR codes. Reconstruct them on another device without any internet connection.</p>
+                        </div>
 
-            {/* OFFLINE RESULT - ASYNC PROGRESS */}
-            {jobId && session?.mode === "OFFLINE" && (
-                <div style={{ marginTop: "30px", padding: "20px", background: "#f5f5f5", borderRadius: "5px" }}>
-                    <h3>🔄 Generating QR Codes...</h3>
-                    <p><strong>Status:</strong> {jobStatus || 'PENDING'}</p>
-                    
-                    {jobProgress > 0 && (
-                        <>
-                            <div style={{
-                                width: "100%",
-                                height: "30px",
-                                background: "#ddd",
-                                borderRadius: "5px",
-                                overflow: "hidden",
-                                marginTop: "10px"
-                            }}>
-                                <div style={{
-                                    width: `${jobProgress}%`,
-                                    height: "100%",
-                                    background: "linear-gradient(90deg, #4CAF50, #8BC34A)",
-                                    transition: "width 0.3s",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    color: "white",
-                                    fontWeight: "bold"
-                                }}>
-                                    {jobProgress}%
+                        {/* Reconstruct Card */}
+                        <div className="mode-card" onClick={() => navigate("/reconstruct")}>
+                            <h3>🧩 Reconstruct File</h3>
+                            <p>Have a ZIP of QR codes or a series of images? Reassemble your original file here.</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Upload Workflow */}
+                {session && !uploadResult && !zipBlob && (
+                    <div className="animate-fade-in" style={{ width: '100%', maxWidth: '600px' }}>
+                        <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
+                            <button
+                                className="btn-secondary"
+                                onClick={() => setSession(null)}
+                                style={{ fontSize: '0.9rem', marginBottom: '1rem' }}
+                            >
+                                ← Back to Modes
+                            </button>
+                            <h2>{session.mode === 'ONLINE' ? '🌐 Online Transfer' : '📴 Offline Generation'}</h2>
+                            <p style={{ color: 'var(--text-secondary)' }}>Session ID: <span style={{ fontFamily: 'monospace' }}>{session.session_id.substring(0, 8)}...</span></p>
+                        </div>
+
+                        {/* Password Input */}
+                        <div className="card" style={{ marginBottom: '2rem' }}>
+                            <h3 style={{ marginTop: 0 }}>Step 1: Encryption</h3>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                Set a password to encrypt your file before it leaves your device.
+                            </p>
+                            <input
+                                className="input-field"
+                                type="password"
+                                placeholder="Enter encryption password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Online Options */}
+                        {session.mode === "ONLINE" && (
+                            <div className="card" style={{ marginBottom: '2rem' }}>
+                                <h3 style={{ marginTop: 0 }}>Step 2: Security Settings</h3>
+                                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr 1fr' }}>
+                                    <div>
+                                        <label style={{ display: "block", marginBottom: "5px", fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                            Max Downloads
+                                        </label>
+                                        <input
+                                            className="input-field"
+                                            type="number"
+                                            min="1"
+                                            max="10"
+                                            value={maxDownloads}
+                                            onChange={(e) => setMaxDownloads(parseInt(e.target.value) || 3)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: "block", marginBottom: "5px", fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                            Expiry (Hours)
+                                        </label>
+                                        <input
+                                            className="input-field"
+                                            type="number"
+                                            min="1"
+                                            max="24"
+                                            value={expiryHours}
+                                            onChange={(e) => setExpiryHours(parseInt(e.target.value) || 1)}
+                                        />
+                                    </div>
+                                </div>
+                                <div style={{ marginTop: '1rem' }}>
+                                    <label style={{ display: "flex", alignItems: "center", cursor: "pointer", gap: '0.5rem' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={enableIpLock}
+                                            onChange={(e) => setEnableIpLock(e.target.checked)}
+                                        />
+                                        <span style={{ fontSize: '0.95rem' }}>Enable IP Lock (restrict to first downloader's IP)</span>
+                                    </label>
                                 </div>
                             </div>
-                            <p style={{ marginTop: "10px", textAlign: "center" }}>
-                                Processing... This may take a few minutes for larger files.
-                            </p>
-                        </>
-                    )}
+                        )}
 
-                    {jobStatus === 'COMPLETED' && (
-                        <div style={{ marginTop: "15px", color: "#4CAF50" }}>
-                            <h4>✅ Complete!</h4>
-                            <p>Your QR code ZIP has been downloaded automatically.</p>
-                            <button onClick={() => handleJobDownload(jobId, zipName)}>
-                                Download Again
-                            </button>
+                        {/* File Upload */}
+                        <div className="card">
+                            <h3 style={{ marginTop: 0 }}>Step {session.mode === 'ONLINE' ? '3' : '2'}: Upload File</h3>
+                            {!loading ? (
+                                <div className="upload-zone">
+                                    <div className="upload-icon">📁</div>
+                                    <p>Click or Drag file here to upload</p>
+                                    <input
+                                        type="file"
+                                        onChange={(e) => handleFileUpload(e.target.files[0])}
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                            opacity: 0,
+                                            cursor: 'pointer'
+                                        }}
+                                    />
+                                </div>
+                            ) : (
+                                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                                    <p>Processing...</p>
+                                    <div className="progress-container">
+                                        <div
+                                            className="progress-fill"
+                                            style={{ width: `${session.mode === 'OFFLINE' ? jobProgress : 100}%` }}
+                                        />
+                                    </div>
+                                    {session.mode === 'OFFLINE' && (
+                                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                                            Generating QR Codes: {jobProgress}%
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                         </div>
-                    )}
+                    </div>
+                )}
 
-                    {jobStatus === 'FAILED' && (
-                        <div style={{ marginTop: "15px", color: "#f44336" }}>
-                            <h4>❌ Failed</h4>
-                            <p>QR code generation failed. Please try again.</p>
+                {/* OFFLINE RESULT */}
+                {jobId && session?.mode === "OFFLINE" && jobStatus === 'COMPLETED' && (
+                    <div className="result-card">
+                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
+                        <h2 style={{ color: 'var(--success)' }}>Generation Complete!</h2>
+                        <p>Your QR code bundle has been generated.</p>
+                        <button className="btn-primary" onClick={() => handleJobDownload(jobId, zipName)}>
+                            Download ZIP Again
+                        </button>
+                        <br /><br />
+                        <button className="btn-secondary" onClick={() => { setSession(null); setJobId(null); }}>
+                            Start New Session
+                        </button>
+                    </div>
+                )}
+
+                {/* ONLINE RESULT */}
+                {uploadResult && session?.mode === "ONLINE" && (
+                    <div className="result-card">
+                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
+                        <h2>File Ready to Share</h2>
+                        <p style={{ color: 'var(--text-secondary)' }}>{uploadResult.filename}</p>
+
+                        <div className="qr-container">
+                            <img
+                                src={`data:image/png;base64,${uploadResult.qr_code}`}
+                                alt="QR Code"
+                                style={{ width: "200px", height: "auto" }}
+                            />
                         </div>
-                    )}
-                </div>
-            )}
 
-            {/* ONLINE RESULT */}
-            {uploadResult && session?.mode === "ONLINE" && (
-                <div style={{ marginTop: "30px" }}>
-                    <h3>File Uploaded Successfully!</h3>
-                    <p><strong>File:</strong> {uploadResult.filename}</p>
-                    <p><strong>Mode:</strong> {uploadResult.mode}</p>
+                        <div style={{ margin: '1rem 0' }}>
+                            <a
+                                href={uploadResult.download_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn-primary"
+                                style={{ display: 'inline-block' }}
+                            >
+                                Open Download Link
+                            </a>
+                        </div>
 
-                    <a
-                        href={uploadResult.download_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        Download File
-                    </a>
-
-                    <p style={{ marginTop: "20px" }}>
-                        Scan the QR code below to download the file:
-                    </p>
-
-                    <img
-                        src={`data:image/png;base64,${uploadResult.qr_code}`}
-                        alt="QR Code"
-                        style={{ width: "250px" }}
-                    />
-                </div>
-            )}
+                        <button className="btn-secondary" onClick={() => { setSession(null); setUploadResult(null); }}>
+                            Done
+                        </button>
+                    </div>
+                )}
+            </main>
         </div>
     );
 }
