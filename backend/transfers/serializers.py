@@ -2,7 +2,9 @@ from rest_framework import serializers
 from .models import *
 
 class DownloadAuditSerializer(serializers.ModelSerializer):
-    file_name = serializers.CharField(source='file.original_filename')
+    file_name = serializers.CharField(source='file.original_filename', read_only=True)
+    ip_address = serializers.CharField(read_only=True)  # Avoid IPAddressField validation bug
+    
     class Meta:
         model = DownloadAudit
         fields = '__all__'
