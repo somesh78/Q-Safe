@@ -25,4 +25,5 @@ echo "Starting Celery worker in background (single worker for free tier)..."
 celery -A backend worker --loglevel=info --concurrency=1 &
 
 echo "Starting Gunicorn..."
-exec gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --timeout 18800 --workers 1 --max-requests 100 --max-requests-jitter 10
+# Use 2 workers so long operations (like QR reconstruction) don't block the site
+exec gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --timeout 18800 --workers 2 --max-requests 100 --max-requests-jitter 10
