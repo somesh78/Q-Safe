@@ -1,12 +1,12 @@
 # Multi-stage build: Frontend + Backend
 # Stage 1: Build React frontend
-FROM node:18-alpine AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
 # Copy frontend files
 COPY frontend/package*.json ./
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 COPY frontend/ ./
 RUN npm run build
