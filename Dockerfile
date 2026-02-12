@@ -1,0 +1,55 @@
+# Multi-stage build: Frontend + Backend
+# Stage 1: Build React frontend
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /app/frontend
+
+# Copy frontend files
+COPY frontend/package*.json ./
+RUN npm ci --only=production
+
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 2: Python backend with frontend static files
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libzbar0 \
+    libpq-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy backend requirements and install Python dependencies
+COPY backend/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy backend code
+COPY backend/ ./
+
+# Copy built frontend from stage 1
+COPY --from=frontend-builder /app/frontend/build ./frontend_build
+
+# Create necessary directories and setup templates for serving React
+RUN mkdir -p staticfiles logs storage templates && \
+    cp frontend_build/index.html templates/ && \
+    echo "REACT_BUILD_DIR=/app/frontend_build" >> .env.docker
+
+# Collect static files (Django + React)
+RUN python manage.py collectstatic --noinput
+
+# Expose port
+EXPOSE 8000
+
+# Make entrypoint executable
+RUN chmod +x entrypoint.sh
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8000/api/health/', timeout=5)"
+
+# Run entrypoint script
+CMD ["./entrypoint.sh"]

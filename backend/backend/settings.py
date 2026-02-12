@@ -171,7 +171,7 @@ ROOT_URLCONF = 'backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],  # Add templates directory for React index.html
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -254,8 +254,19 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# React frontend build files
+REACT_BUILD_DIR = BASE_DIR / 'frontend_build'
+if REACT_BUILD_DIR.exists():
+    STATICFILES_DIRS = [REACT_BUILD_DIR / 'static']
+else:
+    STATICFILES_DIRS = []
+
 MEDIA_ROOT = BASE_DIR / 'storage'
 MEDIA_URL = '/media/'
+
+# Whitenoise configuration for serving static files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
