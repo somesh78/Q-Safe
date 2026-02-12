@@ -193,7 +193,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
-    # Production: PostgreSQL
+    # Production: PostgreSQL or SQLite via DATABASE_URL
     import dj_database_url
     DATABASES = {
         'default': dj_database_url.config(
@@ -202,10 +202,12 @@ if DATABASE_URL:
             conn_health_checks=True,  # Check connection health before reusing
         )
     }
-    DATABASES['default'].setdefault('OPTIONS', {})
-    # SSL configuration for Render PostgreSQL - prefer SSL but don't fail if unavailable
-    DATABASES['default']['OPTIONS']['sslmode'] = 'prefer'
-    DATABASES['default']['OPTIONS']['connect_timeout'] = 10
+    # SSL configuration only for PostgreSQL connections
+    if DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql':
+        DATABASES['default'].setdefault('OPTIONS', {})
+        # SSL configuration for PostgreSQL - prefer SSL but don't fail if unavailable
+        DATABASES['default']['OPTIONS']['sslmode'] = 'prefer'
+        DATABASES['default']['OPTIONS']['connect_timeout'] = 10
     # Don't use ATOMIC_REQUESTS with connection pooling to avoid blocking
     # DATABASES['default']['ATOMIC_REQUESTS'] = True
 else:
