@@ -35,11 +35,7 @@ COPY --from=frontend-builder /app/frontend/build ./frontend_build
 
 # Create necessary directories and setup templates for serving React
 RUN mkdir -p staticfiles logs storage templates && \
-    cp frontend_build/index.html templates/ && \
-    echo "REACT_BUILD_DIR=/app/frontend_build" >> .env.docker
-
-# Collect static files (Django + React)
-RUN python manage.py collectstatic --noinput
+    cp frontend_build/index.html templates/
 
 # Expose port
 EXPOSE 8000
