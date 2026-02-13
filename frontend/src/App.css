@@ -181,7 +181,7 @@
 .mode-card:hover {
   transform: translateY(-4px);
   border-color: var(--accent-primary);
-  box-shadow: 0 12px 40px rgba(124, 58, 237, 0.2);
+  box-shadow: 0 12px 40px rgba(21, 205, 114, 0.2);
   background: var(--bg-card-hover);
 }
 
@@ -419,9 +419,9 @@
 }
 
 .badge-info {
-  background: rgba(168, 85, 247, 0.15);
+  background: rgba(21, 205, 114, 0.15);
   color: var(--accent-secondary);
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  border: 1px solid rgba(21, 205, 114, 0.3);
 }
 
 [data-theme="light"] .badge-success {
@@ -435,6 +435,6 @@
 }
 
 [data-theme="light"] .badge-info {
-  background: rgba(124, 58, 237, 0.1);
-  color: #7c3aed;
+  background: rgba(21, 205, 114, 0.1);
+  color: #15CD72;
 }
