@@ -69,7 +69,7 @@ export default function Landing() {
                 color: 'var(--text-secondary)',
                 borderTop: '1px solid var(--border-color)',
                 width: '100%',
-                background: 'rgba(10, 14, 39, 0.6)',
+                background: 'rgba(26, 15, 10, 0.7)',
                 backdropFilter: 'blur(20px)',
                 marginTop: '5rem'
             }}>

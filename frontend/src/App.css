@@ -3,15 +3,15 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(ellipse at top left, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
-              radial-gradient(ellipse at bottom right, rgba(0, 217, 255, 0.15) 0%, transparent 50%),
+  background: radial-gradient(ellipse at top left, rgba(255, 107, 107, 0.15) 0%, transparent 50%),
+              radial-gradient(ellipse at bottom right, rgba(255, 167, 38, 0.15) 0%, transparent 50%),
               var(--bg-primary);
   position: relative;
 }
 
 [data-theme="light"] .app-container {
-  background: radial-gradient(ellipse at top left, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
-              radial-gradient(ellipse at bottom right, rgba(37, 99, 235, 0.08) 0%, transparent 50%),
+  background: radial-gradient(ellipse at top left, rgba(255, 87, 34, 0.08) 0%, transparent 50%),
+              radial-gradient(ellipse at bottom right, rgba(255, 152, 0, 0.08) 0%, transparent 50%),
               var(--bg-primary);
 }
 
@@ -68,19 +68,20 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 2.5rem;
-  background: rgba(10, 14, 39, 0.8);
+  background: rgba(26, 15, 10, 0.8);
   backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
   z-index: 50;
   box-sizing: border-box;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
 [data-theme="light"] .app-header {
   background: rgba(255, 255, 255, 0.9);
   border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 2px 12px rgba(255, 87, 34, 0.08);
 }
 
 .brand {
@@ -123,15 +124,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at top, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
-              radial-gradient(ellipse at bottom, rgba(0, 217, 255, 0.15) 0%, transparent 50%),
+  background: radial-gradient(ellipse at top, rgba(255, 107, 107, 0.15) 0%, transparent 50%),
+              radial-gradient(ellipse at bottom, rgba(255, 167, 38, 0.15) 0%, transparent 50%),
               var(--bg-primary);
   padding: 1rem;
 }
 
 [data-theme="light"] .auth-container {
-  background: radial-gradient(ellipse at top, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
-              radial-gradient(ellipse at bottom, rgba(37, 99, 235, 0.08) 0%, transparent 50%),
+  background: radial-gradient(ellipse at top, rgba(255, 87, 34, 0.08) 0%, transparent 50%),
+              radial-gradient(ellipse at bottom, rgba(255, 152, 0, 0.08) 0%, transparent 50%),
               var(--bg-primary);
 }
 
@@ -225,7 +226,7 @@
   width: 100%;
   max-width: 100%;
   min-height: 220px;
-  border: 2.5px dashed rgba(168, 178, 209, 0.4);
+  border: 2.5px dashed rgba(212, 181, 166, 0.4);
   border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
@@ -234,7 +235,7 @@
   text-align: center;
   padding: 2.5rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(168, 178, 209, 0.08);
+  background: rgba(255, 107, 107, 0.06);
   backdrop-filter: blur(10px);
   margin-bottom: 1.5rem;
   position: relative;
@@ -247,22 +248,22 @@
 .upload-zone.drag-active {
   border-color: var(--accent-primary);
   border-style: solid;
-  background: rgba(0, 217, 255, 0.12);
+  background: rgba(255, 107, 107, 0.12);
   transform: scale(1.02);
-  box-shadow: var(--shadow-md), 0 0 30px var(--accent-glow), inset 0 2px 12px rgba(0, 217, 255, 0.15);
+  box-shadow: var(--shadow-md), 0 0 30px var(--accent-glow), inset 0 2px 12px rgba(255, 107, 107, 0.15);
 }
 
 [data-theme="light"] .upload-zone {
-  background: rgba(148, 163, 184, 0.08);
-  border-color: rgba(100, 116, 139, 0.3);
+  background: rgba(255, 152, 0, 0.05);
+  border-color: rgba(139, 107, 92, 0.3);
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
 [data-theme="light"] .upload-zone:hover,
 [data-theme="light"] .upload-zone.drag-active {
-  background: rgba(37, 99, 235, 0.08);
+  background: rgba(255, 87, 34, 0.08);
   border-color: var(--accent-primary);
-  box-shadow: var(--shadow-sm), 0 0 20px var(--accent-glow), inset 0 2px 12px rgba(37, 99, 235, 0.1);
+  box-shadow: var(--shadow-sm), 0 0 20px var(--accent-glow), inset 0 2px 12px rgba(255, 87, 34, 0.1);
 }
 
 .upload-icon {
@@ -290,13 +291,13 @@
 /* Progress Bar */
 .progress-container {
   width: 100%;
-  background: rgba(168, 178, 209, 0.1);
+  background: rgba(212, 181, 166, 0.12);
   border-radius: 999px;
   height: 0.875rem;
   overflow: hidden;
   margin-top: 1rem;
   position: relative;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .progress-fill {
@@ -368,7 +369,7 @@
 }
 
 .styled-table thead tr {
-  background: rgba(168, 178, 209, 0.08);
+  background: rgba(255, 107, 107, 0.08);
   color: var(--text-primary);
   text-align: left;
 }
@@ -392,7 +393,7 @@
 }
 
 .styled-table tbody tr:hover {
-  background: rgba(168, 178, 209, 0.05);
+  background: rgba(255, 107, 107, 0.05);
   transform: scale(1.01);
 }
 
@@ -448,9 +449,9 @@
 }
 
 .badge-info {
-  background: rgba(0, 217, 255, 0.15);
-  color: var(--accent-primary);
-  border: 1px solid rgba(0, 217, 255, 0.3);
+  background: rgba(255, 167, 38, 0.15);
+  color: var(--accent-secondary);
+  border: 1px solid rgba(255, 167, 38, 0.3);
 }
 
 [data-theme="light"] .badge-success {
@@ -464,6 +465,6 @@
 }
 
 [data-theme="light"] .badge-info {
-  background: rgba(37, 99, 235, 0.1);
-  color: #2563eb;
+  background: rgba(255, 152, 0, 0.1);
+  color: #f57c00;
 }

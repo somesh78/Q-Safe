@@ -66,6 +66,18 @@ export default function Reconstruct() {
 
             <main className="main-content">
                 <div style={{ maxWidth: '600px', width: '100%', margin: '0 auto' }}>
+                    <button
+                        className="btn-secondary"
+                        onClick={() => navigate('/app')}
+                        style={{ 
+                            fontSize: '0.9rem', 
+                            marginBottom: '1.5rem',
+                            padding: '0.625rem 1.25rem'
+                        }}
+                    >
+                        ← Back to Home
+                    </button>
+                    
                     <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                         <h2 className="page-title">Reconstruct File</h2>
                         <p style={{ color: 'var(--text-secondary)' }}>

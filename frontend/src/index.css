@@ -1,17 +1,17 @@
 :root {
-  /* Dark Theme - Professional & Modern */
-  --bg-primary: #0a0e27;
-  --bg-secondary: #151937;
-  --bg-card: rgba(30, 34, 62, 0.6);
-  --bg-card-hover: rgba(40, 44, 72, 0.8);
+  /* Dark Theme - Warm & Inviting */
+  --bg-primary: #1a0f0a;
+  --bg-secondary: #2a1810;
+  --bg-card: rgba(58, 35, 25, 0.6);
+  --bg-card-hover: rgba(68, 45, 35, 0.8);
   --text-primary: #ffffff;
-  --text-secondary: #a8b2d1;
-  --accent-primary: #00d9ff;
-  --accent-secondary: #a855f7;
-  --accent-gradient: linear-gradient(135deg, #00d9ff 0%, #a855f7 100%);
-  --accent-glow: rgba(0, 217, 255, 0.3);
-  --border-color: rgba(168, 178, 209, 0.1);
-  --border-hover: rgba(0, 217, 255, 0.3);
+  --text-secondary: #d4b5a6;
+  --accent-primary: #ff6b6b;
+  --accent-secondary: #ffa726;
+  --accent-gradient: linear-gradient(135deg, #ff6b6b 0%, #ffa726 100%);
+  --accent-glow: rgba(255, 107, 107, 0.3);
+  --border-color: rgba(212, 181, 166, 0.1);
+  --border-hover: rgba(255, 107, 107, 0.3);
   --success: #10b981;
   --warning: #f59e0b;
   --error: #ef4444;
@@ -26,18 +26,18 @@
 }
 
 [data-theme="light"] {
-  --bg-primary: #f8fafc;
+  --bg-primary: #fff5f0;
   --bg-secondary: #ffffff;
   --bg-card: #ffffff;
-  --bg-card-hover: #f1f5f9;
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
-  --accent-primary: #2563eb;
-  --accent-secondary: #8b5cf6;
-  --accent-gradient: linear-gradient(135deg, #2563eb 0%, #8b5cf6 100%);
-  --accent-glow: rgba(37, 99, 235, 0.15);
-  --border-color: #e2e8f0;
-  --border-hover: rgba(37, 99, 235, 0.3);
+  --bg-card-hover: #fff0e6;
+  --text-primary: #2d1810;
+  --text-secondary: #8b6b5c;
+  --accent-primary: #ff5722;
+  --accent-secondary: #ff9800;
+  --accent-gradient: linear-gradient(135deg, #ff5722 0%, #ff9800 100%);
+  --accent-glow: rgba(255, 87, 34, 0.15);
+  --border-color: #f0ddd4;
+  --border-hover: rgba(255, 87, 34, 0.3);
   --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.08);
   --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.12);
   --shadow-lg: 0 8px 32px rgba(15, 23, 42, 0.16);
@@ -202,7 +202,7 @@ textarea {
 }
 
 .btn-secondary {
-  background: rgba(168, 178, 209, 0.05);
+  background: rgba(212, 181, 166, 0.05);
   border: 1.5px solid var(--border-color);
   color: var(--text-primary);
   padding: 0.875rem 1.75rem;
@@ -222,7 +222,7 @@ textarea {
 
 .input-field {
   width: 100%;
-  background: rgba(168, 178, 209, 0.05);
+  background: rgba(212, 181, 166, 0.05);
   border: 1.5px solid var(--border-color);
   color: var(--text-primary);
   padding: 0.875rem 1rem;
@@ -241,7 +241,7 @@ textarea {
 .input-field:focus {
   outline: none;
   border-color: var(--accent-primary);
-  background: rgba(168, 178, 209, 0.08);
+  background: rgba(255, 107, 107, 0.08);
   box-shadow: 0 0 0 3px var(--accent-glow), var(--shadow-sm);
   transform: translateY(-1px);
 }

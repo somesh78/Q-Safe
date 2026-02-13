@@ -11,7 +11,7 @@ export default function ThemeToggle() {
             aria-label="Toggle Theme"
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
             style={{
-                background: 'rgba(168, 178, 209, 0.05)',
+                background: 'rgba(212, 181, 166, 0.05)',
                 backdropFilter: 'blur(10px)',
                 border: '1.5px solid var(--border-color)',
                 borderRadius: '50%',
@@ -30,10 +30,10 @@ export default function ThemeToggle() {
                 e.currentTarget.style.background = 'var(--bg-card)';
                 e.currentTarget.style.borderColor = 'var(--accent-primary)';
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 107, 107, 0.3)';
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(168, 178, 209, 0.05)';
+                e.currentTarget.style.background = 'rgba(212, 181, 166, 0.05)';
                 e.currentTarget.style.borderColor = 'var(--border-color)';
                 e.currentTarget.style.transform = 'translateY(0)';
                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
