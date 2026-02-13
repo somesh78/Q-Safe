@@ -8,191 +8,490 @@ export default function Landing() {
 
     return (
         <div className="app-container">
-            {/* Header */}
             <Header showLogout={false} />
 
             <main className="main-content" style={{ justifyContent: 'center' }}>
                 {/* Hero Section */}
-                <section className="hero-section animate-fade-in">
+                <section className="hero-section">
                     <h1 className="hero-title">
-                        Secure File Transfer <br />
-                        <span className="text-gradient">For the Modern Web</span>
+                        Transfer files with
+                        <br />
+                        <span className="text-gradient">military-grade security</span>
                     </h1>
                     <p className="hero-subtitle">
-                        Share sensitive data with military-grade encryption.
-                        Choose between <b>Online</b> secure links or <b>Offline</b> air-gapped QR transfer.
+                        Q-Safe combines end-to-end encryption with self-destructing links to give you 
+                        complete control over your sensitive data. Share confidently, knowing your files 
+                        are protected every step of the way.
                     </p>
 
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2.5rem', flexWrap: 'wrap' }}>
                         <button
                             className="btn-primary"
-                            style={{ padding: '1rem 2rem', fontSize: '1.1rem' }}
+                            style={{ padding: '1.125rem 2.25rem', fontSize: '1.0625rem' }}
                             onClick={() => navigate(isLoggedIn ? "/app" : "/signup")}
                         >
-                            {isLoggedIn ? 'Launch Dashboard' : 'Start Transferring Now'}
+                            {isLoggedIn ? 'Go to Dashboard →' : 'Start free trial →'}
                         </button>
                         <button
                             className="btn-secondary"
-                            style={{ padding: '1rem 2rem', fontSize: '1.1rem' }}
+                            style={{ padding: '1.125rem 2.25rem', fontSize: '1.0625rem' }}
                             onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}
                         >
-                            Learn More
+                            See how it works
                         </button>
                     </div>
+
+                    {/* Trust Indicators */}
+                    <div style={{ 
+                        marginTop: '3.5rem', 
+                        display: 'flex', 
+                        gap: '3rem', 
+                        justifyContent: 'center', 
+                        flexWrap: 'wrap',
+                        color: 'var(--text-secondary)',
+                        fontSize: '0.9375rem',
+                        fontWeight: '500'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '1.25rem' }}>🔒</span>
+                            <span>AES-256 Encryption</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '1.25rem' }}>⚡</span>
+                            <span>Zero-knowledge Architecture</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '1.25rem' }}>🛡️</span>
+                            <span>GDPR Compliant</span>
+                        </div>
+                    </div>
                 </section>
 
-                {/* Features Grid */}
-                <section id="features" style={{ marginTop: '5rem', width: '100%', maxWidth: '1000px' }}>
-                    <h2 style={{ textAlign: 'center', fontSize: '2.5rem', fontWeight: '800', marginBottom: '3rem', color: 'var(--text-primary)' }}>
-                        Why Choose Q-Safe?
-                    </h2>
+                {/* Main Features Section */}
+                <section id="features" style={{ 
+                    marginTop: '8rem', 
+                    width: '100%', 
+                    maxWidth: '1200px',
+                    marginBottom: '6rem'
+                }}>
+                    <div style={{ textAlign: 'center', marginBottom: '5rem' }}>
+                        <h2 style={{ 
+                            fontSize: 'clamp(2rem, 4vw, 3rem)', 
+                            fontWeight: '800',
+                            fontFamily: 'var(--font-display)',
+                            marginBottom: '1rem',
+                            letterSpacing: '-0.03em',
+                            lineHeight: '1.2'
+                        }}>
+                            Complete control over<br />your sensitive data
+                        </h2>
+                        <p style={{ 
+                            fontSize: '1.125rem', 
+                            color: 'var(--text-secondary)', 
+                            maxWidth: '600px', 
+                            margin: '0 auto',
+                            lineHeight: '1.7'
+                        }}>
+                            Two powerful transfer modes designed for different security requirements.
+                            Choose the method that fits your workflow.
+                        </p>
+                    </div>
+
                     <div className="mode-grid">
-                        <div className="mode-card" style={{ cursor: 'default' }}>
-                            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🌐</div>
-                            <h3>Online Sharing</h3>
-                            <p>Upload files securely up to 50MB. Generate one-time links with optional IP locking, download limits, and automatic expiration. Perfect for sharing confidential documents with clients or colleagues.</p>
+                        <div className="mode-card animate-fade-in stagger-1" style={{ cursor: 'default' }}>
+                            <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>🌐</div>
+                            <h3 style={{ 
+                                fontSize: '1.75rem', 
+                                fontWeight: '700',
+                                marginBottom: '1rem',
+                                fontFamily: 'var(--font-display)'
+                            }}>
+                                Online Sharing
+                            </h3>
+                            <p style={{ fontSize: '1.0625rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
+                                Upload files up to 50MB and generate secure, one-time links. Set custom expiration times, 
+                                download limits, and optional IP locking for maximum security.
+                            </p>
+                            <ul style={{ 
+                                listStyle: 'none', 
+                                padding: 0, 
+                                margin: 0,
+                                fontSize: '0.9375rem',
+                                color: 'var(--text-secondary)'
+                            }}>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>Self-destructing links</span>
+                                </li>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>Custom expiration times</span>
+                                </li>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>Download limits & IP locking</span>
+                                </li>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>Real-time access auditing</span>
+                                </li>
+                            </ul>
                         </div>
-                        <div className="mode-card" style={{ cursor: 'default' }}>
-                            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📴</div>
-                            <h3>Offline Air-Gap</h3>
-                            <p>Transfer files between devices that never connect to the internet. Your file is converted into QR codes that can be scanned on air-gapped systems. Ideal for high-security environments.</p>
-                        </div>
-                        <div className="mode-card" style={{ cursor: 'default' }}>
-                            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔒</div>
-                            <h3>Zero Knowledge</h3>
-                            <p>End-to-end encryption using AES-256. Your password encrypts files client-side before upload. We never have access to your encryption keys or unencrypted data.</p>
-                        </div>
-                        <div className="mode-card" style={{ cursor: 'default' }}>
-                            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>⏱️</div>
-                            <h3>Self-Destructing Links</h3>
-                            <p>Set custom expiration times from 1 to 24 hours. Control maximum download attempts. Links automatically expire after conditions are met, leaving no trace.</p>
-                        </div>
-                        <div className="mode-card" style={{ cursor: 'default' }}>
-                            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📊</div>
-                            <h3>Access Audit Logs</h3>
-                            <p>Track every download attempt with detailed logs including IP addresses, timestamps, and success/failure reasons. Stay informed about who accesses your files.</p>
-                        </div>
-                        <div className="mode-card" style={{ cursor: 'default' }}>
-                            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🎯</div>
-                            <h3>IP Locking</h3>
-                            <p>Restrict file downloads to a specific IP address. Once the first download occurs, the link becomes locked to that IP, preventing unauthorized access.</p>
+
+                        <div className="mode-card animate-fade-in stagger-2" style={{ cursor: 'default' }}>
+                            <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>📴</div>
+                            <h3 style={{ 
+                                fontSize: '1.75rem', 
+                                fontWeight: '700',
+                                marginBottom: '1rem',
+                                fontFamily: 'var(--font-display)'
+                            }}>
+                                Offline Air-Gap
+                            </h3>
+                            <p style={{ fontSize: '1.0625rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
+                                Transfer files between devices that never connect to the internet. Your file is converted 
+                                into scannable QR codes for truly air-gapped security.
+                            </p>
+                            <ul style={{ 
+                                listStyle: 'none', 
+                                padding: 0, 
+                                margin: 0,
+                                fontSize: '0.9375rem',
+                                color: 'var(--text-secondary)'
+                            }}>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>QR code generation</span>
+                                </li>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>No internet required</span>
+                                </li>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>Perfect for high-security environments</span>
+                                </li>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>Client-side processing only</span>
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 </section>
 
-                {/* How It Works Section */}
-                <section style={{ marginTop: '5rem', width: '100%', maxWidth: '900px' }}>
-                    <h2 style={{ textAlign: 'center', fontSize: '2.5rem', fontWeight: '800', marginBottom: '3rem', color: 'var(--text-primary)' }}>
-                        How It Works
-                    </h2>
-                    <div style={{ display: 'grid', gap: '2rem' }}>
-                        <div className="card" style={{ cursor: 'default' }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.5rem' }}>
-                                <div style={{ 
-                                    fontSize: '2rem', 
-                                    fontWeight: '800', 
-                                    background: 'var(--accent-gradient)', 
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent',
-                                    minWidth: '40px'
-                                }}>1</div>
-                                <div>
-                                    <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Choose Your Mode</h3>
-                                    <p style={{ color: 'var(--text-secondary)', margin: 0, lineHeight: '1.6' }}>
-                                        Select between Online mode for internet-based sharing or Offline mode for air-gapped transfers. Each mode is optimized for different security requirements.
-                                    </p>
-                                </div>
+                {/* Security Features */}
+                <section style={{ 
+                    marginTop: '6rem', 
+                    marginBottom: '6rem',
+                    width: '100%', 
+                    maxWidth: '1200px' 
+                }}>
+                    <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+                        <h2 style={{ 
+                            fontSize: 'clamp(2rem, 4vw, 3rem)', 
+                            fontWeight: '800',
+                            fontFamily: 'var(--font-display)',
+                            marginBottom: '1rem',
+                            letterSpacing: '-0.03em'
+                        }}>
+                            Enterprise-grade security<br />for everyone
+                        </h2>
+                        <p style={{ 
+                            fontSize: '1.125rem', 
+                            color: 'var(--text-secondary)', 
+                            maxWidth: '650px', 
+                            margin: '0 auto',
+                            lineHeight: '1.7'
+                        }}>
+                            Your data is protected with the same encryption standards used by governments 
+                            and financial institutions worldwide.
+                        </p>
+                    </div>
+
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+                        gap: '2rem' 
+                    }}>
+                        {[
+                            {
+                                icon: '🔐',
+                                title: 'Zero-Knowledge Encryption',
+                                desc: 'End-to-end AES-256 encryption happens in your browser. We never see your passwords or unencrypted data.'
+                            },
+                            {
+                                icon: '⏱️',
+                                title: 'Self-Destructing Links',
+                                desc: 'Set expiration times from 1-24 hours and limit downloads. Files automatically delete after conditions are met.'
+                            },
+                            {
+                                icon: '🎯',
+                                title: 'IP Address Locking',
+                                desc: 'Restrict file access to specific IP addresses. Links become locked after the first successful download.'
+                            },
+                            {
+                                icon: '📊',
+                                title: 'Complete Audit Logs',
+                                desc: 'Track every access attempt with detailed logs including IP addresses, timestamps, and success status.'
+                            },
+                            {
+                                icon: '🛡️',
+                                title: 'No Cloud Storage',
+                                desc: 'Files are encrypted before upload and automatically deleted. Your data never sits unencrypted on our servers.'
+                            },
+                            {
+                                icon: '🚀',
+                                title: 'Instant Deployment',
+                                desc: 'No setup required. Start sharing files securely in seconds without any configuration or installation.'
+                            }
+                        ].map((feature, idx) => (
+                            <div 
+                                key={idx}
+                                className={`animate-fade-in stagger-${idx + 1}`}
+                                style={{ 
+                                    padding: '2rem',
+                                    background: 'var(--bg-card)',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: 'var(--radius-lg)',
+                                    transition: 'all 0.3s var(--transition)'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-4px)';
+                                    e.currentTarget.style.borderColor = 'var(--border-hover)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.borderColor = 'var(--border-color)';
+                                }}
+                            >
+                                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>{feature.icon}</div>
+                                <h4 style={{ 
+                                    fontSize: '1.25rem', 
+                                    fontWeight: '600',
+                                    marginBottom: '0.75rem',
+                                    fontFamily: 'var(--font-display)'
+                                }}>
+                                    {feature.title}
+                                </h4>
+                                <p style={{ fontSize: '1rem', lineHeight: '1.7', color: 'var(--text-secondary)' }}>
+                                    {feature.desc}
+                                </p>
                             </div>
-                        </div>
-                        <div className="card" style={{ cursor: 'default' }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.5rem' }}>
-                                <div style={{ 
-                                    fontSize: '2rem', 
-                                    fontWeight: '800', 
-                                    background: 'var(--accent-gradient)', 
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent',
-                                    minWidth: '40px'
-                                }}>2</div>
-                                <div>
-                                    <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Encrypt Your File</h3>
-                                    <p style={{ color: 'var(--text-secondary)', margin: 0, lineHeight: '1.6' }}>
-                                        Set a strong password. Your file is encrypted on your device using AES-256 before any data leaves your browser. We never see the unencrypted content.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="card" style={{ cursor: 'default' }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.5rem' }}>
-                                <div style={{ 
-                                    fontSize: '2rem', 
-                                    fontWeight: '800', 
-                                    background: 'var(--accent-gradient)', 
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent',
-                                    minWidth: '40px'
-                                }}>3</div>
-                                <div>
-                                    <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Share Securely</h3>
-                                    <p style={{ color: 'var(--text-secondary)', margin: 0, lineHeight: '1.6' }}>
-                                        Get a QR code or download link. Share the password separately through a different channel for maximum security. Recipients decrypt the file using the password you provide.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                        ))}
                     </div>
                 </section>
 
-                {/* Use Cases Section */}
-                <section style={{ marginTop: '5rem', width: '100%', maxWidth: '900px', marginBottom: '3rem' }}>
-                    <h2 style={{ textAlign: 'center', fontSize: '2.5rem', fontWeight: '800', marginBottom: '3rem', color: 'var(--text-primary)' }}>
-                        Perfect For
-                    </h2>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-                        <div style={{ padding: '1.5rem', background: 'rgba(255, 107, 107, 0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
-                            <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>🏢 Business</h4>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>Share contracts, financial reports, and sensitive documents with clients securely.</p>
-                        </div>
-                        <div style={{ padding: '1.5rem', background: 'rgba(255, 107, 107, 0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
-                            <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>🏥 Healthcare</h4>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>Transfer patient records and medical data while maintaining HIPAA compliance.</p>
-                        </div>
-                        <div style={{ padding: '1.5rem', background: 'rgba(255, 107, 107, 0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
-                            <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>⚖️ Legal</h4>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>Exchange confidential legal documents with attorney-client privilege protection.</p>
-                        </div>
-                        <div style={{ padding: '1.5rem', background: 'rgba(255, 107, 107, 0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
-                            <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>🔬 Research</h4>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>Share sensitive research data between air-gapped laboratory systems.</p>
-                        </div>
-                        <div style={{ padding: '1.5rem', background: 'rgba(255, 107, 107, 0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
-                            <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>🛡️ Government</h4>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>Secure file transfers for classified or sensitive government operations.</p>
-                        </div>
-                        <div style={{ padding: '1.5rem', background: 'rgba(255, 107, 107, 0.05)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
-                            <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>👤 Personal</h4>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>Keep your private files, tax documents, and personal data secure.</p>
-                        </div>
+                {/* Use Cases */}
+                <section style={{ 
+                    marginTop: '6rem',
+                    marginBottom: '6rem',
+                    width: '100%', 
+                    maxWidth: '1200px' 
+                }}>
+                    <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+                        <h2 style={{ 
+                            fontSize: 'clamp(2rem, 4vw, 3rem)', 
+                            fontWeight: '800',
+                            fontFamily: 'var(--font-display)',
+                            marginBottom: '1rem',
+                            letterSpacing: '-0.03em'
+                        }}>
+                            Built for professionals who<br />take security seriously
+                        </h2>
                     </div>
+
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+                        gap: '2rem' 
+                    }}>
+                        {[
+                            { icon: '👔', title: 'Legal Professionals', desc: 'Share case files and sensitive documents with clients while maintaining attorney-client privilege.' },
+                            { icon: '💼', title: 'Financial Advisors', desc: 'Transfer financial statements and tax documents with complete confidentiality and audit trails.' },
+                            { icon: '🏥', title: 'Healthcare Providers', desc: 'HIPAA-compliant file sharing for medical records and patient information between facilities.' },
+                            { icon: '🏢', title: 'Corporate Teams', desc: 'Secure internal document sharing with IP locking and access controls for compliance.' },
+                            { icon: '🔬', title: 'Research Institutions', desc: 'Air-gapped transfer for sensitive research data in high-security laboratory environments.' },
+                            { icon: '🛡️', title: 'Security Consultants', desc: 'Deliver security audits and penetration test results without exposing client data.' }
+                        ].map((useCase, idx) => (
+                            <div 
+                                key={idx}
+                                className={`animate-fade-in stagger-${idx + 1}`}
+                                style={{ 
+                                    padding: '2rem',
+                                    background: 'var(--bg-card)',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: 'var(--radius-lg)',
+                                    textAlign: 'center',
+                                    transition: 'all 0.3s var(--transition)'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-4px)';
+                                    e.currentTarget.style.borderColor = 'var(--border-hover)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.borderColor = 'var(--border-color)';
+                                }}
+                            >
+                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{useCase.icon}</div>
+                                <h4 style={{ 
+                                    fontSize: '1.25rem', 
+                                    fontWeight: '600',
+                                    marginBottom: '0.75rem',
+                                    fontFamily: 'var(--font-display)'
+                                }}>
+                                    {useCase.title}
+                                </h4>
+                                <p style={{ fontSize: '1rem', lineHeight: '1.7', color: 'var(--text-secondary)' }}>
+                                    {useCase.desc}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+                {/* CTA Section */}
+                <section style={{ 
+                    marginTop: '6rem',
+                    marginBottom: '4rem',
+                    textAlign: 'center',
+                    padding: '4rem 2rem',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-xl)',
+                    maxWidth: '900px',
+                    width: '100%'
+                }}>
+                    <h2 style={{ 
+                        fontSize: 'clamp(2rem, 4vw, 2.75rem)', 
+                        fontWeight: '800',
+                        fontFamily: 'var(--font-display)',
+                        marginBottom: '1.5rem',
+                        letterSpacing: '-0.03em'
+                    }}>
+                        Start sharing files securely<br />in less than 30 seconds
+                    </h2>
+                    <p style={{ 
+                        fontSize: '1.125rem', 
+                        color: 'var(--text-secondary)', 
+                        maxWidth: '600px', 
+                        margin: '0 auto 2.5rem',
+                        lineHeight: '1.7'
+                    }}>
+                        Join thousands of professionals who trust Q-Safe with their most sensitive data. 
+                        No credit card required.
+                    </p>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <button
+                            className="btn-primary"
+                            style={{ padding: '1.125rem 2.5rem', fontSize: '1.0625rem' }}
+                            onClick={() => navigate(isLoggedIn ? "/app" : "/signup")}
+                        >
+                            {isLoggedIn ? 'Go to Dashboard →' : 'Create free account →'}
+                        </button>
+                    </div>
+                    <p style={{ 
+                        marginTop: '1.5rem', 
+                        fontSize: '0.875rem', 
+                        color: 'var(--text-secondary)' 
+                    }}>
+                        Free forever • No credit card • 50MB file limit
+                    </p>
                 </section>
             </main>
 
-            <footer style={{
-                padding: '3rem 2rem',
-                textAlign: 'center',
-                color: 'var(--text-secondary)',
+            {/* Footer */}
+            <footer style={{ 
+                width: '100%', 
+                padding: '3rem 2rem 2rem',
                 borderTop: '1px solid var(--border-color)',
-                width: '100%',
-                background: 'rgba(26, 15, 10, 0.7)',
-                backdropFilter: 'blur(20px)',
-                marginTop: '5rem'
+                background: 'var(--bg-secondary)'
             }}>
-                <p style={{ fontSize: '0.95rem', fontWeight: '500', margin: 0 }}>
-                    &copy; {new Date().getFullYear()} Q-Safe. Secure. Private. Encrypted.
-                </p>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem', opacity: 0.7 }}>
-                    Military-grade encryption • Zero-knowledge architecture • Open source
-                </p>
+                <div style={{ 
+                    maxWidth: '1200px', 
+                    margin: '0 auto',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: '3rem',
+                    marginBottom: '2rem'
+                }}>
+                    <div>
+                        <div style={{ 
+                            fontSize: '1.5rem', 
+                            fontWeight: '800',
+                            fontFamily: 'var(--font-display)',
+                            background: 'var(--accent-gradient)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            marginBottom: '1rem'
+                        }}>
+                            Q-Safe
+                        </div>
+                        <p style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)', lineHeight: '1.7' }}>
+                            Military-grade file encryption and secure transfer for professionals.
+                        </p>
+                    </div>
+                    <div>
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Product
+                        </h4>
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                            <li style={{ marginBottom: '0.75rem' }}>
+                                <a href="#features" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Features</a>
+                            </li>
+                            <li style={{ marginBottom: '0.75rem' }}>
+                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Pricing</a>
+                            </li>
+                            <li style={{ marginBottom: '0.75rem' }}>
+                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Security</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Company
+                        </h4>
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                            <li style={{ marginBottom: '0.75rem' }}>
+                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>About</a>
+                            </li>
+                            <li style={{ marginBottom: '0.75rem' }}>
+                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Blog</a>
+                            </li>
+                            <li style={{ marginBottom: '0.75rem' }}>
+                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Contact</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Legal
+                        </h4>
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                            <li style={{ marginBottom: '0.75rem' }}>
+                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Privacy</a>
+                            </li>
+                            <li style={{ marginBottom: '0.75rem' }}>
+                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Terms</a>
+                            </li>
+                            <li style={{ marginBottom: '0.75rem' }}>
+                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Compliance</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div style={{ 
+                    maxWidth: '1200px', 
+                    margin: '0 auto',
+                    paddingTop: '2rem',
+                    borderTop: '1px solid var(--border-color)',
+                    textAlign: 'center',
+                    fontSize: '0.875rem',
+                    color: 'var(--text-secondary)'
+                }}>
+                    © 2026 Q-Safe. All rights reserved. Built with ❤️ for security.
+                </div>
             </footer>
         </div>
     );

@@ -147,7 +147,7 @@ export default function Home() {
                         
                         <div className="mode-grid">
                             {/* Online Mode Card */}
-                            <div className="mode-card" onClick={() => handleModeSelect("ONLINE")}>
+                            <div className="mode-card animate-fade-in stagger-1" onClick={() => handleModeSelect("ONLINE")}>
                                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🌐</div>
                                 <h3>Online Secure Share</h3>
                                 <p style={{ marginBottom: '1rem' }}>Upload files (max 50MB) and generate a secure, self-destructing QR link. Perfect for quick internet-based sharing.</p>
@@ -159,7 +159,7 @@ export default function Home() {
                             </div>
 
                             {/* Offline Mode Card */}
-                            <div className="mode-card" onClick={() => handleModeSelect("OFFLINE")}>
+                            <div className="mode-card animate-fade-in stagger-2" onClick={() => handleModeSelect("OFFLINE")}>
                                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📴</div>
                                 <h3>Offline Air-Gap</h3>
                                 <p style={{ marginBottom: '1rem' }}>Convert sensitive files into a series of QR codes. Reconstruct them on another device without any internet connection.</p>
@@ -171,7 +171,7 @@ export default function Home() {
                             </div>
 
                             {/* Reconstruct Card */}
-                            <div className="mode-card" onClick={() => navigate("/reconstruct")}>
+                            <div className="mode-card animate-fade-in stagger-3" onClick={() => navigate("/reconstruct")}>
                                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🧩</div>
                                 <h3>Reconstruct File</h3>
                                 <p style={{ marginBottom: '1rem' }}>Have a ZIP of QR codes or a series of images? Reassemble your original file here.</p>
