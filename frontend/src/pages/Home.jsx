@@ -272,42 +272,14 @@ export default function Home() {
                                             onChange={(e) => setEnableIpLock(e.target.checked)}
                                             style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                                         />
-                                        <div>, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span>📤</span> Step {session.mode === 'ONLINE' ? '3' : '2'}: Upload File
-                            </h3>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                                {session.mode === 'ONLINE' 
-                                    ? 'Maximum file size: 50MB. Your file will be encrypted before upload.'
-                                    : 'Your file will be converted into a series of scannable QR codes for offline transfer.'
-                                }
-                            </p
+                                        <div>
                                             <div style={{ fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-primary)' }}>
                                                 🔒 Enable IP Lock
                                             </div>
                                             <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
                                                 Restrict downloads to the first downloader's IP address for maximum security
                                             </div>
-                                        </divsecondary)' }}>
-                                            Expiry (Hours)
-                                        </label>
-                                        <input
-                                            className="input-field"
-                                            type="number"
-                                            min="1"
-                                            max="24"
-                                            value={expiryHours}
-                                            onChange={(e) => setExpiryHours(parseInt(e.target.value) || 1)}
-                                        />
-                                    </div>
-                                </div>
-                                <div style={{ marginTop: '1rem' }}>
-                                    <label style={{ display: "flex", alignItems: "center", cursor: "pointer", gap: '0.5rem' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={enableIpLock}
-                                            onChange={(e) => setEnableIpLock(e.target.checked)}
-                                        />
-                                        <span style={{ fontSize: '0.95rem' }}>Enable IP Lock (restrict to first downloader's IP)</span>
+                                        </div>
                                     </label>
                                 </div>
                             </div>

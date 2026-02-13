@@ -152,13 +152,7 @@ export default function Dashboard() {
                   }}>
                     💡 {3 - f.downloads} download(s) remaining
                   </div>
-                )}span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>IP Lock:</span>
-                    <span>{f.ip_lock ? "🔒 On" : "Off"}</span>
-                  </div>
-                </div>
+                )}
               </div>
             ))}
           </div>
