@@ -80,15 +80,54 @@ export default function Reconstruct() {
                     
                     <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                         <h2 className="page-title">Reconstruct File</h2>
-                        <p style={{ color: 'var(--text-secondary)' }}>
-                            Upload a ZIP of QR codes (from Offline Mode) to reconstruct your original file.
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', lineHeight: '1.6', maxWidth: '600px', margin: '0 auto' }}>
+                            Upload a ZIP file containing QR codes generated from Offline Mode to reconstruct and download your original encrypted file.
                         </p>
+                    </div>
+
+                    {/* Info Cards */}
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                        gap: '1rem', 
+                        marginBottom: '2rem' 
+                    }}>
+                        <div style={{ 
+                            padding: '1rem', 
+                            background: 'rgba(255, 107, 107, 0.08)', 
+                            border: '1px solid var(--border-color)', 
+                            borderRadius: 'var(--radius-sm)',
+                            textAlign: 'center'
+                        }}>
+                            <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>📦</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Accepts ZIP files</div>
+                        </div>
+                        <div style={{ 
+                            padding: '1rem', 
+                            background: 'rgba(255, 107, 107, 0.08)', 
+                            border: '1px solid var(--border-color)', 
+                            borderRadius: 'var(--radius-sm)',
+                            textAlign: 'center'
+                        }}>
+                            <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>🔐</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Password required</div>
+                        </div>
+                        <div style={{ 
+                            padding: '1rem', 
+                            background: 'rgba(255, 107, 107, 0.08)', 
+                            border: '1px solid var(--border-color)', 
+                            borderRadius: 'var(--radius-sm)',
+                            textAlign: 'center'
+                        }}>
+                            <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>⚡</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Instant processing</div>
+                        </div>
                     </div>
 
                     <div className="card animate-fade-in">
                         <div style={{ marginBottom: '2rem' }}>
-                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: '600' }}>
-                                Decryption Password
+                            <label style={{ display: "block", marginBottom: "0.75rem", fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span>🔐</span> Decryption Password
                             </label>
                             <input
                                 className="input-field"
@@ -97,11 +136,14 @@ export default function Reconstruct() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem', marginBottom: 0 }}>
+                                Use the same password that was set when creating the QR codes
+                            </p>
                         </div>
 
                         <div style={{ marginBottom: '2rem' }}>
-                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: '600' }}>
-                                Upload QR ZIP
+                            <label style={{ display: "block", marginBottom: "0.75rem", fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span>📦</span> Upload QR ZIP File
                             </label>
                             {!loading ? (
                                 <div className="upload-zone">

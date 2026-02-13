@@ -74,20 +74,21 @@ export default function OnlineDownload() {
       </div>
       <div className="auth-card animate-fade-in">
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 className="brand" style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Q-Safe</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Secure File Transfer Portal</p>
+          <h1 className="brand" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Q-Safe</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Secure File Transfer Portal</p>
         </div>
 
         <div style={{
-          background: 'var(--bg-secondary)',
-          padding: '1rem',
-          borderRadius: 'var(--radius-sm)',
+          background: 'rgba(255, 107, 107, 0.1)',
+          padding: '1.25rem',
+          borderRadius: 'var(--radius-md)',
           marginBottom: '1.5rem',
           textAlign: 'center',
-          border: '1px solid var(--border-color)'
+          border: '1px solid rgba(255, 107, 107, 0.2)'
         }}>
-          <p style={{ margin: 0, fontSize: '0.9rem' }}>
-            You have received a secure encrypted file.
+          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔐</div>
+          <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: '500', color: 'var(--text-primary)', lineHeight: '1.5' }}>
+            You have received a secure encrypted file. Enter the password to decrypt and download.
           </p>
         </div>
 
@@ -107,8 +108,8 @@ export default function OnlineDownload() {
 
         <form onSubmit={handleDownload}>
           <div style={{ marginBottom: '2rem' }}>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-              Encryption Password
+            <label style={{ display: "block", marginBottom: "0.75rem", fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+              🔑 Encryption Password
             </label>
             <input
               className="input-field"
@@ -118,6 +119,9 @@ export default function OnlineDownload() {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem', marginBottom: 0 }}>
+              Ask the sender for the password if you don't have it
+            </p>
           </div>
 
           <button
@@ -126,12 +130,24 @@ export default function OnlineDownload() {
             style={{ width: '100%' }}
             disabled={loading}
           >
-            {loading ? "Decrypting & Downloading..." : "Unlock & Download"}
+            {loading ? "🔓 Decrypting & Downloading..." : "🔓 Unlock & Download"}
           </button>
         </form>
 
-        <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-          Locked by IP • One-time Use • Encrypted
+        <div style={{ 
+          marginTop: '2rem', 
+          padding: '1rem',
+          background: 'rgba(255, 167, 38, 0.08)',
+          borderRadius: 'var(--radius-sm)',
+          border: '1px solid rgba(255, 167, 38, 0.2)'
+        }}>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+            <div style={{ fontWeight: '600', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>🛡️ Security Features</div>
+            <div>• End-to-end encryption</div>
+            <div>• IP locked access</div>
+            <div>• Limited downloads</div>
+            <div>• Auto-expiration</div>
+          </div>
         </div>
       </div>
     </div>

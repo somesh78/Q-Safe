@@ -33,14 +33,71 @@ export default function Audit() {
 
       <main className="main-content">
         <div style={{ width: '100%', marginBottom: '2rem' }}>
-          <h2 className="page-title">Access Logs</h2>
-          <p style={{ color: 'var(--text-secondary)' }}>Track who accessed your secure files.</p>
+          <h2 className="page-title">Access Audit Logs</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: '700px' }}>
+            Monitor all download attempts for your files. Track successful downloads and failed access attempts with detailed information including IP addresses, timestamps, and failure reasons.
+          </p>
         </div>
 
+        {/* Statistics */}
+        {!loading && logs.length > 0 && (
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
+            gap: '1rem', 
+            marginBottom: '2rem',
+            width: '100%'
+          }}>
+            <div style={{ 
+              padding: '1.25rem', 
+              background: 'var(--bg-card)', 
+              border: '1px solid var(--border-color)', 
+              borderRadius: 'var(--radius-md)',
+              backdropFilter: 'blur(20px)'
+            }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Total Attempts</div>
+              <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-primary)' }}>{logs.length}</div>
+            </div>
+            <div style={{ 
+              padding: '1.25rem', 
+              background: 'var(--bg-card)', 
+              border: '1px solid var(--border-color)', 
+              borderRadius: 'var(--radius-md)',
+              backdropFilter: 'blur(20px)'
+            }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Successful</div>
+              <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--success)' }}>
+                {logs.filter(log => log.status === 'SUCCESS').length}
+              </div>
+            </div>
+            <div style={{ 
+              padding: '1.25rem', 
+              background: 'var(--bg-card)', 
+              border: '1px solid var(--border-color)', 
+              borderRadius: 'var(--radius-md)',
+              backdropFilter: 'blur(20px)'
+            }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Failed</div>
+              <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--error)' }}>
+                {logs.filter(log => log.status !== 'SUCCESS').length}
+              </div>
+            </div>
+          </div>
+        )}
+
         {loading ? (
-          <p>Loading audit logs...</p>
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+            <p>Loading audit logs...</p>
+          </div>
         ) : logs.length === 0 ? (
-          <p>No audit logs found.</p>
+          <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem', maxWidth: '500px', margin: '0 auto' }}>
+            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>📋</div>
+            <h3 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>No Audit Logs</h3>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+              No download attempts have been recorded yet. Audit logs will appear here once someone attempts to access your files.
+            </p>
+          </div>
         ) : (
           <div className="table-container animate-fade-in">
             <table className="styled-table">

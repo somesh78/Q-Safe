@@ -44,6 +44,9 @@ export default function Login() {
       </div>
       <div className="auth-card animate-fade-in">
         <h2 className="auth-title">Welcome Back</h2>
+        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.95rem' }}>
+          Sign in to access your secure file transfers
+        </p>
 
         {error && (
           <div style={{ color: '#ef4444', marginBottom: '1rem', textAlign: 'center' }}>
@@ -53,9 +56,12 @@ export default function Login() {
 
         <form onSubmit={handleLogin}>
           <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+              Username
+            </label>
             <input
               className="input-field"
-              placeholder="Username"
+              placeholder="Enter your username"
               value={username}
               onChange={e => setUsername(e.target.value)}
               required
@@ -63,10 +69,13 @@ export default function Login() {
           </div>
 
           <div style={{ marginBottom: '2rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+              Password
+            </label>
             <input
               className="input-field"
               type="password"
-              placeholder="Password"
+              placeholder="Enter your password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required

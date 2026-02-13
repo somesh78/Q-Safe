@@ -134,25 +134,55 @@ export default function Home() {
 
                 {/* Hero / Mode Selection */}
                 {!session && (
-                    <div className="mode-grid">
-                        {/* Online Mode Card */}
-                        <div className="mode-card" onClick={() => handleModeSelect("ONLINE")}>
-                            <h3>🌐 Online Secure Share</h3>
-                            <p>Upload files (max 50MB) and generate a secure, self-destructing QR link. Perfect for quick internet-based sharing.</p>
+                    <>
+                        <div style={{ textAlign: 'center', marginBottom: '3rem', maxWidth: '700px' }}>
+                            <h1 className="page-title" style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>
+                                Choose Your Transfer Mode
+                            </h1>
+                            <p style={{ fontSize: '1.05rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                                Select the transfer method that best fits your security requirements. 
+                                Both modes use military-grade AES-256 encryption to keep your data safe.
+                            </p>
                         </div>
+                        
+                        <div className="mode-grid">
+                            {/* Online Mode Card */}
+                            <div className="mode-card" onClick={() => handleModeSelect("ONLINE")}>
+                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🌐</div>
+                                <h3>Online Secure Share</h3>
+                                <p style={{ marginBottom: '1rem' }}>Upload files (max 50MB) and generate a secure, self-destructing QR link. Perfect for quick internet-based sharing.</p>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                    <div style={{ marginBottom: '0.5rem' }}>✓ Custom expiration times</div>
+                                    <div style={{ marginBottom: '0.5rem' }}>✓ IP address locking</div>
+                                    <div>✓ Download limit controls</div>
+                                </div>
+                            </div>
 
-                        {/* Offline Mode Card */}
-                        <div className="mode-card" onClick={() => handleModeSelect("OFFLINE")}>
-                            <h3>📴 Offline Air-Gap</h3>
-                            <p>Convert sensitive files into a series of QR codes. Reconstruct them on another device without any internet connection.</p>
-                        </div>
+                            {/* Offline Mode Card */}
+                            <div className="mode-card" onClick={() => handleModeSelect("OFFLINE")}>
+                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📴</div>
+                                <h3>Offline Air-Gap</h3>
+                                <p style={{ marginBottom: '1rem' }}>Convert sensitive files into a series of QR codes. Reconstruct them on another device without any internet connection.</p>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                    <div style={{ marginBottom: '0.5rem' }}>✓ No internet required</div>
+                                    <div style={{ marginBottom: '0.5rem' }}>✓ Air-gapped security</div>
+                                    <div>✓ QR code sequences</div>
+                                </div>
+                            </div>
 
-                        {/* Reconstruct Card */}
-                        <div className="mode-card" onClick={() => navigate("/reconstruct")}>
-                            <h3>🧩 Reconstruct File</h3>
-                            <p>Have a ZIP of QR codes or a series of images? Reassemble your original file here.</p>
+                            {/* Reconstruct Card */}
+                            <div className="mode-card" onClick={() => navigate("/reconstruct")}>
+                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🧩</div>
+                                <h3>Reconstruct File</h3>
+                                <p style={{ marginBottom: '1rem' }}>Have a ZIP of QR codes or a series of images? Reassemble your original file here.</p>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                    <div style={{ marginBottom: '0.5rem' }}>✓ Upload QR ZIP file</div>
+                                    <div style={{ marginBottom: '0.5rem' }}>✓ Enter decryption password</div>
+                                    <div>✓ Download original file</div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    </>
                 )}
 
                 {/* Upload Workflow */}
@@ -172,9 +202,12 @@ export default function Home() {
 
                         {/* Password Input */}
                         <div className="card" style={{ marginBottom: '2rem' }}>
-                            <h3 style={{ marginTop: 0 }}>Step 1: Encryption</h3>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                                Set a password to encrypt your file before it leaves your device.
+                            <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span>🔐</span> Step 1: Encryption Password
+                            </h3>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                                Set a strong password to encrypt your file before it leaves your device. 
+                                This password is never sent to our servers - it stays with you.
                             </p>
                             <input
                                 className="input-field"
@@ -183,15 +216,17 @@ export default function Home() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
-                        </div>
-
-                        {/* Online Options */}
-                        {session.mode === "ONLINE" && (
-                            <div className="card" style={{ marginBottom: '2rem' }}>
-                                <h3 style={{ marginTop: 0 }}>Step 2: Security Settings</h3>
+                            <div style={{ 
+                                marginTop: '0.75rem', 
+                                padding: '0.75rem', , display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span>⚙️</span> Step 2: Security Settings
+                                </h3>
+                                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                                    Configure how long your file remains accessible and who can download it.
+                                </p>
                                 <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr 1fr' }}>
                                     <div>
-                                        <label style={{ display: "block", marginBottom: "5px", fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                        <label style={{ display: "block", marginBottom: "5px", fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)' }}>
                                             Max Downloads
                                         </label>
                                         <input
@@ -202,9 +237,47 @@ export default function Home() {
                                             value={maxDownloads}
                                             onChange={(e) => setMaxDownloads(parseInt(e.target.value) || 3)}
                                         />
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Link expires after this many downloads</span>
                                     </div>
                                     <div>
-                                        <label style={{ display: "block", marginBottom: "5px", fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                        <label style={{ display: "block", marginBottom: "5px", fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+                                            Expiry (Hours)
+                                        </label>
+                                        <input
+                                            className="input-field"
+                                            type="number"
+                                            min="1"
+                                            max="24"
+                                            value={expiryHours}
+                                            onChange={(e) => setExpiryHours(parseInt(e.target.value) || 1)}
+                                        />
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Auto-delete after this time period</span>
+                                    </div>
+                                </div>
+                                <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(255, 107, 107, 0.08)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                                    <label style={{ display: "flex", alignItems: "center", cursor: "pointer", gap: '0.75rem' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={enableIpLock}
+                                            onChange={(e) => setEnableIpLock(e.target.checked)}
+                                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                        />
+                                        <div>, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span>📤</span> Step {session.mode === 'ONLINE' ? '3' : '2'}: Upload File
+                            </h3>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                                {session.mode === 'ONLINE' 
+                                    ? 'Maximum file size: 50MB. Your file will be encrypted before upload.'
+                                    : 'Your file will be converted into a series of scannable QR codes for offline transfer.'
+                                }
+                            </p
+                                            <div style={{ fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+                                                🔒 Enable IP Lock
+                                            </div>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                                                Restrict downloads to the first downloader's IP address for maximum security
+                                            </div>
+                                        </divsecondary)' }}>
                                             Expiry (Hours)
                                         </label>
                                         <input
@@ -275,14 +348,32 @@ export default function Home() {
                 {jobId && session?.mode === "OFFLINE" && jobStatus === 'COMPLETED' && (
                     <div className="result-card">
                         <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
-                        <h2 style={{ color: 'var(--success)' }}>Generation Complete!</h2>
-                        <p>Your QR code bundle has been generated.</p>
+                        <h2 style={{ color: 'var(--success)', marginBottom: '0.5rem' }}>Generation Complete!</h2>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>Your QR code bundle has been generated and downloaded successfully.</p>
+                        
+                        <div style={{ 
+                            background: 'rgba(255, 167, 38, 0.1)', 
+                            padding: '1.25rem', 
+                            borderRadius: 'var(--radius-md)',
+                            marginBottom: '2rem',
+                            border: '1px solid rgba(255, 167, 38, 0.2)',
+                            textAlign: 'left'
+                        }}>
+                            <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)' }}>📋 Next Steps:</h4>
+                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.8' }}>
+                                1. Extract the ZIP file to access QR codes<br/>
+                                2. Display or print QR codes for scanning<br/>
+                                3. Scan on air-gapped device to transfer<br/>
+                                4. Use Reconstruct page to reassemble file
+                            </div>
+                        </div>
+                        
                         <button className="btn-primary" onClick={() => handleJobDownload(jobId, zipName)}>
-                            Download ZIP Again
+                            📥 Download ZIP Again
                         </button>
                         <br /><br />
                         <button className="btn-secondary" onClick={() => { setSession(null); setJobId(null); }}>
-                            Start New Session
+                            ← Start New Session
                         </button>
                     </div>
                 )}
@@ -291,8 +382,23 @@ export default function Home() {
                 {uploadResult && session?.mode === "ONLINE" && (
                     <div className="result-card">
                         <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
-                        <h2>File Ready to Share</h2>
-                        <p style={{ color: 'var(--text-secondary)' }}>{uploadResult.filename}</p>
+                        <h2 style={{ marginBottom: '0.5rem' }}>File Ready to Share</h2>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '2rem' }}>
+                            {uploadResult.filename}
+                        </p>
+
+                        <div style={{ 
+                            background: 'rgba(255, 167, 38, 0.1)', 
+                            padding: '1rem', 
+                            borderRadius: 'var(--radius-md)',
+                            marginBottom: '1.5rem',
+                            border: '1px solid rgba(255, 167, 38, 0.2)'
+                        }}>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.6' }}>
+                                <strong style={{ color: 'var(--text-primary)' }}>📱 Share this QR code</strong> with your recipient. 
+                                They'll need the password you set to decrypt and download the file.
+                            </p>
+                        </div>
 
                         <div className="qr-container">
                             <img
@@ -302,15 +408,27 @@ export default function Home() {
                             />
                         </div>
 
-                        <div style={{ margin: '1rem 0' }}>
+                        <div style={{ margin: '1.5rem 0' }}>
                             <a
                                 href={`data:image/png;base64,${uploadResult.qr_code}`}
                                 download={`q_safe_qrcode_${uploadResult.filename}.png`}
                                 className="btn-primary"
-                                style={{ display: 'inline-block' }}
+                                style={{ display: 'inline-block', textDecoration: 'none' }}
                             >
-                                Save QR Code Image
+                                💾 Save QR Code Image
                             </a>
+                        </div>
+
+                        <div style={{ 
+                            padding: '1rem', 
+                            background: 'rgba(255, 107, 107, 0.08)', 
+                            borderRadius: 'var(--radius-sm)',
+                            marginBottom: '1.5rem',
+                            fontSize: '0.85rem',
+                            color: 'var(--text-secondary)',
+                            border: '1px solid var(--border-color)'
+                        }}>
+                            🔒 Security: IP locked • Max {maxDownloads} downloads • Expires in {expiryHours}h
                         </div>
 
                         <button className="btn-secondary" onClick={() => { setSession(null); setUploadResult(null); }}>
