@@ -223,9 +223,9 @@
 /* Upload Zone */
 .upload-zone {
   width: 100%;
-  max-width: 600px;
+  max-width: 100%;
   min-height: 220px;
-  border: 2px dashed var(--border-color);
+  border: 2.5px dashed rgba(168, 178, 209, 0.4);
   border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
@@ -234,36 +234,57 @@
   text-align: center;
   padding: 2.5rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(168, 178, 209, 0.03);
+  background: rgba(168, 178, 209, 0.08);
   backdrop-filter: blur(10px);
   margin-bottom: 1.5rem;
   position: relative;
   cursor: pointer;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
 }
 
 .upload-zone:hover,
 .upload-zone.drag-active {
   border-color: var(--accent-primary);
-  background: rgba(0, 217, 255, 0.08);
+  border-style: solid;
+  background: rgba(0, 217, 255, 0.12);
   transform: scale(1.02);
-  box-shadow: var(--shadow-md), 0 0 30px var(--accent-glow);
+  box-shadow: var(--shadow-md), 0 0 30px var(--accent-glow), inset 0 2px 12px rgba(0, 217, 255, 0.15);
+}
+
+[data-theme="light"] .upload-zone {
+  background: rgba(148, 163, 184, 0.08);
+  border-color: rgba(100, 116, 139, 0.3);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
 [data-theme="light"] .upload-zone:hover,
 [data-theme="light"] .upload-zone.drag-active {
-  background: rgba(37, 99, 235, 0.05);
+  background: rgba(37, 99, 235, 0.08);
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-sm), 0 0 20px var(--accent-glow), inset 0 2px 12px rgba(37, 99, 235, 0.1);
 }
 
 .upload-icon {
   font-size: 3.5rem;
-  color: var(--text-secondary);
+  color: var(--accent-primary);
   margin-bottom: 1rem;
   transition: all 0.3s ease;
+  filter: drop-shadow(0 2px 8px var(--accent-glow));
+  opacity: 0.9;
 }
 
 .upload-zone:hover .upload-icon {
   color: var(--accent-primary);
-  transform: scale(1.1);
+  transform: scale(1.15) translateY(-4px);
+  opacity: 1;
+  filter: drop-shadow(0 4px 12px var(--accent-glow));
+}
+
+.upload-zone p {
+  color: var(--text-primary);
+  font-weight: 500;
+  font-size: 1rem;
 }
 
 /* Progress Bar */
