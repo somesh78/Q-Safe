@@ -218,9 +218,19 @@ export default function Home() {
                             />
                             <div style={{ 
                                 marginTop: '0.75rem', 
-                                padding: '0.75rem', , display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span>⚙️</span> Step 2: Security Settings
-                                </h3>
+                                padding: '0.75rem',
+                                backgroundColor: 'var(--bg-secondary)',
+                                borderRadius: '0.5rem'
+                            }}>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block' }}>💡 Tip: Use a strong, unique password you'll remember</span>
+                            </div>
+                        </div>
+
+                        {/* Security Settings */}
+                        <div className="card" style={{ marginBottom: '2rem' }}>
+                            <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span>⚙️</span> Step 2: Security Settings
+                            </h3>
                                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
                                     Configure how long your file remains accessible and who can download it.
                                 </p>

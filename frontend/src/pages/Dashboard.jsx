@@ -98,7 +98,13 @@ export default function Dashboard() {
             <button className="btn-primary" onClick={() => navigate("/app")}>
               Create First Transfer
             </button>
-          </div>div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          </div>
+        ) : (
+          <div className="file-grid">
+            {files.map((f) => (
+              <div key={f.id} className="card" style={{ padding: '1.5rem' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                     <span style={{ fontSize: '1.5rem' }}>📄</span>
                     <h3 style={{ margin: 0, fontSize: '1.1rem', flex: 1 }}>
                       {f.filename || "Unknown File"}
