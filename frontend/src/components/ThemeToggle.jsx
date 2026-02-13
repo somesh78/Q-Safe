@@ -11,18 +11,32 @@ export default function ThemeToggle() {
             aria-label="Toggle Theme"
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
             style={{
-                background: 'transparent',
-                border: '1px solid var(--border-color)',
+                background: 'rgba(168, 178, 209, 0.05)',
+                backdropFilter: 'blur(10px)',
+                border: '1.5px solid var(--border-color)',
                 borderRadius: '50%',
-                width: '40px',
-                height: '40px',
+                width: '44px',
+                height: '44px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
                 color: 'var(--text-primary)',
-                transition: 'all 0.2s ease',
-                marginLeft: '0.5rem'
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                marginLeft: '0.5rem',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+            }}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--bg-card)';
+                e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(168, 178, 209, 0.05)';
+                e.currentTarget.style.borderColor = 'var(--border-color)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
             }}
         >
             {theme === 'dark' ? (

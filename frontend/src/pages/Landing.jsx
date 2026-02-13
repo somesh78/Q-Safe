@@ -64,14 +64,21 @@ export default function Landing() {
             </main>
 
             <footer style={{
-                padding: '2rem',
+                padding: '3rem 2rem',
                 textAlign: 'center',
                 color: 'var(--text-secondary)',
                 borderTop: '1px solid var(--border-color)',
                 width: '100%',
-                background: 'rgba(15, 23, 42, 0.5)'
+                background: 'rgba(10, 14, 39, 0.6)',
+                backdropFilter: 'blur(20px)',
+                marginTop: '5rem'
             }}>
-                <p>&copy; {new Date().getFullYear()} Q-Safe. Secure. Private. Encrypted.</p>
+                <p style={{ fontSize: '0.95rem', fontWeight: '500', margin: 0 }}>
+                    &copy; {new Date().getFullYear()} Q-Safe. Secure. Private. Encrypted.
+                </p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem', opacity: 0.7 }}>
+                    Military-grade encryption • Zero-knowledge architecture • Open source
+                </p>
             </footer>
         </div>
     );
