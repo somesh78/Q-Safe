@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { reconstructFromZip } from "../services/api";
 import LogoutButton from "../components/LogoutButton";
+import Header from "../components/Header";
 import '../App.css';
 
 export default function Reconstruct() {
@@ -61,15 +62,7 @@ export default function Reconstruct() {
 
     return (
         <div className="app-container">
-            <header className="app-header">
-                <div className="brand" onClick={() => navigate("/app")}>Q-Safe</div>
-                <div className="nav-actions">
-                    <button className="btn-secondary" onClick={() => navigate("/app")}>
-                        ← Back Home
-                    </button>
-                    <LogoutButton />
-                </div>
-            </header>
+            <Header showHomeBtn={true} showLogout={true} />
 
             <main className="main-content">
                 <div style={{ maxWidth: '600px', width: '100%', margin: '0 auto' }}>

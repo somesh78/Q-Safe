@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import API from '../services/api.js';
+import ThemeToggle from "../components/ThemeToggle";
 import '../App.css'; // Ensure styles are loaded
 
 export default function Login() {
@@ -37,7 +38,10 @@ export default function Login() {
   }
 
   return (
-    <div className="auth-container">
+    <div className="auth-container" style={{ position: 'relative' }}>
+      <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+        <ThemeToggle />
+      </div>
       <div className="auth-card animate-fade-in">
         <h2 className="auth-title">Welcome Back</h2>
 

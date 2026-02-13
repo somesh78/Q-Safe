@@ -2,6 +2,7 @@
 import { useParams } from "react-router-dom";
 import { useState } from "react";
 import axios from "axios";
+import ThemeToggle from "../components/ThemeToggle";
 import '../App.css';
 
 export default function OnlineDownload() {
@@ -67,7 +68,10 @@ export default function OnlineDownload() {
   };
 
   return (
-    <div className="auth-container">
+    <div className="auth-container" style={{ position: 'relative' }}>
+      <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+        <ThemeToggle />
+      </div>
       <div className="auth-card animate-fade-in">
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h1 className="brand" style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Q-Safe</h1>
@@ -133,4 +137,3 @@ export default function OnlineDownload() {
     </div>
   );
 }
-

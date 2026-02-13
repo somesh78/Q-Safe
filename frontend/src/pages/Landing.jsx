@@ -1,6 +1,5 @@
 
-import { useNavigate } from "react-router-dom";
-import '../App.css';
+import Header from "../components/Header";
 
 export default function Landing() {
     const navigate = useNavigate();
@@ -9,25 +8,7 @@ export default function Landing() {
     return (
         <div className="app-container">
             {/* Header */}
-            <header className="app-header">
-                <div className="brand">Q-Safe</div>
-                <div className="nav-actions">
-                    {isLoggedIn ? (
-                        <button className="btn-primary" onClick={() => navigate("/app")}>
-                            Go to App
-                        </button>
-                    ) : (
-                        <>
-                            <button className="btn-secondary" onClick={() => navigate("/login")}>
-                                Login
-                            </button>
-                            <button className="btn-primary" onClick={() => navigate("/signup")}>
-                                Get Started
-                            </button>
-                        </>
-                    )}
-                </div>
-            </header>
+            <Header showLogout={false} />
 
             <main className="main-content" style={{ justifyContent: 'center' }}>
                 {/* Hero Section */}

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { createSession, uploadFile, getJobStatus, downloadJobResult } from "../services/api";
 import LogoutButton from "../components/LogoutButton";
+import Header from "../components/Header";
 import '../App.css';
 
 export default function Home() {
@@ -127,18 +128,7 @@ export default function Home() {
     return (
         <div className="app-container">
             {/* Header */}
-            <header className="app-header">
-                <div className="brand">Q-Safe</div>
-                <div className="nav-actions">
-                    <button className="btn-secondary" onClick={() => navigate("/dashboard")}>
-                        Dashboard
-                    </button>
-                    <button className="btn-secondary" onClick={() => navigate("/audit")}>
-                        Audit Logs
-                    </button>
-                    <LogoutButton />
-                </div>
-            </header>
+            <Header showDashboardBtn={true} showLogout={true} />
 
             <main className="main-content">
 
