@@ -319,7 +319,7 @@ export default function Home() {
                                 className="btn-primary"
                                 style={{ display: 'inline-block' }}
                             >
-                                Download QR Code
+                                Save QR Code Image
                             </a>
                         </div>
 
