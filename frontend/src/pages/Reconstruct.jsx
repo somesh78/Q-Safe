@@ -126,7 +126,7 @@ export default function Reconstruct() {
 
                     <div className="card animate-fade-in">
                         <div style={{ marginBottom: '2rem' }}>
-                            <label style={{ display: "block", marginBottom: "0.75rem", fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: "0.75rem", fontWeight: '600' }}>
                                 <span>🔐</span> Decryption Password
                             </label>
                             <input
@@ -142,7 +142,7 @@ export default function Reconstruct() {
                         </div>
 
                         <div style={{ marginBottom: '2rem' }}>
-                            <label style={{ display: "block", marginBottom: "0.75rem", fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: "0.75rem", fontWeight: '600' }}>
                                 <span>📦</span> Upload QR ZIP File
                             </label>
                             {!loading ? (
