@@ -14,7 +14,7 @@ export default function Header({ showLogout = true, showDashboardBtn = false, sh
                     src="/logo.png" 
                     alt="Q-Safe Logo" 
                     style={{ 
-                        height: '36px', 
+                        height: '52px', 
                         width: 'auto',
                         filter: 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.3))'
                     }}
