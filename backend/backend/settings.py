@@ -254,13 +254,16 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # React frontend build files
 REACT_BUILD_DIR = BASE_DIR / 'frontend_build'
 if REACT_BUILD_DIR.exists():
-    STATICFILES_DIRS = [REACT_BUILD_DIR / 'static']
+    STATICFILES_DIRS = [
+        REACT_BUILD_DIR / 'static',  # JS/CSS bundles
+        REACT_BUILD_DIR,              # Root files (logo.png, manifest.json, etc)
+    ]
 else:
     STATICFILES_DIRS = []
 
