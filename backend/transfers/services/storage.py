@@ -95,7 +95,8 @@ class SupabaseStorage:
             # Try to get file info
             self.client.storage.from_(self.bucket_name).list(file_path)
             return True
-        except:
+        except Exception as e:
+            logger.debug(f"File exists check failed: {e}")
             return False
 
 
