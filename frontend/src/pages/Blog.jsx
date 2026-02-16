@@ -193,6 +193,12 @@ export default function Blog() {
                 }}>
                   📚 Looking for older posts? Archive coming soon.
                 </p>
+                <h3 style={{ 
+                  fontSize: '1.5rem',
+                  fontWeight: '700',
+                  color: '#fff',
+                  margin: '15px 0'
+                }}>
                   {post.title}
                 </h3>
 
