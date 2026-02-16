@@ -86,4 +86,9 @@ export const reconstructFromZip = (zipFile, password) => {
     });
 };
 
+// Submit contact form payload for support/sales/security inquiries
+export const submitContactMessage = (payload) => {
+    return API.post('/contact/', payload);
+};
+
 export default API;

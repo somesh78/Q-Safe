@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { createSession, uploadFile, getJobStatus, downloadJobResult } from "../services/api";
-import LogoutButton from "../components/LogoutButton";
 import Header from "../components/Header";
 import '../App.css';
 

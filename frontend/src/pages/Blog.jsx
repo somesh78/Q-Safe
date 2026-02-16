@@ -186,13 +186,13 @@ export default function Blog() {
                   </span>
                 </div>
 
-                <h3 style={{ 
-                  fontSize: '1.4rem', 
-                  fontWeight: '600', 
-                  color: '#fff',
-                  marginBottom: '12px',
-                  lineHeight: '1.4'
+                <p style={{ 
+                  fontSize: '1rem', 
+                  color: '#888',
+                  margin: 0
                 }}>
+                  📚 Looking for older posts? Archive coming soon.
+                </p>
                   {post.title}
                 </h3>
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { submitContactMessage } from '../services/api';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -12,13 +13,30 @@ export default function Contact() {
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // In production, this would send to your backend
-    console.log('Form submitted:', formData);
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 3000);
+    setSubmitting(true);
+    setError('');
+
+    try {
+      await submitContactMessage(formData);
+      setSubmitted(true);
+      setFormData({
+        name: '',
+        email: '',
+        subject: '',
+        message: '',
+        type: 'general'
+      });
+      setTimeout(() => setSubmitted(false), 3000);
+    } catch (err) {
+      setError('Something went wrong. Please try again or email support@q-safe.live.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -331,6 +349,7 @@ export default function Contact() {
 
               <button 
                 type="submit"
+                disabled={submitting}
                 style={{
                   width: '100%',
                   padding: '15px',
@@ -352,8 +371,19 @@ export default function Contact() {
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
-                {submitted ? '✓ Message Sent!' : 'Send Message'}
+                {submitting ? 'Sending...' : submitted ? '✓ Message Sent!' : 'Send Message'}
               </button>
+
+              {error && (
+                <p style={{ 
+                  marginTop: '15px', 
+                  textAlign: 'center', 
+                  color: '#ff6b6b',
+                  fontSize: '0.95rem'
+                }}>
+                  {error}
+                </p>
+              )}
 
               {submitted && (
                 <p style={{ 
