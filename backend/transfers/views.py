@@ -108,6 +108,11 @@ def create_session(request):
         mode=mode,
         user=request.user
         )
+    
+    # Log session creation
+    ip = request.META.get('REMOTE_ADDR', 'unknown')
+    logger.info(f"[SESSION] User {request.user.username} created {mode} session {session.session_id} from {ip}")
+    
     return Response({
         'session_id': str(session.session_id),
         'mode': session.mode, 
@@ -190,6 +195,11 @@ def upload_file(request):
                 expires_at=now() + timedelta(hours=expiry_hours),
                 max_downloads=max_downloads
             )
+            
+            # Log successful upload
+            ip = request.META.get('REMOTE_ADDR', 'unknown')
+            logger.info(f"[UPLOAD] User {request.user.username} uploaded {file.name} ({file.size} bytes) from {ip}")
+            
         except Exception as e:
             logger.error(f"Failed to upload file: {e}")
             return Response({"error": "Failed to upload file"}, status=500)
@@ -267,6 +277,10 @@ def upload_file(request):
             original_filename=file.name,
             status='PENDING'
         )
+        
+        # Log successful offline upload
+        ip = request.META.get('REMOTE_ADDR', 'unknown')
+        logger.info(f"[UPLOAD] User {request.user.username} uploaded {file.name} ({file.size} bytes) for offline QR generation from {ip}")
         
         return Response({
             "message": "QR code generation started",
@@ -357,6 +371,19 @@ def reconstruct_from_zip(request):
                     "error": "Missing QR chunks",
                     "expected": expected_total,
                     "found": len(chunks)
+                },
+                status=400
+            )
+        
+        # Validate chunk indices are sequential (0, 1, 2, ..., n-1)
+        chunk_indices = sorted(chunks.keys())
+        expected_indices = list(range(len(chunks)))
+        if chunk_indices != expected_indices:
+            logger.error(f"[RECONSTRUCT] Non-sequential chunk indices: {chunk_indices}")
+            return Response(
+                {
+                    "error": "Invalid chunk sequence",
+                    "details": "Chunks must be sequential starting from 0"
                 },
                 status=400
             )
@@ -491,12 +518,21 @@ def download_online_file(request, signed_token):
         log_audit(encrypted_file, ip, request, "FAILED", "Wrong password or file error")
         return Response({"error": "Wrong password or file not found"}, status=400)
 
+    # Increment download count (but don't save yet)
     encrypted_file.download_count += 1
+
+    # Check if this will be the last download
+    will_delete = encrypted_file.download_count >= encrypted_file.max_downloads
+    
+    # Create response before committing changes
+    response = HttpResponse(decrypted, content_type="application/octet-stream")
+    response["Content-Disposition"] = f'attachment; filename="{encrypted_file.original_filename}"'
 
     # Log audit BEFORE potentially deleting the file
     log_audit(encrypted_file, ip, request, "SUCCESS", None)
 
-    if encrypted_file.download_count >= encrypted_file.max_downloads:
+    # Now commit the changes as late as possible
+    if will_delete:
         # Delete from Supabase Storage
         try:
             storage = get_storage()
@@ -509,8 +545,6 @@ def download_online_file(request, signed_token):
     else:
         encrypted_file.save()
 
-    response = HttpResponse(decrypted, content_type="application/octet-stream")
-    response["Content-Disposition"] = f'attachment; filename="{encrypted_file.original_filename}"'
     return response
 
 @csrf_exempt
