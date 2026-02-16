@@ -36,6 +36,24 @@ MAX_OFFLINE_FILE_SIZE = 20 * 1024 * 1024  # 20MB for offline mode (~11,000 QR co
 
 signer = TimestampSigner()
 
+def validate_password_strength(password):
+    """
+    Validate password meets security requirements:
+    - At least 8 characters
+    - Contains uppercase letter
+    - Contains number
+    - Contains special character
+    """
+    if len(password) < 8:
+        return "Password must be at least 8 characters"
+    if not any(c.isupper() for c in password):
+        return "Password must contain at least one uppercase letter"
+    if not any(c.isdigit() for c in password):
+        return "Password must contain at least one number"
+    if not any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?/' for c in password):
+        return "Password must contain at least one special character"
+    return None
+
 def log_audit(file, ip, request, status, reason=None):
     DownloadAudit.objects.create(
         file=file,
@@ -48,6 +66,7 @@ def log_audit(file, ip, request, status, reason=None):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@ratelimit(key="ip", rate="5/h", block=True)  # Limit 5 signups per hour per IP
 def signup(request):
     username = request.data.get('username')
     password = request.data.get('password')
@@ -55,8 +74,10 @@ def signup(request):
     if not username or not password:
         return Response({'error': 'Username and password are required'}, status=400)
 
-    if len(password) < 8:
-        return Response({"error": "Weak password"}, status=400)
+    # Validate password strength
+    password_error = validate_password_strength(password)
+    if password_error:
+        return Response({"error": password_error}, status=400)
 
     if User.objects.filter(username=username).exists():
         return Response({'error': 'Username already exists'}, status=400)
@@ -93,9 +114,10 @@ def create_session(request):
         'created_at': session.created_at
         })
 
-@csrf_exempt
+@csrf_exempt  # Safe: JWT auth in Authorization header, not cookies. Multipart form-data with DRF.
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="20/h", block=True)  # Limit 20 uploads per hour per user
 def upload_file(request):
     session_id = request.data.get("session_id")
     password = request.data.get("password")
@@ -384,7 +406,7 @@ def reconstruct_from_zip(request):
 MAX_ATTEMPTS = 5
 LOCK_DURATION = 10
 
-@csrf_exempt
+@csrf_exempt  # Safe: Public endpoint with signed token + password auth, not session cookies.
 @ratelimit(key="ip", rate="10/m", block=True)
 @api_view(["POST"])
 @authentication_classes([])
