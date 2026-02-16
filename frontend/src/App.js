@@ -13,6 +13,17 @@ import Landing from "./pages/Landing.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { ThemeProvider } from "./context/ThemeContext";
 
+// Footer pages
+import Features from "./pages/Features.jsx";
+import Pricing from "./pages/Pricing.jsx";
+import Security from "./pages/Security.jsx";
+import About from "./pages/About.jsx";
+import Blog from "./pages/Blog.jsx";
+import Contact from "./pages/Contact.jsx";
+import Privacy from "./pages/Privacy.jsx";
+import Terms from "./pages/Terms.jsx";
+import Compliance from "./pages/Compliance.jsx";
+
 function App() {
   return (
     <BrowserRouter>
@@ -25,6 +36,21 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/download/:token" element={<OnlineDownload />} />
+
+            {/* Footer Pages - Product */}
+            <Route path="/features" element={<Features />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/security" element={<Security />} />
+
+            {/* Footer Pages - Company */}
+            <Route path="/about" element={<About />} />
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/contact" element={<Contact />} />
+
+            {/* Footer Pages - Legal */}
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/compliance" element={<Compliance />} />
 
             {/* Protected */}
             <Route element={<PrivateRoute />}>
