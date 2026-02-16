@@ -1,6 +1,7 @@
 
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 export default function Landing() {
     const navigate = useNavigate();
@@ -401,98 +402,7 @@ export default function Landing() {
                 </section>
             </main>
 
-            {/* Footer */}
-            <footer style={{ 
-                width: '100%', 
-                padding: '3rem 2rem 2rem',
-                borderTop: '1px solid var(--border-color)',
-                background: 'var(--bg-secondary)'
-            }}>
-                <div style={{ 
-                    maxWidth: '1200px', 
-                    margin: '0 auto',
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: '3rem',
-                    marginBottom: '2rem'
-                }}>
-                    <div>
-                        <div style={{ 
-                            fontSize: '1.5rem', 
-                            fontWeight: '800',
-                            fontFamily: 'var(--font-display)',
-                            background: 'var(--accent-gradient)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            marginBottom: '1rem'
-                        }}>
-                            Q-Safe
-                        </div>
-                        <p style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)', lineHeight: '1.7' }}>
-                            Military-grade file encryption and secure transfer for professionals.
-                        </p>
-                    </div>
-                    <div>
-                        <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            Product
-                        </h4>
-                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                            <li style={{ marginBottom: '0.75rem' }}>
-                                <a href="#features" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Features</a>
-                            </li>
-                            <li style={{ marginBottom: '0.75rem' }}>
-                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Pricing</a>
-                            </li>
-                            <li style={{ marginBottom: '0.75rem' }}>
-                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Security</a>
-                            </li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            Company
-                        </h4>
-                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                            <li style={{ marginBottom: '0.75rem' }}>
-                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>About</a>
-                            </li>
-                            <li style={{ marginBottom: '0.75rem' }}>
-                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Blog</a>
-                            </li>
-                            <li style={{ marginBottom: '0.75rem' }}>
-                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Contact</a>
-                            </li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            Legal
-                        </h4>
-                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                            <li style={{ marginBottom: '0.75rem' }}>
-                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Privacy</a>
-                            </li>
-                            <li style={{ marginBottom: '0.75rem' }}>
-                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Terms</a>
-                            </li>
-                            <li style={{ marginBottom: '0.75rem' }}>
-                                <a href="#" style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>Compliance</a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-                <div style={{ 
-                    maxWidth: '1200px', 
-                    margin: '0 auto',
-                    paddingTop: '2rem',
-                    borderTop: '1px solid var(--border-color)',
-                    textAlign: 'center',
-                    fontSize: '0.875rem',
-                    color: 'var(--text-secondary)'
-                }}>
-                    © 2026 Q-Safe. All rights reserved. Built with ❤️ for security.
-                </div>
-            </footer>
+            <Footer />
         </div>
     );
 }
