@@ -282,8 +282,7 @@ export default function Home() {
                                         </div>
                                     </label>
                                 </div>
-                            </div>
-                        )}
+                        </div>
 
                         {/* File Upload */}
                         <div className="card">
