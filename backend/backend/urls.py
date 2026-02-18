@@ -16,7 +16,7 @@ import os
 
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """Accept email as the login identifier instead of username."""
+    """Accept email as the login identifier and enforce email verification."""
     def validate(self, attrs):
         # The frontend sends email in the 'username' field
         login_input = attrs.get('username', '').strip()
@@ -30,7 +30,18 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
                 # Let it fail naturally with "No active account"
                 pass
 
-        return super().validate(attrs)
+        # Validate credentials first (calls parent which checks password)
+        data = super().validate(attrs)
+
+        # After successful credential check, verify email
+        from transfers.models import UserProfile
+        profile = UserProfile.objects.filter(user=self.user).first()
+        if profile and not profile.is_verified:
+            raise serializers.ValidationError(
+                'Please verify your email before logging in. Check your inbox for a verification link.'
+            )
+
+        return data
 
 
 class EmailTokenObtainPairView(TokenObtainPairView):

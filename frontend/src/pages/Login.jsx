@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import API from '../services/api.js';
 import ThemeToggle from "../components/ThemeToggle";
 import '../App.css';
@@ -47,10 +48,9 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Django's TokenObtainPairView expects 'username' field
-      // Since we use email as username, send email in the username field
-      const res = await API.post(
-        `/token/`,
+      // Use raw axios for login — no existing JWT needed
+      const res = await axios.post(
+        `${process.env.REACT_APP_API_URL}/token/`,
         { username: email, password }
       );
       localStorage.setItem('access', res.data.access);
@@ -59,9 +59,18 @@ export default function Login() {
 
       const from = location.state?.from?.pathname || "/app";
       navigate(from, { replace: true });
-    } catch (error) {
-      console.error("Login failed:", error);
-      setError('Invalid email or password. Please try again.');
+    } catch (err) {
+      console.error("Login failed:", err);
+      // Show specific error from backend (e.g. "Please verify your email")
+      const detail = err.response?.data?.detail;
+      const nonFieldErrors = err.response?.data?.non_field_errors;
+      if (nonFieldErrors && nonFieldErrors.length > 0) {
+        setError(nonFieldErrors[0]);
+      } else if (detail) {
+        setError(detail);
+      } else {
+        setError('Invalid email or password. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import API from '../services/api.js';
+import axios from 'axios';
 import ThemeToggle from "../components/ThemeToggle";
 import '../App.css';
 
@@ -36,7 +36,7 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const res = await API.post(`/signup/`, {
+      const res = await axios.post(`${process.env.REACT_APP_API_URL}/signup/`, {
         email,
         password,
         username: username || undefined,

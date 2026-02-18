@@ -4,46 +4,68 @@ const API = axios.create({
     baseURL: process.env.REACT_APP_API_URL,
 });
 
-API.interceptors.request.use((config => {
+// Track if we're already redirecting to avoid multiple redirects
+let isRedirecting = false;
+
+API.interceptors.request.use((config) => {
     const token = localStorage.getItem('access');
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
-}));
+});
 
 API.interceptors.response.use(
-    (response)=> response,
+    (response) => response,
     async (error) => {
         const originalRequest = error.config;
-        if (error.response && error.response.status === 401 && !originalRequest._retry) {
+
+        // Only attempt refresh for 401 errors, and only once per request
+        if (
+            error.response &&
+            error.response.status === 401 &&
+            !originalRequest._retry &&
+            !originalRequest.url.includes('/token/refresh/') // Never retry refresh requests
+        ) {
             originalRequest._retry = true;
             const refresh = localStorage.getItem('refresh');
+
             if (!refresh) {
-                window.location.href = '/login';
+                // No refresh token — clear everything and redirect
+                if (!isRedirecting) {
+                    isRedirecting = true;
+                    localStorage.clear();
+                    window.location.href = '/login';
+                }
                 return Promise.reject(error);
             }
+
             try {
-                const res= await API.post('/token/refresh/', { refresh });
+                // Use raw axios for refresh to avoid interceptor loops
+                const res = await axios.post(
+                    `${process.env.REACT_APP_API_URL}/token/refresh/`,
+                    { refresh }
+                );
 
                 localStorage.setItem('access', res.data.access);
-
                 originalRequest.headers.Authorization = `Bearer ${res.data.access}`;
                 return API(originalRequest);
             } catch (err) {
-                window.location.href = '/login';
+                // Refresh failed — clear everything and redirect
+                if (!isRedirecting) {
+                    isRedirecting = true;
+                    localStorage.clear();
+                    window.location.href = '/login';
+                }
                 return Promise.reject(err);
             }
         }
+
         return Promise.reject(error);
     }
 );
 
-export const signup = (username, password) => {
-    return API.post('/signup/', { username, password });
-};
-
-export const logoutUser=(refresh)=>{
+export const logoutUser = (refresh) => {
     return API.post('/logout/', { refresh });
 };
 
