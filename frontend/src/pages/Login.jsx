@@ -6,7 +6,7 @@ import ThemeToggle from "../components/ThemeToggle";
 import '../App.css';
 
 export default function Login() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,7 +23,6 @@ export default function Login() {
 
     if (authError) {
       setError('Google login failed. Please try again.');
-      // Clean up URL
       window.history.replaceState({}, '', '/login');
       return;
     }
@@ -32,13 +31,11 @@ export default function Login() {
       localStorage.setItem('access', access);
       localStorage.setItem('refresh', refresh);
 
-      // Store user info if available
-      const email = params.get('email');
+      const userEmail = params.get('email');
       const name = params.get('name');
-      if (email) localStorage.setItem('user_email', email);
+      if (userEmail) localStorage.setItem('user_email', userEmail);
       if (name) localStorage.setItem('user_name', name);
 
-      // Clean URL and redirect
       window.history.replaceState({}, '', '/login');
       navigate('/app', { replace: true });
     }
@@ -50,28 +47,28 @@ export default function Login() {
     setLoading(true);
 
     try {
+      // Django's TokenObtainPairView expects 'username' field
+      // Since we use email as username, send email in the username field
       const res = await API.post(
         `/token/`,
-        { username, password }
+        { username: email, password }
       );
       localStorage.setItem('access', res.data.access);
       localStorage.setItem('refresh', res.data.refresh);
+      localStorage.setItem('user_email', email);
 
       const from = location.state?.from?.pathname || "/app";
       navigate(from, { replace: true });
     } catch (error) {
       console.error("Login failed:", error);
-      setError('Invalid credentials. Please try again.');
+      setError('Invalid email or password. Please try again.');
     } finally {
       setLoading(false);
     }
   }
 
   const handleGoogleLogin = () => {
-    // Redirect to Django social-auth Google OAuth2 endpoint
     const backendUrl = process.env.REACT_APP_API_URL || '';
-    // social-auth endpoint is /api/auth/login/google-oauth2/
-    // The API_URL already includes /api, so we go one level up
     const baseUrl = backendUrl.replace(/\/api\/?$/, '');
     window.location.href = `${baseUrl}/api/auth/login/google-oauth2/`;
   };
@@ -147,13 +144,14 @@ export default function Login() {
         <form onSubmit={handleLogin}>
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)' }}>
-              Username
+              Email
             </label>
             <input
               className="input-field"
-              placeholder="Enter your username"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
               required
             />
           </div>

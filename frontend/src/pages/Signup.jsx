@@ -6,11 +6,12 @@ import ThemeToggle from "../components/ThemeToggle";
 import '../App.css';
 
 export default function Signup() {
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
   const validatePassword = (pwd) => {
@@ -24,6 +25,7 @@ export default function Signup() {
   const handleSignup = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
     const pwdError = validatePassword(password);
     if (pwdError) {
@@ -34,28 +36,31 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      // Create account with email
-      await API.post(`/signup/`, {
-        username,
+      const res = await API.post(`/signup/`, {
+        email,
         password,
-        email
+        username: username || undefined, // Optional — backend defaults to email
       });
 
-      // Auto-login after successful signup
-      try {
-        const tokenRes = await API.post('/token/', {
-          username,
-          password,
-        });
+      setSuccess(res.data.message || 'Account created! Check your email to verify.');
 
-        localStorage.setItem('access', tokenRes.data.access);
-        localStorage.setItem('refresh', tokenRes.data.refresh);
-        if (email) localStorage.setItem('user_email', email);
-        navigate('/app');
-      } catch (loginError) {
-        // If auto-login fails, redirect to login page
-        navigate('/login');
-      }
+      // Auto-login after successful signup
+      setTimeout(async () => {
+        try {
+          const tokenRes = await API.post('/token/', {
+            username: username || email, // Login with username or email
+            password,
+          });
+
+          localStorage.setItem('access', tokenRes.data.access);
+          localStorage.setItem('refresh', tokenRes.data.refresh);
+          localStorage.setItem('user_email', email);
+          navigate('/app');
+        } catch (loginError) {
+          // If auto-login fails, redirect to login page
+          navigate('/login');
+        }
+      }, 1500);
 
     } catch (err) {
       console.error("Signup failed", err);
@@ -85,6 +90,21 @@ export default function Signup() {
         {error && (
           <div style={{ color: 'var(--error)', marginBottom: '1rem', textAlign: 'center', fontSize: '0.9rem' }}>
             {error}
+          </div>
+        )}
+
+        {success && (
+          <div style={{
+            color: '#10b981',
+            marginBottom: '1rem',
+            textAlign: 'center',
+            fontSize: '0.9rem',
+            padding: '0.75rem',
+            background: 'rgba(16, 185, 129, 0.1)',
+            border: '1px solid rgba(16, 185, 129, 0.2)',
+            borderRadius: 'var(--radius-sm)'
+          }}>
+            ✓ {success}
           </div>
         )}
 
@@ -142,20 +162,7 @@ export default function Signup() {
         <form onSubmit={handleSignup}>
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)' }}>
-              Username
-            </label>
-            <input
-              className="input-field"
-              placeholder="Choose a username"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              required
-            />
-          </div>
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)' }}>
-              Email <span style={{ color: 'var(--text-secondary)', fontWeight: '400', fontSize: '0.8rem' }}>(optional)</span>
+              Email
             </label>
             <input
               className="input-field"
@@ -163,6 +170,19 @@ export default function Signup() {
               placeholder="you@example.com"
               value={email}
               onChange={e => setEmail(e.target.value)}
+              required
+            />
+          </div>
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+              Username <span style={{ color: 'var(--text-secondary)', fontWeight: '400', fontSize: '0.8rem' }}>(optional — defaults to email)</span>
+            </label>
+            <input
+              className="input-field"
+              placeholder="Choose a display name"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
             />
           </div>
 
@@ -200,7 +220,7 @@ export default function Signup() {
             type="submit"
             className="btn-primary"
             style={{ width: '100%' }}
-            disabled={loading}
+            disabled={loading || !!success}
           >
             {loading ? 'Creating Account...' : 'Sign Up'}
           </button>

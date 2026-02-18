@@ -177,38 +177,39 @@ def contact_form(request):
 @permission_classes([AllowAny])
 @ratelimit(key="ip", rate="5/h", block=True)  # Limit 5 signups per hour per IP
 def signup(request):
-    username = request.data.get('username')
+    email = request.data.get('email', '').strip().lower()
     password = request.data.get('password')
-    email = request.data.get('email', '').strip()
+    username = request.data.get('username', '').strip()
 
-    if not username or not password:
-        return Response({'error': 'Username and password are required'}, status=400)
+    if not email or not password:
+        return Response({'error': 'Email and password are required'}, status=400)
+
+    # Use email as username if username not provided
+    if not username:
+        username = email
 
     # Validate password strength
     password_error = validate_password_strength(password)
     if password_error:
         return Response({"error": password_error}, status=400)
 
-    if User.objects.filter(username=username).exists():
-        return Response({'error': 'Username already exists'}, status=400)
-
-    # Check email uniqueness if provided
-    if email and User.objects.filter(email=email).exists():
+    # Check email uniqueness (primary identifier)
+    if User.objects.filter(email=email).exists():
         return Response({'error': 'An account with this email already exists'}, status=400)
+
+    if User.objects.filter(username=username).exists():
+        return Response({'error': 'This username is already taken'}, status=400)
 
     user = User.objects.create_user(username=username, password=password, email=email)
 
-    # Send verification email if email provided
-    if email:
-        try:
-            uid, token = generate_verification_token(user)
-            send_verification_email(user, uid, token)
-            return Response({'message': 'Account created successfully. Please check your email to verify your account.'})
-        except Exception as e:
-            logger.error(f"[SIGNUP] Failed to send verification email: {e}")
-            return Response({'message': 'Account created successfully. Email verification could not be sent.'})
-
-    return Response({'message': 'Account created successfully'})
+    # Send verification email
+    try:
+        uid, token = generate_verification_token(user)
+        send_verification_email(user, uid, token)
+        return Response({'message': 'Account created! Please check your email to verify your account.'})
+    except Exception as e:
+        logger.error(f"[SIGNUP] Failed to send verification email: {e}")
+        return Response({'message': 'Account created. Email verification could not be sent — try resending from your dashboard.'})
 
 @csrf_exempt
 @api_view(['POST'])
