@@ -39,28 +39,11 @@ export default function Signup() {
       const res = await API.post(`/signup/`, {
         email,
         password,
-        username: username || undefined, // Optional — backend defaults to email
+        username: username || undefined,
       });
 
       setSuccess(res.data.message || 'Account created! Check your email to verify.');
-
-      // Auto-login after successful signup
-      setTimeout(async () => {
-        try {
-          const tokenRes = await API.post('/token/', {
-            username: username || email, // Login with username or email
-            password,
-          });
-
-          localStorage.setItem('access', tokenRes.data.access);
-          localStorage.setItem('refresh', tokenRes.data.refresh);
-          localStorage.setItem('user_email', email);
-          navigate('/app');
-        } catch (loginError) {
-          // If auto-login fails, redirect to login page
-          navigate('/login');
-        }
-      }, 1500);
+      // Don't auto-login — user must verify email first
 
     } catch (err) {
       console.error("Signup failed", err);
@@ -105,6 +88,15 @@ export default function Signup() {
             borderRadius: 'var(--radius-sm)'
           }}>
             ✓ {success}
+            <div style={{ marginTop: '0.75rem' }}>
+              <button
+                className="btn-primary"
+                style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem' }}
+                onClick={() => navigate('/login')}
+              >
+                Go to Login →
+              </button>
+            </div>
           </div>
         )}
 
