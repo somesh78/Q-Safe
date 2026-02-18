@@ -96,6 +96,12 @@ else:
     RATELIMIT_ENABLE = False  # Disable rate limiting in local development without Redis
 
 
+# Trust the X-Forwarded-Proto header from Nginx (HTTPS termination)
+# This makes Django aware it's behind HTTPS, so social-auth generates
+# https:// redirect URIs instead of http://
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+
 MIDDLEWARE = [
     'django_ratelimit.middleware.RatelimitMiddleware',
     'corsheaders.middleware.CorsMiddleware',
