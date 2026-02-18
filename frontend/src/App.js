@@ -23,6 +23,7 @@ import Contact from "./pages/Contact.jsx";
 import Privacy from "./pages/Privacy.jsx";
 import Terms from "./pages/Terms.jsx";
 import Compliance from "./pages/Compliance.jsx";
+import VerifyEmail from "./pages/VerifyEmail.jsx";
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/download/:token" element={<OnlineDownload />} />
+            <Route path="/verify-email/:uid/:token" element={<VerifyEmail />} />
 
             {/* Footer Pages - Product */}
             <Route path="/features" element={<Features />} />

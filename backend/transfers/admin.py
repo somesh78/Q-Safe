@@ -43,3 +43,10 @@ class ContactMessageAdmin(admin.ModelAdmin):
     search_fields = ('name', 'email', 'subject', 'message')
     readonly_fields = ('name', 'email', 'subject', 'message', 'type', 'created_at')
     list_editable = ('is_read',)
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'is_verified')
+    list_filter = ('is_verified',)
+    search_fields = ('user__username', 'user__email')
+    list_editable = ('is_verified',)

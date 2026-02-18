@@ -8,12 +8,19 @@ import '../App.css';
 
 export default function Dashboard() {
   const [files, setFiles] = useState([]);
+  const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     API.get('/dashboard/').then(res => {
-      setFiles(res.data);
+      // Handle both new format {files, user} and legacy flat array
+      if (Array.isArray(res.data)) {
+        setFiles(res.data);
+      } else {
+        setFiles(res.data.files || []);
+        setUserInfo(res.data.user || null);
+      }
       setLoading(false);
     }).catch(err => {
       console.error("Failed to fetch user files:", err);
@@ -40,29 +47,98 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Verification Banner */}
+        {userInfo && !userInfo.is_verified && userInfo.email && (
+          <div style={{
+            width: '100%',
+            padding: '1rem 1.25rem',
+            background: 'rgba(255, 167, 38, 0.1)',
+            border: '1px solid rgba(255, 167, 38, 0.3)',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.75rem'
+          }}>
+            <span style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+              ⚠️ Your email <strong>{userInfo.email}</strong> is not verified yet.
+            </span>
+            <button
+              onClick={async () => {
+                try {
+                  await API.post('/resend-verification/', { email: userInfo.email });
+                  alert('Verification email sent! Check your inbox.');
+                } catch {
+                  alert('Could not send verification email. Try again later.');
+                }
+              }}
+              style={{
+                padding: '0.4rem 1rem',
+                background: 'rgba(255, 167, 38, 0.2)',
+                border: '1px solid rgba(255, 167, 38, 0.4)',
+                borderRadius: 'var(--radius-sm)',
+                color: '#ffa726',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: '600'
+              }}
+            >
+              Resend Email
+            </button>
+          </div>
+        )}
+
+        {userInfo && userInfo.is_verified && (
+          <div style={{
+            width: '100%',
+            padding: '0.5rem 1rem',
+            marginBottom: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            <span style={{
+              padding: '0.2rem 0.6rem',
+              background: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              borderRadius: '20px',
+              color: '#10b981',
+              fontSize: '0.8rem',
+              fontWeight: '600'
+            }}>
+              ✓ Verified
+            </span>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+              {userInfo.email}
+            </span>
+          </div>
+        )}
+
         {/* Statistics Cards */}
         {!loading && files.length > 0 && (
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-            gap: '1rem', 
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem',
             marginBottom: '2rem',
             width: '100%'
           }}>
-            <div style={{ 
-              padding: '1.25rem', 
-              background: 'var(--bg-card)', 
-              border: '1px solid var(--border-color)', 
+            <div style={{
+              padding: '1.25rem',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
               borderRadius: 'var(--radius-md)',
               backdropFilter: 'blur(20px)'
             }}>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Total Files</div>
               <div style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-primary)' }}>{files.length}</div>
             </div>
-            <div style={{ 
-              padding: '1.25rem', 
-              background: 'var(--bg-card)', 
-              border: '1px solid var(--border-color)', 
+            <div style={{
+              padding: '1.25rem',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
               borderRadius: 'var(--radius-md)',
               backdropFilter: 'blur(20px)'
             }}>
@@ -71,10 +147,10 @@ export default function Dashboard() {
                 {files.filter(f => f.downloads < 3).length}
               </div>
             </div>
-            <div style={{ 
-              padding: '1.25rem', 
-              background: 'var(--bg-card)', 
-              border: '1px solid var(--border-color)', 
+            <div style={{
+              padding: '1.25rem',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
               borderRadius: 'var(--radius-md)',
               backdropFilter: 'blur(20px)'
             }}>
@@ -141,10 +217,10 @@ export default function Dashboard() {
                 </div>
 
                 {f.downloads < 3 && (
-                  <div style={{ 
-                    marginTop: '1rem', 
-                    padding: '0.75rem', 
-                    background: 'rgba(16, 185, 129, 0.1)', 
+                  <div style={{
+                    marginTop: '1rem',
+                    padding: '0.75rem',
+                    background: 'rgba(16, 185, 129, 0.1)',
                     borderRadius: 'var(--radius-sm)',
                     border: '1px solid rgba(16, 185, 129, 0.2)',
                     fontSize: '0.85rem',

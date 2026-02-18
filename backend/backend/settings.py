@@ -352,3 +352,20 @@ LOGGING = {
 # Files larger than 5MB are streamed to disk, preventing memory exhaustion
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB - larger files written to disk (saves RAM)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 55 * 1024 * 1024  # 55MB - maximum request body size
+
+# ── Email Configuration ──
+# Use Gmail SMTP in production, console backend in development
+EMAIL_BACKEND = config(
+    'EMAIL_BACKEND',
+    default='django.core.mail.backends.console.EmailBackend'  # Prints to console in dev
+)
+
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+
+# ⚠️ NEVER hardcode these — always use environment variables
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Q-Safe <noreply@q-safe.live>')

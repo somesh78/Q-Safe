@@ -9,7 +9,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.utils import OperationalError
 
 from transfers.serializers import DownloadAuditSerializer
-from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile, OfflineJob, ContactMessage
+from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile, OfflineJob, ContactMessage, UserProfile
+from .email_utils import generate_verification_token, send_verification_email
 from .services.encryption import encrypt_file, decrypt_file
 from .services.qr_generator import generate_qr, generate_qr_url
 from .services.chunking import chunk_bytes
@@ -196,6 +197,17 @@ def signup(request):
         return Response({'error': 'An account with this email already exists'}, status=400)
 
     user = User.objects.create_user(username=username, password=password, email=email)
+
+    # Send verification email if email provided
+    if email:
+        try:
+            uid, token = generate_verification_token(user)
+            send_verification_email(user, uid, token)
+            return Response({'message': 'Account created successfully. Please check your email to verify your account.'})
+        except Exception as e:
+            logger.error(f"[SIGNUP] Failed to send verification email: {e}")
+            return Response({'message': 'Account created successfully. Email verification could not be sent.'})
+
     return Response({'message': 'Account created successfully'})
 
 @csrf_exempt
@@ -209,6 +221,57 @@ def logout(request):
         return Response({"message": "Logged out successfully"})
     except Exception as e:
         return Response({"error": str(e)}, status=400)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def verify_email(request, uid, token):
+    """Verify a user's email address using the token from the verification email."""
+    from django.utils.http import urlsafe_base64_decode
+    from django.contrib.auth.tokens import default_token_generator
+
+    try:
+        user_id = urlsafe_base64_decode(uid).decode()
+        user = User.objects.get(pk=user_id)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        return Response({'error': 'Invalid verification link'}, status=400)
+
+    if not default_token_generator.check_token(user, token):
+        return Response({'error': 'Verification link has expired or is invalid'}, status=400)
+
+    # Mark user as verified
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    profile.is_verified = True
+    profile.save()
+
+    logger.info(f"[VERIFY] User {user.username} email verified successfully")
+    return Response({'message': 'Email verified successfully! You can now log in.'})
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@ratelimit(key="ip", rate="5/h", block=True)
+def resend_verification(request):
+    """Resend verification email for users who haven't verified yet."""
+    email = request.data.get('email', '').strip()
+
+    if not email:
+        return Response({'error': 'Email is required'}, status=400)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        # Don't reveal if email exists
+        return Response({'message': 'If an account with that email exists, a verification email has been sent.'})
+
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    if profile.is_verified:
+        return Response({'message': 'This email is already verified.'})
+
+    uid, token = generate_verification_token(user)
+    send_verification_email(user, uid, token)
+
+    return Response({'message': 'If an account with that email exists, a verification email has been sent.'})
 
 @csrf_exempt
 @api_view(['POST'])
@@ -692,7 +755,15 @@ def user_files(request):
             "created_at": f.uploaded_at,
         })
 
-    return Response(result)
+    # Include user info
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    user_info = {
+        "username": request.user.username,
+        "email": request.user.email or '',
+        "is_verified": profile.is_verified,
+    }
+
+    return Response({"files": result, "user": user_info})
 
 
 @api_view(['GET'])

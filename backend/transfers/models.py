@@ -122,3 +122,26 @@ class ContactMessage(models.Model):
 
     def __str__(self):
         return f"[{self.type}] {self.subject} — {self.name}"
+
+
+class UserProfile(models.Model):
+    """Extension of Django's built-in User model.
+    Using OneToOne instead of custom User model to avoid
+    breaking existing migrations and data.
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    is_verified = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.user.username} — {'Verified' if self.is_verified else 'Unverified'}"
+
+
+# Auto-create UserProfile when a new User is created
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.get_or_create(user=instance)
+

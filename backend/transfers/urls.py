@@ -14,4 +14,6 @@ urlpatterns = [
     path('job-download/<uuid:job_id>/', job_download),
     path('blog/', blog_posts),
     path('contact/', contact_form),
+    path('verify-email/<str:uid>/<str:token>/', verify_email),
+    path('resend-verification/', resend_verification),
 ]
