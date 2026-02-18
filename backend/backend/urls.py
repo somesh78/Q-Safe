@@ -64,10 +64,17 @@ def google_auth_callback(request):
     the React frontend with tokens in the URL query params.
     """
     user = request.user
-    frontend_url = config('FRONTEND_URL', default='https://q-safe-frontend.onrender.com')
+    frontend_url = config('FRONTEND_URL', default='https://q-safe.live')
 
     if not user.is_authenticated:
         return HttpResponseRedirect(f'{frontend_url}/login?error=auth_failed')
+
+    # Auto-verify Google OAuth users (Google already verified their email)
+    from transfers.models import UserProfile
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    if not profile.is_verified:
+        profile.is_verified = True
+        profile.save()
 
     # Issue JWT tokens
     refresh = RefreshToken.for_user(user)
