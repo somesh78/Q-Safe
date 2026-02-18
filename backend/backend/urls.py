@@ -1,25 +1,16 @@
 """
 URL configuration for backend project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.generic import TemplateView
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.tokens import RefreshToken
+from decouple import config
+from urllib.parse import urlencode
 import os
+
 
 def health_check(request):
     """Health check endpoint for Docker/EC2"""
@@ -28,6 +19,32 @@ def health_check(request):
         'service': 'Q-Safe API',
         'redis': os.environ.get('REDIS_URL', 'not configured')
     })
+
+
+def google_auth_callback(request):
+    """
+    After Google OAuth completes, social-auth logs the user in via
+    Django sessions. This view issues JWT tokens and redirects to
+    the React frontend with tokens in the URL query params.
+    """
+    user = request.user
+    frontend_url = config('FRONTEND_URL', default='https://q-safe-frontend.onrender.com')
+
+    if not user.is_authenticated:
+        return HttpResponseRedirect(f'{frontend_url}/login?error=auth_failed')
+
+    # Issue JWT tokens
+    refresh = RefreshToken.for_user(user)
+
+    params = urlencode({
+        'access': str(refresh.access_token),
+        'refresh': str(refresh),
+        'email': user.email or '',
+        'name': user.get_full_name() or user.username,
+    })
+
+    return HttpResponseRedirect(f'{frontend_url}/login?{params}')
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -38,6 +55,10 @@ urlpatterns = [
     # JWT Authentication
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    # Google OAuth2
+    path('api/auth/', include('social_django.urls', namespace='social')),
+    path('api/auth/google/callback/', google_auth_callback, name='google_auth_callback'),
 
     # API endpoints
     path('api/', include('transfers.urls')),

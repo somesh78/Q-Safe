@@ -18,3 +18,4 @@ supabase==2.7.4
 httpx==0.27.0
 celery==5.3.6
 redis==5.0.1
+social-auth-app-django

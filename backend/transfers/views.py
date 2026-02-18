@@ -178,6 +178,7 @@ def contact_form(request):
 def signup(request):
     username = request.data.get('username')
     password = request.data.get('password')
+    email = request.data.get('email', '').strip()
 
     if not username or not password:
         return Response({'error': 'Username and password are required'}, status=400)
@@ -190,7 +191,11 @@ def signup(request):
     if User.objects.filter(username=username).exists():
         return Response({'error': 'Username already exists'}, status=400)
 
-    user = User.objects.create_user(username=username, password=password)
+    # Check email uniqueness if provided
+    if email and User.objects.filter(email=email).exists():
+        return Response({'error': 'An account with this email already exists'}, status=400)
+
+    user = User.objects.create_user(username=username, password=password, email=email)
     return Response({'message': 'Account created successfully'})
 
 @csrf_exempt
