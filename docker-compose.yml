@@ -23,6 +23,7 @@ services:
     volumes:
       - ./backend/logs:/app/logs
       - ./backend/storage:/app/storage
+      - ./backend/data:/app/data
     environment:
       - DEBUG=False
       - SECRET_KEY=${SECRET_KEY}
