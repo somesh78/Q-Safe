@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import API from '../services/api.js';
+import axios from 'axios';
 import ThemeToggle from '../components/ThemeToggle';
 import '../App.css';
 
@@ -13,7 +13,9 @@ export default function VerifyEmail() {
     useEffect(() => {
         const verify = async () => {
             try {
-                const res = await API.get(`/verify-email/${uid}/${token}/`);
+                // Use raw axios — no auth headers needed for public endpoint
+                const baseURL = process.env.REACT_APP_API_URL;
+                const res = await axios.get(`${baseURL}/verify-email/${uid}/${token}/`);
                 setStatus('success');
                 setMessage(res.data.message || 'Email verified successfully!');
             } catch (err) {
