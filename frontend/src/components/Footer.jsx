@@ -77,44 +77,13 @@ export default function Footer() {
             }}>
               Military-grade file encryption and secure transfer for professionals.
             </p>
-            <div style={{
-              display: 'flex',
-              gap: '15px'
+            <p style={{
+              color: '#666',
+              fontSize: '0.85rem',
+              margin: 0
             }}>
-              {['T', 'G', 'L'].map((social, index) => (
-                <button
-                  key={index}
-                  onClick={() => {/* Social link handler */}}
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '50%',
-                    background: '#0a0a0a',
-                    border: '1px solid #222',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#888',
-                    fontSize: '0.8rem',
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#00d4ff';
-                    e.currentTarget.style.color = '#00d4ff';
-                    e.currentTarget.style.background = 'rgba(0, 212, 255, 0.1)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#222';
-                    e.currentTarget.style.color = '#888';
-                    e.currentTarget.style.background = '#0a0a0a';
-                  }}
-                  title={index === 0 ? 'Twitter' : index === 1 ? 'GitHub' : 'LinkedIn'}
-                >
-                  {social}
-                </button>
-              ))}
-            </div>
+              Secure file sharing for everyone.
+            </p>
           </div>
 
           {/* Footer Links */}
@@ -195,7 +164,7 @@ export default function Footer() {
               color: '#666',
               fontSize: '0.85rem'
             }}>
-              🛡️ GDPR Compliant
+              🛡️ Privacy Focused
             </span>
           </div>
         </div>

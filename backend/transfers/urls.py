@@ -12,4 +12,6 @@ urlpatterns = [
     path('dashboard/', user_files),
     path('job-status/<uuid:job_id>/', job_status),
     path('job-download/<uuid:job_id>/', job_download),
+    path('blog/', blog_posts),
+    path('contact/', contact_form),
 ]

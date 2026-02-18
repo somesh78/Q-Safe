@@ -64,36 +64,29 @@ export default function Contact() {
       description: 'Report security vulnerabilities',
       contact: 'security@q-safe.live',
       action: 'mailto:security@q-safe.live'
-    },
-    {
-      icon: '📞',
-      title: 'Phone Support',
-      description: 'Enterprise customers only',
-      contact: '+1 (555) 123-4567',
-      action: 'tel:+15551234567'
     }
   ];
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #060606, #0a0a0a)' }}>
       <Header />
-      
+
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 20px' }}>
         {/* Hero Section */}
         <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-          <h1 style={{ 
-            fontSize: '3rem', 
-            fontWeight: '700', 
+          <h1 style={{
+            fontSize: '3rem',
+            fontWeight: '700',
             color: '#fff',
             marginBottom: '20px',
             fontFamily: "'Plus Jakarta Sans', sans-serif"
           }}>
             Get in Touch
           </h1>
-          <p style={{ 
-            fontSize: '1.25rem', 
-            color: '#888', 
-            maxWidth: '700px', 
+          <p style={{
+            fontSize: '1.25rem',
+            color: '#888',
+            maxWidth: '700px',
             margin: '0 auto',
             lineHeight: '1.6'
           }}>
@@ -102,8 +95,8 @@ export default function Contact() {
         </div>
 
         {/* Contact Methods */}
-        <div style={{ 
-          display: 'grid', 
+        <div style={{
+          display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
           gap: '25px',
           marginBottom: '80px'
@@ -119,34 +112,34 @@ export default function Contact() {
               transition: 'all 0.3s ease',
               display: 'block'
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#00d4ff';
-              e.currentTarget.style.transform = 'translateY(-5px)';
-              e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 212, 255, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#222';
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}>
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#00d4ff';
+                e.currentTarget.style.transform = 'translateY(-5px)';
+                e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 212, 255, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#222';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}>
               <div style={{ fontSize: '2.5rem', marginBottom: '15px' }}>{method.icon}</div>
-              <h3 style={{ 
-                fontSize: '1.25rem', 
-                fontWeight: '600', 
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: '600',
                 color: '#00d4ff',
                 marginBottom: '10px'
               }}>
                 {method.title}
               </h3>
-              <p style={{ 
-                fontSize: '0.9rem', 
-                color: '#888', 
+              <p style={{
+                fontSize: '0.9rem',
+                color: '#888',
                 marginBottom: '15px'
               }}>
                 {method.description}
               </p>
-              <p style={{ 
-                fontSize: '0.95rem', 
+              <p style={{
+                fontSize: '0.95rem',
                 color: '#ccc',
                 fontWeight: '500',
                 margin: 0
@@ -165,9 +158,9 @@ export default function Contact() {
             borderRadius: '16px',
             padding: '50px'
           }}>
-            <h2 style={{ 
-              fontSize: '2rem', 
-              fontWeight: '700', 
+            <h2 style={{
+              fontSize: '2rem',
+              fontWeight: '700',
               color: '#fff',
               marginBottom: '30px',
               textAlign: 'center'
@@ -177,16 +170,16 @@ export default function Contact() {
 
             <form onSubmit={handleSubmit}>
               <div style={{ marginBottom: '25px' }}>
-                <label style={{ 
-                  display: 'block', 
-                  color: '#ccc', 
+                <label style={{
+                  display: 'block',
+                  color: '#ccc',
                   marginBottom: '8px',
                   fontSize: '0.95rem',
                   fontWeight: '500'
                 }}>
                   Inquiry Type
                 </label>
-                <select 
+                <select
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
@@ -214,16 +207,16 @@ export default function Contact() {
               </div>
 
               <div style={{ marginBottom: '25px' }}>
-                <label style={{ 
-                  display: 'block', 
-                  color: '#ccc', 
+                <label style={{
+                  display: 'block',
+                  color: '#ccc',
                   marginBottom: '8px',
                   fontSize: '0.95rem',
                   fontWeight: '500'
                 }}>
                   Name *
                 </label>
-                <input 
+                <input
                   type="text"
                   name="name"
                   value={formData.name}
@@ -247,16 +240,16 @@ export default function Contact() {
               </div>
 
               <div style={{ marginBottom: '25px' }}>
-                <label style={{ 
-                  display: 'block', 
-                  color: '#ccc', 
+                <label style={{
+                  display: 'block',
+                  color: '#ccc',
                   marginBottom: '8px',
                   fontSize: '0.95rem',
                   fontWeight: '500'
                 }}>
                   Email *
                 </label>
-                <input 
+                <input
                   type="email"
                   name="email"
                   value={formData.email}
@@ -280,16 +273,16 @@ export default function Contact() {
               </div>
 
               <div style={{ marginBottom: '25px' }}>
-                <label style={{ 
-                  display: 'block', 
-                  color: '#ccc', 
+                <label style={{
+                  display: 'block',
+                  color: '#ccc',
                   marginBottom: '8px',
                   fontSize: '0.95rem',
                   fontWeight: '500'
                 }}>
                   Subject *
                 </label>
-                <input 
+                <input
                   type="text"
                   name="subject"
                   value={formData.subject}
@@ -313,16 +306,16 @@ export default function Contact() {
               </div>
 
               <div style={{ marginBottom: '30px' }}>
-                <label style={{ 
-                  display: 'block', 
-                  color: '#ccc', 
+                <label style={{
+                  display: 'block',
+                  color: '#ccc',
                   marginBottom: '8px',
                   fontSize: '0.95rem',
                   fontWeight: '500'
                 }}>
                   Message *
                 </label>
-                <textarea 
+                <textarea
                   name="message"
                   value={formData.message}
                   onChange={handleChange}
@@ -347,7 +340,7 @@ export default function Contact() {
                 />
               </div>
 
-              <button 
+              <button
                 type="submit"
                 disabled={submitting}
                 style={{
@@ -375,9 +368,9 @@ export default function Contact() {
               </button>
 
               {error && (
-                <p style={{ 
-                  marginTop: '15px', 
-                  textAlign: 'center', 
+                <p style={{
+                  marginTop: '15px',
+                  textAlign: 'center',
                   color: '#ff6b6b',
                   fontSize: '0.95rem'
                 }}>
@@ -386,9 +379,9 @@ export default function Contact() {
               )}
 
               {submitted && (
-                <p style={{ 
-                  marginTop: '20px', 
-                  textAlign: 'center', 
+                <p style={{
+                  marginTop: '20px',
+                  textAlign: 'center',
                   color: '#00d4ff',
                   fontSize: '0.95rem'
                 }}>
@@ -408,21 +401,21 @@ export default function Contact() {
           border: '1px solid #222',
           borderRadius: '12px'
         }}>
-          <h3 style={{ 
-            fontSize: '1.5rem', 
-            fontWeight: '600', 
+          <h3 style={{
+            fontSize: '1.5rem',
+            fontWeight: '600',
             color: '#00d4ff',
             marginBottom: '15px'
           }}>
             📬 Average Response Time
           </h3>
-          <p style={{ 
-            fontSize: '1.1rem', 
+          <p style={{
+            fontSize: '1.1rem',
             color: '#ccc',
             margin: 0
           }}>
-            General Inquiries: <strong style={{ color: '#fff' }}>24 hours</strong> • 
-            Support Tickets: <strong style={{ color: '#fff' }}>4-8 hours</strong> • 
+            General Inquiries: <strong style={{ color: '#fff' }}>24 hours</strong> •
+            Support Tickets: <strong style={{ color: '#fff' }}>4-8 hours</strong> •
             Security Issues: <strong style={{ color: '#fff' }}>Immediate</strong>
           </p>
         </div>

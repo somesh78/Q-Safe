@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.utils import OperationalError
 
 from transfers.serializers import DownloadAuditSerializer
-from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile, OfflineJob
+from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile, OfflineJob, ContactMessage
 from .services.encryption import encrypt_file, decrypt_file
 from .services.qr_generator import generate_qr, generate_qr_url
 from .services.chunking import chunk_bytes
@@ -62,6 +62,114 @@ def log_audit(file, ip, request, status, reason=None):
         status=status,
         reason=reason
     )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def blog_posts(request):
+    """Public marketing blog feed for the frontend."""
+    posts = [
+        {
+            "slug": "end-to-end-encryption-explained",
+            "title": "Understanding End-to-End Encryption",
+            "excerpt": "How E2EE protects files from device to recipient and what to watch for when evaluating vendors.",
+            "content": "End-to-end encryption keeps data encrypted from the moment it leaves your device until it is decrypted by the intended recipient. In this guide we cover key exchange, forward secrecy, and why QR-based offline exchange matters for zero-trust file sharing.",
+            "date": "February 10, 2026",
+            "category": "Security",
+            "read_time": "5 min read",
+            "tags": ["E2EE", "Zero Trust", "Key Management"],
+            "image": "🔒"
+        },
+        {
+            "slug": "secure-file-sharing-checklist",
+            "title": "Best Practices for Secure File Sharing",
+            "excerpt": "A step-by-step checklist for teams sharing sensitive files internally or with vendors.",
+            "content": "From access scoping and password policies to IP allowlists and download caps, this checklist shows how to ship files safely without slowing collaboration. Includes a ready-to-use runbook for incident response.",
+            "date": "February 5, 2026",
+            "category": "Guides",
+            "read_time": "7 min read",
+            "tags": ["Runbook", "Governance", "IP Lock"],
+            "image": "📁"
+        },
+        {
+            "slug": "offline-qr-mode",
+            "title": "Introducing Offline QR Mode",
+            "excerpt": "Exchange files in air-gapped environments using rotating QR frames—no internet required.",
+            "content": "Offline QR mode slices your payload into encrypted frames, rotates QR codes, and reconstructs the file on the receiving device. Ideal for classified networks and lab environments. We cover performance limits, retry logic, and checksum validation.",
+            "date": "January 28, 2026",
+            "category": "Features",
+            "read_time": "4 min read",
+            "tags": ["Air-gapped", "QR", "Offline"],
+            "image": "📱"
+        },
+        {
+            "slug": "gdpr-compliance-data-protection",
+            "title": "GDPR Compliance and Data Protection",
+            "excerpt": "How Q-Safe aligns with GDPR requirements for data minimization, access controls, and auditability.",
+            "content": "We detail our data retention defaults, encryption controls, subprocessor posture, and how customers can fulfill data subject requests using audit exports. Mapped to Articles 5, 25, and 32 with practical guidance.",
+            "date": "January 20, 2026",
+            "category": "Compliance",
+            "read_time": "6 min read",
+            "tags": ["GDPR", "Audit", "Retention"],
+            "image": "⚖️"
+        },
+        {
+            "slug": "aes-256-encryption",
+            "title": "AES-256 Encryption Explained",
+            "excerpt": "A concise primer on AES-256, modes of operation, and why we pair it with strong key derivation.",
+            "content": "AES-256 provides confidentiality when paired with secure key handling. We discuss GCM vs CBC, IV reuse pitfalls, and why we enforce PBKDF2+HMAC with high iteration counts for user-supplied passwords.",
+            "date": "January 12, 2026",
+            "category": "Technology",
+            "read_time": "8 min read",
+            "tags": ["AES-256", "KDF", "Crypto"],
+            "image": "🛡️"
+        },
+        {
+            "slug": "remote-work-file-transfers",
+            "title": "Securing Remote Work File Transfers",
+            "excerpt": "Patterns for distributed teams to ship sensitive files without VPN bottlenecks.",
+            "content": "Covers device posture checks, short-lived download links, IP locking per session, and automated expiry. Includes a template for vendor onboarding and offboarding.",
+            "date": "January 3, 2026",
+            "category": "Enterprise",
+            "read_time": "5 min read",
+            "tags": ["Remote Work", "Zero Trust", "Policy"],
+            "image": "💼"
+        },
+    ]
+    return Response(posts)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@ratelimit(key="ip", rate="10/h", block=True)
+def contact_form(request):
+    """Accept contact form submissions and store in database."""
+    name = request.data.get('name', '').strip()
+    email = request.data.get('email', '').strip()
+    subject = request.data.get('subject', '').strip()
+    message = request.data.get('message', '').strip()
+    msg_type = request.data.get('type', 'general').strip()
+
+    # Validate required fields
+    if not name or not email or not subject or not message:
+        return Response({'error': 'All fields are required'}, status=400)
+
+    if len(message) < 10:
+        return Response({'error': 'Message must be at least 10 characters'}, status=400)
+
+    if msg_type not in dict(ContactMessage.TYPE_CHOICES):
+        msg_type = 'general'
+
+    ContactMessage.objects.create(
+        name=name,
+        email=email,
+        subject=subject,
+        message=message,
+        type=msg_type,
+    )
+
+    logger.info(f"[CONTACT] New message from {name} ({email}): {subject}")
+    return Response({'message': 'Your message has been received. We will get back to you soon.'}, status=201)
 
 
 @api_view(['POST'])
@@ -442,14 +550,13 @@ def download_online_file(request, signed_token):
     password = request.data.get("password")
     ip = request.META.get("REMOTE_ADDR")
 
-    # Debug logging
+    # Debug logging (never log passwords or full request data)
     logger.info(f"[DOWNLOAD] Received request - Token: {signed_token[:20]}...")
     logger.info(f"[DOWNLOAD] Password received: {bool(password)}")
-    logger.info(f"[DOWNLOAD] Request data: {request.data}")
 
     try:
-        # Match the expiry time with OnlineEncryptedFile.expires_at (1 hour)
-        token = signer.unsign(signed_token, max_age=3600)
+        # Allow tokens up to 24 hours (matches the maximum user-configurable expiry)
+        token = signer.unsign(signed_token, max_age=86400)
         logger.info(f"[DOWNLOAD] Token unsigned successfully: {token}")
     except SignatureExpired:
         logger.warning(f"[DOWNLOAD] Token expired: {signed_token}")

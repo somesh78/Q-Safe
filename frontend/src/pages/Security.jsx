@@ -40,7 +40,7 @@ export default function Security() {
   const protectionLayers = [
     {
       layer: 'Transport Security',
-      items: ['TLS 1.3 encryption', 'Certificate pinning', 'HSTS enforcement', 'Secure WebSocket connections']
+      items: ['TLS encryption in transit', 'HTTPS enforced via load balancer', 'Secure API endpoints', 'CORS origin restrictions']
     },
     {
       layer: 'Application Security',
@@ -59,23 +59,23 @@ export default function Security() {
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #060606, #0a0a0a)' }}>
       <Header />
-      
+
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 20px' }}>
         {/* Hero Section */}
         <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-          <h1 style={{ 
-            fontSize: '3rem', 
-            fontWeight: '700', 
+          <h1 style={{
+            fontSize: '3rem',
+            fontWeight: '700',
             color: '#fff',
             marginBottom: '20px',
             fontFamily: "'Plus Jakarta Sans', sans-serif"
           }}>
             Security First, Always
           </h1>
-          <p style={{ 
-            fontSize: '1.25rem', 
-            color: '#888', 
-            maxWidth: '800px', 
+          <p style={{
+            fontSize: '1.25rem',
+            color: '#888',
+            maxWidth: '800px',
             margin: '0 auto',
             lineHeight: '1.6'
           }}>
@@ -84,8 +84,8 @@ export default function Security() {
         </div>
 
         {/* Main Security Features */}
-        <div style={{ 
-          display: 'grid', 
+        <div style={{
+          display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
           gap: '30px',
           marginBottom: '80px'
@@ -98,28 +98,28 @@ export default function Security() {
               padding: '30px',
               transition: 'all 0.3s ease'
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#00d4ff';
-              e.currentTarget.style.transform = 'translateY(-5px)';
-              e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 212, 255, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#222';
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}>
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#00d4ff';
+                e.currentTarget.style.transform = 'translateY(-5px)';
+                e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 212, 255, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#222';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}>
               <div style={{ fontSize: '2.5rem', marginBottom: '15px' }}>{feature.icon}</div>
-              <h3 style={{ 
-                fontSize: '1.25rem', 
-                fontWeight: '600', 
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: '600',
                 color: '#00d4ff',
                 marginBottom: '10px'
               }}>
                 {feature.title}
               </h3>
-              <p style={{ 
-                fontSize: '0.95rem', 
-                color: '#aaa', 
+              <p style={{
+                fontSize: '0.95rem',
+                color: '#aaa',
                 lineHeight: '1.6',
                 margin: 0
               }}>
@@ -131,18 +131,18 @@ export default function Security() {
 
         {/* Multi-Layer Protection */}
         <div style={{ marginBottom: '80px' }}>
-          <h2 style={{ 
-            fontSize: '2.5rem', 
-            fontWeight: '700', 
+          <h2 style={{
+            fontSize: '2.5rem',
+            fontWeight: '700',
             color: '#fff',
             textAlign: 'center',
             marginBottom: '50px'
           }}>
             Multi-Layer Protection
           </h2>
-          
-          <div style={{ 
-            display: 'grid', 
+
+          <div style={{
+            display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
             gap: '25px'
           }}>
@@ -154,21 +154,21 @@ export default function Security() {
                 padding: '30px',
                 borderTop: '3px solid #00d4ff'
               }}>
-                <h3 style={{ 
-                  fontSize: '1.3rem', 
-                  fontWeight: '600', 
+                <h3 style={{
+                  fontSize: '1.3rem',
+                  fontWeight: '600',
                   color: '#00d4ff',
                   marginBottom: '20px'
                 }}>
                   {layer.layer}
                 </h3>
-                <ul style={{ 
-                  listStyle: 'none', 
-                  padding: 0, 
-                  margin: 0 
+                <ul style={{
+                  listStyle: 'none',
+                  padding: 0,
+                  margin: 0
                 }}>
                   {layer.items.map((item, idx) => (
-                    <li key={idx} style={{ 
+                    <li key={idx} style={{
                       padding: '10px 0',
                       color: '#ccc',
                       fontSize: '0.95rem',
@@ -194,23 +194,23 @@ export default function Security() {
           padding: '50px',
           marginBottom: '60px'
         }}>
-          <h2 style={{ 
-            fontSize: '2rem', 
-            fontWeight: '700', 
+          <h2 style={{
+            fontSize: '2rem',
+            fontWeight: '700',
             color: '#fff',
             textAlign: 'center',
             marginBottom: '30px'
           }}>
             Compliance & Standards
           </h2>
-          
-          <div style={{ 
-            display: 'grid', 
+
+          <div style={{
+            display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
             gap: '30px',
             textAlign: 'center'
           }}>
-            {['GDPR Compliant', 'ISO 27001', 'SOC 2 Type II', 'HIPAA Ready'].map((standard, index) => (
+            {['GDPR Aligned', 'E2E Encrypted', 'Zero Knowledge', 'Auto-Expiring Files'].map((standard, index) => (
               <div key={index}>
                 <div style={{
                   width: '80px',
@@ -225,9 +225,9 @@ export default function Security() {
                 }}>
                   ✓
                 </div>
-                <h4 style={{ 
-                  fontSize: '1.1rem', 
-                  fontWeight: '600', 
+                <h4 style={{
+                  fontSize: '1.1rem',
+                  fontWeight: '600',
                   color: '#00d4ff',
                   margin: 0
                 }}>
@@ -239,43 +239,43 @@ export default function Security() {
         </div>
 
         {/* Security Practices */}
-        <div style={{ 
+        <div style={{
           background: '#0a0a0a',
           border: '1px solid #222',
           borderRadius: '16px',
           padding: '50px',
           marginBottom: '60px'
         }}>
-          <h2 style={{ 
-            fontSize: '2rem', 
-            fontWeight: '700', 
+          <h2 style={{
+            fontSize: '2rem',
+            fontWeight: '700',
             color: '#fff',
             marginBottom: '30px'
           }}>
             Our Security Practices
           </h2>
-          
-          <div style={{ 
-            display: 'grid', 
+
+          <div style={{
+            display: 'grid',
             gap: '20px',
             fontSize: '1rem',
             color: '#ccc',
             lineHeight: '1.8'
           }}>
             <p style={{ margin: 0 }}>
-              <strong style={{ color: '#00d4ff' }}>Regular Security Audits:</strong> Our infrastructure undergoes regular third-party security audits and penetration testing to identify and fix vulnerabilities proactively.
+              <strong style={{ color: '#00d4ff' }}>Security-First Design:</strong> Our architecture follows OWASP best practices with rate limiting, input validation, and least-privilege access controls.
             </p>
             <p style={{ margin: 0 }}>
-              <strong style={{ color: '#00d4ff' }}>Automated Monitoring:</strong> 24/7 automated monitoring detects suspicious activity, failed login attempts, and potential security threats in real-time.
+              <strong style={{ color: '#00d4ff' }}>Audit Logging:</strong> All file access attempts, including failed downloads and IP mismatches, are recorded in tamper-evident audit logs.
             </p>
             <p style={{ margin: 0 }}>
-              <strong style={{ color: '#00d4ff' }}>Incident Response:</strong> We maintain a comprehensive incident response plan and security team ready to respond to any security events immediately.
+              <strong style={{ color: '#00d4ff' }}>Automatic Expiry:</strong> Files are automatically deleted after configurable time windows or download limits are reached, minimizing data exposure.
             </p>
             <p style={{ margin: 0 }}>
-              <strong style={{ color: '#00d4ff' }}>Data Isolation:</strong> Each user's data is isolated and encrypted with unique keys. One user's compromise cannot affect another user's data.
+              <strong style={{ color: '#00d4ff' }}>Zero-Knowledge Storage:</strong> Files are encrypted client-side before upload. We never see your plaintext data or encryption passwords.
             </p>
             <p style={{ margin: 0 }}>
-              <strong style={{ color: '#00d4ff' }}>Secure Development:</strong> Our code follows OWASP security guidelines, undergoes code review, and is scanned for vulnerabilities before deployment.
+              <strong style={{ color: '#00d4ff' }}>Brute-Force Protection:</strong> Failed password attempts are tracked per file. After 5 failures, the download link is temporarily locked for 10 minutes.
             </p>
           </div>
         </div>
@@ -287,16 +287,16 @@ export default function Security() {
           background: 'linear-gradient(135deg, #00d4ff, #0099cc)',
           borderRadius: '16px'
         }}>
-          <h2 style={{ 
-            fontSize: '2rem', 
-            fontWeight: '700', 
+          <h2 style={{
+            fontSize: '2rem',
+            fontWeight: '700',
             color: '#fff',
             marginBottom: '20px'
           }}>
             Have Security Questions?
           </h2>
-          <p style={{ 
-            fontSize: '1.1rem', 
+          <p style={{
+            fontSize: '1.1rem',
             color: '#f0f0f0',
             marginBottom: '30px',
             maxWidth: '600px',
@@ -316,16 +316,16 @@ export default function Security() {
             transition: 'all 0.3s ease',
             border: '2px solid #060606'
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#fff';
-            e.currentTarget.style.color = '#060606';
-            e.currentTarget.style.transform = 'translateY(-3px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#060606';
-            e.currentTarget.style.color = '#00d4ff';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}>
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#fff';
+              e.currentTarget.style.color = '#060606';
+              e.currentTarget.style.transform = 'translateY(-3px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#060606';
+              e.currentTarget.style.color = '#00d4ff';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}>
             Contact Security Team
           </Link>
         </div>

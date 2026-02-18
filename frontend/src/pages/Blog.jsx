@@ -1,103 +1,62 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { fetchBlogPosts } from '../services/api';
 
 export default function Blog() {
-  // Real posts (replace with API data when backend is ready)
-  const blogPosts = [
-    {
-      slug: 'end-to-end-encryption-explained',
-      title: 'Understanding End-to-End Encryption',
-      excerpt: 'How E2EE protects files from device to recipient and what to watch for when evaluating vendors.',
-      content:
-        'End-to-end encryption keeps data encrypted from the moment it leaves your device until it is decrypted by the intended recipient. In this guide we cover key exchange, forward secrecy, and why QR-based offline exchange matters for zero-trust file sharing.',
-      date: 'February 10, 2026',
-      category: 'Security',
-      readTime: '5 min read',
-      tags: ['E2EE', 'Zero Trust', 'Key Management'],
-      image: '🔒'
-    },
-    {
-      slug: 'secure-file-sharing-checklist',
-      title: 'Best Practices for Secure File Sharing',
-      excerpt: 'A step-by-step checklist for teams sharing sensitive files internally or with vendors.',
-      content:
-        'From access scoping and password policies to IP allowlists and download caps, this checklist shows how to ship files safely without slowing collaboration. Includes a ready-to-use runbook for incident response.',
-      date: 'February 5, 2026',
-      category: 'Guides',
-      readTime: '7 min read',
-      tags: ['Runbook', 'Governance', 'IP Lock'],
-      image: '📁'
-    },
-    {
-      slug: 'offline-qr-mode',
-      title: 'Introducing Offline QR Mode',
-      excerpt: 'Exchange files in air-gapped environments using rotating QR frames—no internet required.',
-      content:
-        'Offline QR mode slices your payload into encrypted frames, rotates QR codes, and reconstructs the file on the receiving device. Ideal for classified networks and lab environments. We cover performance limits, retry logic, and checksum validation.',
-      date: 'January 28, 2026',
-      category: 'Features',
-      readTime: '4 min read',
-      tags: ['Air-gapped', 'QR', 'Offline'],
-      image: '📱'
-    },
-    {
-      slug: 'gdpr-compliance-data-protection',
-      title: 'GDPR Compliance and Data Protection',
-      excerpt: 'How Q-Safe aligns with GDPR requirements for data minimization, access controls, and auditability.',
-      content:
-        'We detail our data retention defaults, encryption controls, subprocessor posture, and how customers can fulfill data subject requests using audit exports. Mapped to Articles 5, 25, and 32 with practical guidance.',
-      date: 'January 20, 2026',
-      category: 'Compliance',
-      readTime: '6 min read',
-      tags: ['GDPR', 'Audit', 'Retention'],
-      image: '⚖️'
-    },
-    {
-      slug: 'aes-256-encryption',
-      title: 'AES-256 Encryption Explained',
-      excerpt: 'A concise primer on AES-256, modes of operation, and why we pair it with strong key derivation.',
-      content:
-        'AES-256 provides confidentiality when paired with secure key handling. We discuss GCM vs CBC, IV reuse pitfalls, and why we enforce PBKDF2+HMAC with high iteration counts for user-supplied passwords.',
-      date: 'January 12, 2026',
-      category: 'Technology',
-      readTime: '8 min read',
-      tags: ['AES-256', 'KDF', 'Crypto'],
-      image: '🛡️'
-    },
-    {
-      slug: 'remote-work-file-transfers',
-      title: 'Securing Remote Work File Transfers',
-      excerpt: 'Patterns for distributed teams to ship sensitive files without VPN bottlenecks.',
-      content:
-        'Covers device posture checks, short-lived download links, IP locking per session, and automated expiry. Includes a template for vendor onboarding and offboarding.',
-      date: 'January 3, 2026',
-      category: 'Enterprise',
-      readTime: '5 min read',
-      tags: ['Remote Work', 'Zero Trust', 'Policy'],
-      image: '💼'
-    }
-  ];
-
+  const [posts, setPosts] = useState([]);
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedSlug, setExpandedSlug] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const loadPosts = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetchBlogPosts();
+      const data = Array.isArray(res.data) ? res.data : res.data?.results || [];
+      const normalized = data.map((item, idx) => ({
+        slug: item.slug || item.id?.toString() || `post-${idx}`,
+        title: item.title || 'Untitled',
+        excerpt:
+          item.excerpt || item.summary || item.content?.slice(0, 180) || 'No summary available.',
+        content: item.content || item.body || '',
+        date: item.date || item.published_at || item.created_at || '—',
+        category: item.category || 'General',
+        readTime:
+          item.readTime || item.read_time || (item.read_time_minutes ? `${item.read_time_minutes} min read` : 'Read'),
+        tags: item.tags || [],
+        image: item.image || '📝'
+      }));
+      setPosts(normalized);
+    } catch (err) {
+      setError('Unable to load blog posts right now. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPosts();
+  }, [loadPosts]);
 
   const categories = useMemo(
-    () => ['All', ...Array.from(new Set(blogPosts.map((post) => post.category)))],
-    []
+    () => ['All', ...Array.from(new Set(posts.map((post) => post.category)))],
+    [posts]
   );
 
   const filteredPosts = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    return blogPosts.filter((post) => {
+    return posts.filter((post) => {
       const matchesCategory = activeCategory === 'All' || post.category === activeCategory;
       if (!term) return matchesCategory;
       const haystack = `${post.title} ${post.excerpt} ${post.content} ${post.category} ${(post.tags || []).join(' ')}`.toLowerCase();
       return matchesCategory && haystack.includes(term);
     });
-  }, [activeCategory, searchTerm]);
+  }, [activeCategory, searchTerm, posts]);
 
   const pageSize = 6;
   const totalPages = Math.max(1, Math.ceil(filteredPosts.length / pageSize));
@@ -225,7 +184,74 @@ export default function Blog() {
         </div>
 
         {/* Posts Grid */}
-        {paginatedPosts.length === 0 ? (
+        {loading ? (
+          <div
+            style={{
+              background: '#0a0a0a',
+              border: '1px solid #222',
+              borderRadius: '12px',
+              padding: '40px',
+              textAlign: 'center',
+              color: '#ccc'
+            }}
+          >
+            <p style={{ margin: 0 }}>Loading posts...</p>
+          </div>
+        ) : error ? (
+          <div
+            style={{
+              background: '#0a0a0a',
+              border: '1px solid #332222',
+              borderRadius: '12px',
+              padding: '40px',
+              textAlign: 'center',
+              color: '#ff8f8f'
+            }}
+          >
+            <p style={{ marginBottom: '16px' }}>{error}</p>
+            <button
+              onClick={loadPosts}
+              style={{
+                padding: '10px 18px',
+                background: 'linear-gradient(135deg, #ff6b6b, #ff9f7f)',
+                color: '#0a0a0a',
+                border: 'none',
+                borderRadius: '10px',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        ) : posts.length === 0 ? (
+          <div
+            style={{
+              background: '#0a0a0a',
+              border: '1px solid #222',
+              borderRadius: '12px',
+              padding: '40px',
+              textAlign: 'center',
+              color: '#ccc'
+            }}
+          >
+            <p style={{ marginBottom: '16px' }}>No posts available yet. Check back soon.</p>
+            <button
+              onClick={loadPosts}
+              style={{
+                padding: '10px 18px',
+                background: 'linear-gradient(135deg, #00d4ff, #0099cc)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '10px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Refresh
+            </button>
+          </div>
+        ) : paginatedPosts.length === 0 ? (
           <div
             style={{
               background: '#0a0a0a',
@@ -409,47 +435,49 @@ export default function Blog() {
         )}
 
         {/* Pagination */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            marginBottom: '60px'
-          }}
-        >
-          <button
-            onClick={() => goToPage(currentPageSafe - 1)}
-            disabled={currentPageSafe <= 1}
+        {!loading && !error && posts.length > 0 && filteredPosts.length > 0 && (
+          <div
             style={{
-              padding: '10px 14px',
-              borderRadius: '10px',
-              border: '1px solid #222',
-              background: currentPageSafe <= 1 ? '#0b0b0b' : '#111',
-              color: '#fff',
-              cursor: currentPageSafe <= 1 ? 'not-allowed' : 'pointer'
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              marginBottom: '60px'
             }}
           >
-            Prev
-          </button>
-          <span style={{ color: '#ccc', fontWeight: '600' }}>
-            Page {currentPageSafe} of {totalPages}
-          </span>
-          <button
-            onClick={() => goToPage(currentPageSafe + 1)}
-            disabled={currentPageSafe >= totalPages}
-            style={{
-              padding: '10px 14px',
-              borderRadius: '10px',
-              border: '1px solid #222',
-              background: currentPageSafe >= totalPages ? '#0b0b0b' : '#111',
-              color: '#fff',
-              cursor: currentPageSafe >= totalPages ? 'not-allowed' : 'pointer'
-            }}
-          >
-            Next
-          </button>
-        </div>
+            <button
+              onClick={() => goToPage(currentPageSafe - 1)}
+              disabled={currentPageSafe <= 1}
+              style={{
+                padding: '10px 14px',
+                borderRadius: '10px',
+                border: '1px solid #222',
+                background: currentPageSafe <= 1 ? '#0b0b0b' : '#111',
+                color: '#fff',
+                cursor: currentPageSafe <= 1 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              Prev
+            </button>
+            <span style={{ color: '#ccc', fontWeight: '600' }}>
+              Page {currentPageSafe} of {totalPages}
+            </span>
+            <button
+              onClick={() => goToPage(currentPageSafe + 1)}
+              disabled={currentPageSafe >= totalPages}
+              style={{
+                padding: '10px 14px',
+                borderRadius: '10px',
+                border: '1px solid #222',
+                background: currentPageSafe >= totalPages ? '#0b0b0b' : '#111',
+                color: '#fff',
+                cursor: currentPageSafe >= totalPages ? 'not-allowed' : 'pointer'
+              }}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
       <Footer />
     </div>

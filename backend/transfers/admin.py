@@ -35,3 +35,11 @@ class DownloadAuditAdmin(admin.ModelAdmin):
     list_filter = ('status', 'timestamp')
     search_fields = ('ip_address', 'file__original_filename')
     readonly_fields = ('file', 'ip_address', 'status', 'reason', 'timestamp')
+
+@admin.register(ContactMessage)
+class ContactMessageAdmin(admin.ModelAdmin):
+    list_display = ('subject', 'name', 'email', 'type', 'is_read', 'created_at')
+    list_filter = ('type', 'is_read', 'created_at')
+    search_fields = ('name', 'email', 'subject', 'message')
+    readonly_fields = ('name', 'email', 'subject', 'message', 'type', 'created_at')
+    list_editable = ('is_read',)

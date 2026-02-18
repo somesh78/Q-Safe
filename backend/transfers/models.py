@@ -97,3 +97,28 @@ class OfflineJob(models.Model):
         if self.total_chunks == 0:
             return 0
         return int((self.processed_chunks / self.total_chunks) * 100)
+
+
+class ContactMessage(models.Model):
+    """Stores contact form submissions."""
+    TYPE_CHOICES = (
+        ('general', 'General Inquiry'),
+        ('support', 'Technical Support'),
+        ('sales', 'Sales & Pricing'),
+        ('security', 'Security Issue'),
+        ('feedback', 'Feedback'),
+    )
+
+    name = models.CharField(max_length=200)
+    email = models.EmailField()
+    subject = models.CharField(max_length=300)
+    message = models.TextField()
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='general')
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"[{self.type}] {self.subject} — {self.name}"
