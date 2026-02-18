@@ -2,14 +2,39 @@
 URL configuration for backend project.
 """
 from django.contrib import admin
+from django.contrib.auth.models import User
 from django.urls import path, include, re_path
 from django.views.generic import TemplateView
 from django.http import JsonResponse, HttpResponseRedirect
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework import serializers
 from decouple import config
 from urllib.parse import urlencode
 import os
+
+
+class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """Accept email as the login identifier instead of username."""
+    def validate(self, attrs):
+        # The frontend sends email in the 'username' field
+        login_input = attrs.get('username', '').strip()
+
+        # If it looks like an email, look up the actual username
+        if '@' in login_input:
+            try:
+                user = User.objects.get(email__iexact=login_input)
+                attrs['username'] = user.username
+            except User.DoesNotExist:
+                # Let it fail naturally with "No active account"
+                pass
+
+        return super().validate(attrs)
+
+
+class EmailTokenObtainPairView(TokenObtainPairView):
+    serializer_class = EmailTokenObtainPairSerializer
 
 
 def health_check(request):
@@ -53,7 +78,7 @@ urlpatterns = [
     path('api/health/', health_check, name='health_check'),
 
     # JWT Authentication
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/', EmailTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     # Google OAuth2
