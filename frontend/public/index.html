@@ -1,35 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#00d4ff" />
-    <meta
-      name="description"
-      content="Q-Safe - Military-grade file encryption and secure transfer. Share sensitive data with end-to-end encryption, self-destructing links, and air-gapped QR transfers."
-    />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
 
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
-    <title>Q-Safe | Secure File Transfer & Encryption</title>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-    <!--
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#00d4ff" />
+
+  <!-- Primary SEO -->
+  <title>Q-Safe | Secure File Sharing &amp; Encrypted QR Transfer</title>
+  <meta name="description"
+    content="Q-Safe lets you securely share files using military-grade encryption and QR codes. Fast, private, self-destructing links with air-gapped transfer support." />
+  <meta name="keywords"
+    content="secure file sharing, qr file transfer, encrypted qr code, q-safe, encrypted file sharing, secure file transfer, self-destructing links, air-gapped transfer" />
+  <meta name="author" content="Q-Safe" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://q-safe.live/" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://q-safe.live/" />
+  <meta property="og:title" content="Q-Safe – Secure File Sharing via Encrypted QR Codes" />
+  <meta property="og:description"
+    content="Share sensitive files with end-to-end encryption, self-destructing links, and air-gapped QR transfers. Military-grade security made simple." />
+  <meta property="og:site_name" content="Q-Safe" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Q-Safe – Secure File Sharing via Encrypted QR Codes" />
+  <meta name="twitter:description"
+    content="Share sensitive files with end-to-end encryption, self-destructing links, and air-gapped QR transfers." />
+
+  <!-- Preconnect for Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+  <!-- Structured Data (JSON-LD) for Google Rich Snippets -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Q-Safe",
+      "url": "https://q-safe.live",
+      "description": "Secure file sharing platform with military-grade encryption and QR code transfers",
+      "applicationCategory": "SecurityApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "email": "qsafe14@gmail.com",
+        "contactType": "customer support"
+      }
+    }
+    </script>
+</head>
+
+<body>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <div id="root"></div>
+  <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.
 
@@ -39,5 +75,6 @@
       To begin the development, run `npm start` or `yarn start`.
       To create a production bundle, use `npm run build` or `yarn build`.
     -->
-  </body>
+</body>
+
 </html>

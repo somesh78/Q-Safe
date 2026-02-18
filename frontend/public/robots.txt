@@ -1,3 +1,9 @@
-# https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /app
+Disallow: /dashboard
+Disallow: /audit
+Disallow: /reconstruct
+Disallow: /verify-email
+
+Sitemap: https://q-safe.live/sitemap.xml
