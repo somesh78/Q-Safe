@@ -4,17 +4,21 @@ import LogoutButton from "./LogoutButton";
 import ThemeToggle from "./ThemeToggle";
 import '../App.css';
 
-export default function Header({ showLogout = true, showDashboardBtn = false, showHomeBtn = false }) {
+export default function Header({ showLogout, showDashboardBtn = false, showHomeBtn = false }) {
     const navigate = useNavigate();
+    const isLoggedIn = !!localStorage.getItem('access');
+
+    // Auto-detect: show logout only if user is logged in (unless explicitly overridden)
+    const shouldShowLogout = showLogout !== undefined ? showLogout : isLoggedIn;
 
     return (
         <header className="app-header">
-            <div className="brand" onClick={() => navigate(localStorage.getItem('access') ? "/app" : "/")} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                <img 
-                    src="/logo.png" 
-                    alt="Q-Safe Logo" 
-                    style={{ 
-                        height: '52px', 
+            <div className="brand" onClick={() => navigate(isLoggedIn ? "/app" : "/")} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                <img
+                    src="/logo.png"
+                    alt="Q-Safe Logo"
+                    style={{
+                        height: '52px',
                         width: 'auto',
                         filter: 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.3))'
                     }}
@@ -33,7 +37,7 @@ export default function Header({ showLogout = true, showDashboardBtn = false, sh
                     </button>
                 )}
                 <ThemeToggle />
-                {showLogout && <LogoutButton />}
+                {shouldShowLogout && <LogoutButton />}
             </div>
         </header>
     );

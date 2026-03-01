@@ -48,7 +48,7 @@ export default function Footer() {
         }}>
           {/* Brand Section */}
           <div>
-            <Link to="/" style={{
+            <Link to="/" onClick={() => window.scrollTo(0, 0)} style={{
               display: 'flex',
               alignItems: 'center',
               textDecoration: 'none',
@@ -107,6 +107,7 @@ export default function Footer() {
                   <li key={linkIndex} style={{ marginBottom: '12px' }}>
                     <Link
                       to={link.path}
+                      onClick={() => window.scrollTo(0, 0)}
                       style={{
                         color: '#888',
                         fontSize: '0.95rem',
