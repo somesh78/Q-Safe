@@ -24,6 +24,7 @@ import Privacy from "./pages/Privacy.jsx";
 import Terms from "./pages/Terms.jsx";
 import Compliance from "./pages/Compliance.jsx";
 import VerifyEmail from "./pages/VerifyEmail.jsx";
+import NotFound from "./pages/NotFound.jsx";
 
 function App() {
   return (
@@ -61,6 +62,9 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/reconstruct" element={<Reconstruct />} />
             </Route>
+
+            {/* 404 Catch-all */}
+            <Route path="*" element={<NotFound />} />
 
           </Routes>
         </ThemeProvider>
