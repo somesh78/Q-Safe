@@ -113,9 +113,4 @@ export const submitContactMessage = (payload) => {
     return API.post('/contact/', payload);
 };
 
-// Fetch blog posts for the marketing site
-export const fetchBlogPosts = () => {
-    return API.get('/blog/');
-};
-
 export default API;
