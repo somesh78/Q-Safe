@@ -63,8 +63,39 @@
 </head>
 
 <body>
-  <noscript>You need to enable JavaScript to run this app.</noscript>
-  <div id="root"></div>
+  <noscript>
+    <h1>Q-Safe – Secure File Sharing via Encrypted QR Codes</h1>
+    <p>Q-Safe lets you securely share files using military-grade AES-256 encryption and QR codes. Features include self-destructing links, air-gapped offline transfers, IP locking, download limits, and complete audit trails.</p>
+    <h2>Features</h2>
+    <ul>
+      <li>End-to-end AES-256 encryption</li>
+      <li>Self-destructing download links (1-24 hours)</li>
+      <li>Air-gapped offline QR code transfers</li>
+      <li>IP address locking per session</li>
+      <li>Real-time access audit logs</li>
+      <li>Zero-knowledge architecture</li>
+    </ul>
+    <p><a href="/signup">Create a free account</a> | <a href="/login">Log in</a> | <a href="/features">Features</a> | <a href="/pricing">Pricing</a> | <a href="/security">Security</a> | <a href="/about">About</a> | <a href="/contact">Contact</a></p>
+  </noscript>
+  <div id="root">
+    <!-- Static SEO content for crawlers — React overwrites this on hydration -->
+    <div style="max-width:800px;margin:0 auto;padding:40px 20px;font-family:system-ui,sans-serif;color:#e0e0e0;background:#060606">
+      <h1>Q-Safe – Secure File Sharing &amp; Encrypted QR Transfer</h1>
+      <p>Transfer files with military-grade AES-256 encryption. Generate self-destructing links with custom expiration, download limits, and IP locking. Share files offline using air-gapped QR code technology.</p>
+      <h2>How It Works</h2>
+      <ol>
+        <li><strong>Upload</strong> your file — encrypted in your browser before it leaves your device</li>
+        <li><strong>Share</strong> the secure link or QR code with your recipient</li>
+        <li><strong>Track</strong> every access attempt with detailed audit logs</li>
+      </ol>
+      <h2>Two Transfer Modes</h2>
+      <h3>Online Sharing</h3>
+      <p>Upload files up to 50MB and generate secure, one-time download links. Set custom expiration times (1-24 hours), download limits, and optional IP locking.</p>
+      <h3>Offline Air-Gap Transfer</h3>
+      <p>Transfer files between devices that never connect to the internet. Your file is converted into scannable QR codes for truly air-gapped security — perfect for high-security environments.</p>
+      <p><a href="/signup">Create free account</a> | <a href="/features">View features</a> | <a href="/security">Security details</a> | <a href="/pricing">Pricing</a></p>
+    </div>
+  </div>
   <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.
