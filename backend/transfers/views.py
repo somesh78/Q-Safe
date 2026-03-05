@@ -9,8 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.utils import OperationalError
 
 from transfers.serializers import DownloadAuditSerializer
-from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile, OfflineJob, ContactMessage, UserProfile
-from .email_utils import generate_verification_token, send_verification_email
+from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile, OfflineJob
 from .services.encryption import encrypt_file, decrypt_file
 from .services.qr_generator import generate_qr, generate_qr_url
 from .services.chunking import chunk_bytes
@@ -65,78 +64,26 @@ def log_audit(file, ip, request, status, reason=None):
     )
 
 
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-@ratelimit(key="ip", rate="10/h", block=True)
-def contact_form(request):
-    """Accept contact form submissions and store in database."""
-    name = request.data.get('name', '').strip()
-    email = request.data.get('email', '').strip()
-    subject = request.data.get('subject', '').strip()
-    message = request.data.get('message', '').strip()
-    msg_type = request.data.get('type', 'general').strip()
-
-    # Validate required fields
-    if not name or not email or not subject or not message:
-        return Response({'error': 'All fields are required'}, status=400)
-
-    if len(message) < 10:
-        return Response({'error': 'Message must be at least 10 characters'}, status=400)
-
-    if msg_type not in dict(ContactMessage.TYPE_CHOICES):
-        msg_type = 'general'
-
-    ContactMessage.objects.create(
-        name=name,
-        email=email,
-        subject=subject,
-        message=message,
-        type=msg_type,
-    )
-
-    logger.info(f"[CONTACT] New message from {name} ({email}): {subject}")
-    return Response({'message': 'Your message has been received. We will get back to you soon.'}, status=201)
-
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @ratelimit(key="ip", rate="5/h", block=True)  # Limit 5 signups per hour per IP
 def signup(request):
-    email = request.data.get('email', '').strip().lower()
+    username = request.data.get('username')
     password = request.data.get('password')
-    username = request.data.get('username', '').strip()
 
-    if not email or not password:
-        return Response({'error': 'Email and password are required'}, status=400)
-
-    # Use email as username if username not provided
-    if not username:
-        username = email
+    if not username or not password:
+        return Response({'error': 'Username and password are required'}, status=400)
 
     # Validate password strength
     password_error = validate_password_strength(password)
     if password_error:
         return Response({"error": password_error}, status=400)
 
-    # Check email uniqueness (primary identifier)
-    if User.objects.filter(email=email).exists():
-        return Response({'error': 'An account with this email already exists'}, status=400)
-
     if User.objects.filter(username=username).exists():
-        return Response({'error': 'This username is already taken'}, status=400)
+        return Response({'error': 'Username already exists'}, status=400)
 
-    user = User.objects.create_user(username=username, password=password, email=email)
-
-    # Send verification email
-    try:
-        uid, token = generate_verification_token(user)
-        send_verification_email(user, uid, token)
-        return Response({'message': 'Account created! Please check your email to verify your account.'})
-    except Exception as e:
-        logger.error(f"[SIGNUP] Failed to send verification email: {e}")
-        return Response({'message': 'Account created. Email verification could not be sent — try resending from your dashboard.'})
+    user = User.objects.create_user(username=username, password=password)
+    return Response({'message': 'Account created successfully'})
 
 @csrf_exempt
 @api_view(['POST'])
@@ -149,57 +96,6 @@ def logout(request):
         return Response({"message": "Logged out successfully"})
     except Exception as e:
         return Response({"error": str(e)}, status=400)
-
-
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def verify_email(request, uid, token):
-    """Verify a user's email address using the token from the verification email."""
-    from django.utils.http import urlsafe_base64_decode
-    from django.contrib.auth.tokens import default_token_generator
-
-    try:
-        user_id = urlsafe_base64_decode(uid).decode()
-        user = User.objects.get(pk=user_id)
-    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-        return Response({'error': 'Invalid verification link'}, status=400)
-
-    if not default_token_generator.check_token(user, token):
-        return Response({'error': 'Verification link has expired or is invalid'}, status=400)
-
-    # Mark user as verified
-    profile, _ = UserProfile.objects.get_or_create(user=user)
-    profile.is_verified = True
-    profile.save()
-
-    logger.info(f"[VERIFY] User {user.username} email verified successfully")
-    return Response({'message': 'Email verified successfully! You can now log in.'})
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-@ratelimit(key="ip", rate="5/h", block=True)
-def resend_verification(request):
-    """Resend verification email for users who haven't verified yet."""
-    email = request.data.get('email', '').strip()
-
-    if not email:
-        return Response({'error': 'Email is required'}, status=400)
-
-    try:
-        user = User.objects.get(email=email)
-    except User.DoesNotExist:
-        # Don't reveal if email exists
-        return Response({'message': 'If an account with that email exists, a verification email has been sent.'})
-
-    profile, _ = UserProfile.objects.get_or_create(user=user)
-    if profile.is_verified:
-        return Response({'message': 'This email is already verified.'})
-
-    uid, token = generate_verification_token(user)
-    send_verification_email(user, uid, token)
-
-    return Response({'message': 'If an account with that email exists, a verification email has been sent.'})
 
 @csrf_exempt
 @api_view(['POST'])
@@ -546,13 +442,14 @@ def download_online_file(request, signed_token):
     password = request.data.get("password")
     ip = request.META.get("REMOTE_ADDR")
 
-    # Debug logging (never log passwords or full request data)
+    # Debug logging
     logger.info(f"[DOWNLOAD] Received request - Token: {signed_token[:20]}...")
     logger.info(f"[DOWNLOAD] Password received: {bool(password)}")
+    logger.info(f"[DOWNLOAD] Request data: {request.data}")
 
     try:
-        # Allow tokens up to 24 hours (matches the maximum user-configurable expiry)
-        token = signer.unsign(signed_token, max_age=86400)
+        # Match the expiry time with OnlineEncryptedFile.expires_at (1 hour)
+        token = signer.unsign(signed_token, max_age=3600)
         logger.info(f"[DOWNLOAD] Token unsigned successfully: {token}")
     except SignatureExpired:
         logger.warning(f"[DOWNLOAD] Token expired: {signed_token}")
@@ -683,15 +580,7 @@ def user_files(request):
             "created_at": f.uploaded_at,
         })
 
-    # Include user info
-    profile, _ = UserProfile.objects.get_or_create(user=request.user)
-    user_info = {
-        "username": request.user.username,
-        "email": request.user.email or '',
-        "is_verified": profile.is_verified,
-    }
-
-    return Response({"files": result, "user": user_info})
+    return Response(result)
 
 
 @api_view(['GET'])
