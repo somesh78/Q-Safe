@@ -300,11 +300,31 @@ export default function Blog() {
                         : 'linear-gradient(135deg, #00d4ff22, #0099cc22)',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
+                      justifyContent: 'center',
+                      position: 'relative'
                     }}>
                       {!article.cover_image && (
                         <span style={{ fontSize: '3.5rem', opacity: 0.5 }}>🔒</span>
                       )}
+                      {/* External link badge */}
+                      <span style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        padding: '4px 10px',
+                        background: 'rgba(0, 0, 0, 0.7)',
+                        backdropFilter: 'blur(4px)',
+                        borderRadius: '6px',
+                        color: '#aaa',
+                        fontSize: '0.7rem',
+                        fontWeight: '600',
+                        letterSpacing: '0.5px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        External ↗
+                      </span>
                     </div>
 
                     {/* Content */}
