@@ -101,6 +101,7 @@ else:
 # https:// redirect URIs instead of http://
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
 
 MIDDLEWARE = [
     'django_ratelimit.middleware.RatelimitMiddleware',
