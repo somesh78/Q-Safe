@@ -235,26 +235,30 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 # Use PostgreSQL in production (when DATABASE_URL is set), SQLite for development
+# For Supabase: Use connection pooler URL (port 6543) for better performance
+# Format: postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
-    # Production: PostgreSQL or SQLite via DATABASE_URL
+    # Production: PostgreSQL (Supabase or any PostgreSQL provider)
     import dj_database_url
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=300,  # Reduce to 5 minutes for memory efficiency
+            conn_max_age=600,  # 10 minutes - optimal for connection pooling
             conn_health_checks=True,  # Check connection health before reusing
         )
     }
-    # SSL configuration only for PostgreSQL connections
+    # Optimize for PostgreSQL/Supabase
     if DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql':
         DATABASES['default'].setdefault('OPTIONS', {})
-        # SSL configuration for PostgreSQL - prefer SSL but don't fail if unavailable
-        DATABASES['default']['OPTIONS']['sslmode'] = 'prefer'
+        # SSL/TLS configuration for secure connections
+        DATABASES['default']['OPTIONS']['sslmode'] = 'require'  # Enforce SSL for Supabase
         DATABASES['default']['OPTIONS']['connect_timeout'] = 10
-    # Don't use ATOMIC_REQUESTS with connection pooling to avoid blocking
-    # DATABASES['default']['ATOMIC_REQUESTS'] = True
+        # Performance optimizations
+        DATABASES['default']['OPTIONS']['options'] = '-c statement_timeout=30000'  # 30s query timeout
+        # Connection pooling works best without ATOMIC_REQUESTS
+        # DATABASES['default']['ATOMIC_REQUESTS'] = True
 else:
     # Development: SQLite
     DATABASES = {

@@ -471,7 +471,8 @@ def download_online_file(request, signed_token):
         return Response({"error": "Password required"}, status=400)
 
     try:
-        encrypted_file = OnlineEncryptedFile.objects.get(token=token)
+        # Optimize query - load session data preemptively for audit logging
+        encrypted_file = OnlineEncryptedFile.objects.select_related('session').get(token=token)
         logger.info(f"[DOWNLOAD] Found encrypted file: {encrypted_file.original_filename}")
         logger.info(f"[DOWNLOAD] File path: {encrypted_file.file_path}")
         logger.info(f"[DOWNLOAD] Download count: {encrypted_file.download_count}")
@@ -559,8 +560,13 @@ def download_online_file(request, signed_token):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def audit_logs(request):
+    # Optimize query with select_related to reduce database hits
     logs = DownloadAudit.objects.filter(
         file__session__user=request.user
+    ).select_related(
+        'file',
+        'file__session', 
+        'user'
     ).order_by('-timestamp')[:100]
 
     serializer = DownloadAuditSerializer(logs, many=True)
@@ -596,7 +602,11 @@ def user_files(request):
 def job_status(request, job_id):
     """Get status of an offline QR generation job"""
     try:
-        job = OfflineJob.objects.get(job_id=job_id, user=request.user)
+        # Optimize with select_related for session data
+        job = OfflineJob.objects.select_related('session', 'user').get(
+            job_id=job_id, 
+            user=request.user
+        )
         
         return Response({
             "job_id": str(job.job_id),
@@ -620,7 +630,11 @@ def job_status(request, job_id):
 def job_download(request, job_id):
     """Download completed QR code ZIP file"""
     try:
-        job = OfflineJob.objects.get(job_id=job_id, user=request.user)
+        # Optimize query - no related data needed for download
+        job = OfflineJob.objects.only(
+            'job_id', 'user_id', 'status', 'result_file', 
+            'original_filename', 'error_message'
+        ).get(job_id=job_id, user=request.user)
         
         if job.status != 'COMPLETED':
             return Response({
