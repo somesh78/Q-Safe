@@ -68,22 +68,30 @@ def log_audit(file, ip, request, status, reason=None):
 @permission_classes([AllowAny])
 @ratelimit(key="ip", rate="5/h", block=True)  # Limit 5 signups per hour per IP
 def signup(request):
-    username = request.data.get('username')
+    raw_email = request.data.get('email', '')
+    raw_username = request.data.get('username')
     password = request.data.get('password')
 
-    if not username or not password:
-        return Response({'error': 'Username and password are required'}, status=400)
+    email = raw_email.strip().lower()
+
+    if not email or not password:
+        return Response({'error': 'Email and password are required'}, status=400)
+
+    username = raw_username.strip() if raw_username and raw_username.strip() else email
 
     # Validate password strength
     password_error = validate_password_strength(password)
     if password_error:
         return Response({"error": password_error}, status=400)
 
+    if User.objects.filter(email=email).exists():
+         return Response({'error': 'Email already exists'}, status=400)
+
     if User.objects.filter(username=username).exists():
         return Response({'error': 'Username already exists'}, status=400)
 
-    user = User.objects.create_user(username=username, password=password)
-    return Response({'message': 'Account created successfully'})
+    user = User.objects.create_user(username=username, email=email, password=password)
+    return Response({'message': 'Account created! You can now log in.'})
 
 @csrf_exempt
 @api_view(['POST'])
