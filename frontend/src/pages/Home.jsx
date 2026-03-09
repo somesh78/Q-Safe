@@ -22,6 +22,8 @@ export default function Home() {
     const [maxDownloads, setMaxDownloads] = useState(3);
     const [expiryHours, setExpiryHours] = useState(1);
     const [enableIpLock, setEnableIpLock] = useState(true);
+    const [customMaxDownloads, setCustomMaxDownloads] = useState(false);
+    const [customExpiryHours, setCustomExpiryHours] = useState(false);
 
     const navigate = useNavigate();
 
@@ -238,28 +240,86 @@ export default function Home() {
                                         <label style={{ display: "block", marginBottom: "5px", fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)' }}>
                                             Max Downloads
                                         </label>
-                                        <input
+                                        <select
                                             className="input-field"
-                                            type="number"
-                                            min="1"
-                                            max="10"
-                                            value={maxDownloads}
-                                            onChange={(e) => setMaxDownloads(parseInt(e.target.value) || 3)}
-                                        />
+                                            value={customMaxDownloads ? 'custom' : maxDownloads}
+                                            onChange={(e) => {
+                                                if (e.target.value === 'custom') {
+                                                    setCustomMaxDownloads(true);
+                                                    setMaxDownloads(1);
+                                                } else {
+                                                    setCustomMaxDownloads(false);
+                                                    setMaxDownloads(parseInt(e.target.value));
+                                                }
+                                            }}
+                                            style={{ cursor: 'pointer' }}
+                                        >
+                                            <option value={1}>1</option>
+                                            <option value={3}>3</option>
+                                            <option value={5}>5</option>
+                                            <option value={10}>10</option>
+                                            <option value="custom">Custom</option>
+                                        </select>
+                                        {customMaxDownloads && (
+                                            <input
+                                                className="input-field"
+                                                type="number"
+                                                min="1"
+                                                max="100"
+                                                value={maxDownloads}
+                                                onChange={(e) => {
+                                                    const val = parseInt(e.target.value);
+                                                    if (val >= 1) setMaxDownloads(val);
+                                                    else if (e.target.value === '') setMaxDownloads('');
+                                                }}
+                                                onBlur={() => { if (!maxDownloads || maxDownloads < 1) setMaxDownloads(1); }}
+                                                placeholder="Enter number (min 1)"
+                                                style={{ marginTop: '0.5rem' }}
+                                            />
+                                        )}
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Link expires after this many downloads</span>
                                     </div>
                                     <div>
                                         <label style={{ display: "block", marginBottom: "5px", fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)' }}>
                                             Expiry (Hours)
                                         </label>
-                                        <input
+                                        <select
                                             className="input-field"
-                                            type="number"
-                                            min="1"
-                                            max="24"
-                                            value={expiryHours}
-                                            onChange={(e) => setExpiryHours(parseInt(e.target.value) || 1)}
-                                        />
+                                            value={customExpiryHours ? 'custom' : expiryHours}
+                                            onChange={(e) => {
+                                                if (e.target.value === 'custom') {
+                                                    setCustomExpiryHours(true);
+                                                    setExpiryHours(1);
+                                                } else {
+                                                    setCustomExpiryHours(false);
+                                                    setExpiryHours(parseInt(e.target.value));
+                                                }
+                                            }}
+                                            style={{ cursor: 'pointer' }}
+                                        >
+                                            <option value={1}>1 hour</option>
+                                            <option value={6}>6 hours</option>
+                                            <option value={12}>12 hours</option>
+                                            <option value={24}>24 hours</option>
+                                            <option value="custom">Custom</option>
+                                        </select>
+                                        {customExpiryHours && (
+                                            <input
+                                                className="input-field"
+                                                type="number"
+                                                min="1"
+                                                max="72"
+                                                value={expiryHours}
+                                                onChange={(e) => {
+                                                    const val = parseInt(e.target.value);
+                                                    if (val >= 1) setExpiryHours(val);
+                                                    else if (e.target.value === '') setExpiryHours('');
+                                                }}
+                                                onBlur={() => { if (!expiryHours || expiryHours < 1) setExpiryHours(1); }}
+                                                placeholder="Enter hours (min 1)"
+                                                style={{ marginTop: '0.5rem' }}
+                                            />
+                                        )}
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Auto-delete after this time period</span>
                                     </div>
                                 </div>

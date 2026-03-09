@@ -162,11 +162,11 @@ def upload_file(request):
         return Response({"error": "Session ID, file, and password are required"}, status=400)
     
     # Validate options
-    if max_downloads < 1 or max_downloads > 10:
-        return Response({"error": "Max downloads must be between 1 and 10"}, status=400)
+    if max_downloads < 1 or max_downloads > 100:
+        return Response({"error": "Max downloads must be between 1 and 100"}, status=400)
     
-    if expiry_hours < 1 or expiry_hours > 24:
-        return Response({"error": "Expiry hours must be between 1 and 24"}, status=400)
+    if expiry_hours < 1 or expiry_hours > 72:
+        return Response({"error": "Expiry hours must be between 1 and 72"}, status=400)
     
     if file.size > MAX_FILE_SIZE:
         return Response(
