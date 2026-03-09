@@ -9,13 +9,14 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.utils import OperationalError
 
 from transfers.serializers import DownloadAuditSerializer
-from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile, OfflineJob
+from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile, OfflineJob, UserProfile
 from .services.encryption import encrypt_file, decrypt_file
 from .services.qr_generator import generate_qr, generate_qr_url
 from .services.chunking import chunk_bytes
 from .services.zipper import create_zip
 from .services.storage import get_storage
 from .tasks import generate_offline_qr_codes
+from .email_utils import generate_verification_token, send_verification_email
 import base64, uuid,zipfile, json, base64, hashlib
 from pyzbar.pyzbar import decode as qr_decode, ZBarSymbol
 from PIL import Image as PILImage
@@ -90,8 +91,24 @@ def signup(request):
     if User.objects.filter(username=username).exists():
         return Response({'error': 'Username already exists'}, status=400)
 
+    # Create user account
     user = User.objects.create_user(username=username, email=email, password=password)
-    return Response({'message': 'Account created! You can now log in.'})
+    
+    # Send verification email
+    try:
+        uid, token = generate_verification_token(user)
+        send_verification_email(user, uid, token)
+        logger.info(f"[SIGNUP] Verification email sent to {email}")
+        return Response({
+            'message': 'Account created! Please check your email to verify your account before logging in.'
+        })
+    except Exception as e:
+        logger.error(f"[SIGNUP] Failed to send verification email to {email}: {e}")
+        # Account still created, just email failed
+        return Response({
+            'message': 'Account created! However, we could not send the verification email. Please contact support.',
+            'warning': 'Email delivery failed'
+        })
 
 @csrf_exempt
 @api_view(['POST'])
@@ -657,4 +674,81 @@ def job_download(request, job_id):
         
     except OfflineJob.DoesNotExist:
         return Response({"error": "Job not found"}, status=404)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def verify_email(request, uid, token):
+    """
+    Verify user's email address using the token sent to their email.
+    Called when user clicks the verification link.
+    """
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_decode
+    from django.utils.encoding import force_str
+    
+    try:
+        # Decode the user ID
+        user_id = force_str(urlsafe_base64_decode(uid))
+        user = User.objects.get(pk=user_id)
+        
+        # Verify the token (automatically checks if expired - 24 hours default)
+        if not default_token_generator.check_token(user, token):
+            logger.warning(f"[VERIFY] Invalid or expired token for user {user.username}")
+            return Response({
+                'error': 'Invalid or expired verification link. Please request a new one.'
+            }, status=400)
+        
+        # Mark user as verified
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        if profile.is_verified:
+            logger.info(f"[VERIFY] User {user.username} already verified")
+            return Response({
+                'message': 'Your email is already verified! You can log in now.'
+            })
+        
+        profile.is_verified = True
+        profile.save()
+        
+        logger.info(f"[VERIFY] Successfully verified email for user {user.username}")
+        return Response({
+            'message': 'Email verified successfully! You can now log in.',
+            'verified': True
+        })
+        
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist) as e:
+        logger.error(f"[VERIFY] Verification failed: {e}")
+        return Response({
+            'error': 'Invalid verification link.'
+        }, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="3/h", block=True)
+def resend_verification_email(request):
+    """
+    Resend verification email to the authenticated user.
+    Rate limited to prevent abuse.
+    """
+    user = request.user
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    
+    if profile.is_verified:
+        return Response({
+            'message': 'Your email is already verified!'
+        })
+    
+    try:
+        uid, token = generate_verification_token(user)
+        send_verification_email(user, uid, token)
+        logger.info(f"[RESEND] Verification email resent to {user.email}")
+        return Response({
+            'message': 'Verification email sent! Please check your inbox.'
+        })
+    except Exception as e:
+        logger.error(f"[RESEND] Failed to send verification email: {e}")
+        return Response({
+            'error': 'Failed to send verification email. Please try again later.'
+        }, status=500)
 
