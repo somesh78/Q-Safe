@@ -1,0 +1,206 @@
+name: Q-Safe CI/CD Pipeline
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch: # allows manual trigger from GitHub UI
+
+jobs:
+  # ─────────────────────────────────────────────
+  # JOB 1 — Backend checks
+  # ─────────────────────────────────────────────
+  backend-check:
+    name: Backend — Install & Django Check
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      SECRET_KEY: ci-test-secret-key-not-real
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      REDIS_URL: redis://localhost:6379/0
+      DATABASE_URL: sqlite:///ci-test.db
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Django system check
+        working-directory: backend
+        run: |
+          python manage.py check --deploy 2>&1 | grep -v "^System check" || true
+          python manage.py check
+
+      - name: Verify migrations are up to date
+        working-directory: backend
+        run: |
+          python manage.py migrate --run-syncdb
+          python manage.py migrate --check
+
+      - name: Smoke-test critical imports
+        working-directory: backend
+        run: |
+          python -c "
+          import django, os
+          os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
+          django.setup()
+          from django.contrib.auth.models import User
+          print('Django imports: OK')
+          "
+
+  # ─────────────────────────────────────────────
+  # JOB 2 — Frontend build
+  # ─────────────────────────────────────────────
+  frontend-build:
+    name: Frontend — Install & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build React app
+        working-directory: frontend
+        env:
+          REACT_APP_API_URL: https://q-safe.live
+          REACT_APP_URL: https://q-safe.live
+          CI: false
+        run: npm run build
+
+      - name: Check build output exists
+        run: |
+          test -f frontend/build/index.html || (echo "Build failed — index.html missing" && exit 1)
+          test -d frontend/build/static || (echo "Build failed — static assets missing" && exit 1)
+          echo "Build output verified OK"
+
+  # ─────────────────────────────────────────────
+  # JOB 3 — Merge dev → production
+  # ─────────────────────────────────────────────
+  merge-to-production:
+    name: Merge dev → production
+    runs-on: ubuntu-latest
+    needs: [backend-check, frontend-build]
+    if: success()
+
+    steps:
+      - name: Checkout repo (full history needed for merge)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge dev into production
+        run: |
+          git checkout production
+          git merge dev --no-ff -m "chore: auto-merge dev → production [CI passed] $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push origin production
+          echo "Merged dev → production successfully"
+
+  # ─────────────────────────────────────────────
+  # JOB 4 — Deploy to EC2
+  # ─────────────────────────────────────────────
+  deploy-to-ec2:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: [merge-to-production]
+    if: success()
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          timeout: 300s
+          script: |
+            set -e
+
+            echo "=== Starting deployment ==="
+            cd ~/Q-Safe
+
+            echo "=== Pulling latest production ==="
+            git fetch origin
+            git checkout production
+            git pull origin production
+
+            echo "=== Rebuilding Docker containers ==="
+            docker-compose down --remove-orphans
+            docker-compose build --no-cache
+            docker-compose up -d
+
+            echo "=== Waiting for app to start ==="
+            sleep 15
+
+            echo "=== Health check ==="
+            for i in 1 2 3 4 5; do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/health/ --max-time 10)
+              if [ "$STATUS" = "200" ]; then
+                echo "Health check passed (HTTP $STATUS)"
+                break
+              fi
+              if [ $i -eq 5 ]; then
+                echo "Health check FAILED after 5 attempts (HTTP $STATUS)"
+                echo "Rolling back..."
+                docker-compose down
+                git checkout HEAD~1
+                docker-compose build
+                docker-compose up -d
+                exit 1
+              fi
+              echo "Attempt $i failed (HTTP $STATUS), retrying in 10s..."
+              sleep 10
+            done
+
+            echo "=== Cleaning up old Docker images ==="
+            docker image prune -f
+
+            echo "=== Deployment complete ==="
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Deployment FAILED. Check the SSH logs above."
+          echo "Production branch was merged but EC2 deploy failed."
+          echo "Manually SSH in and check: docker-compose logs"
+          exit 1
