@@ -4,6 +4,7 @@ Handles file upload, download, and deletion from Supabase Storage
 """
 import os
 import logging
+import httpx
 from supabase import create_client, Client
 from decouple import config
 
@@ -19,6 +20,7 @@ class SupabaseStorage:
         if not supabase_url or not supabase_key:
             raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_KEY must be set in environment")
         
+        self.supabase_url = supabase_url.rstrip('/')
         self.client: Client = create_client(supabase_url, supabase_key)
         self.bucket_name = config('SUPABASE_BUCKET', default='encrypted-files')
     
@@ -80,6 +82,28 @@ class SupabaseStorage:
         except Exception as e:
             logger.error(f"Failed to delete file from Supabase: {e}")
             return False
+
+    def open_download_stream(self, file_path: str, expires_seconds: int = 600):
+        """
+        Open a streamed HTTP response for a storage object using a signed URL.
+
+        Returns:
+            httpx stream context manager. Call __enter__ / __exit__ in caller.
+        """
+        try:
+            signed = self.client.storage.from_(self.bucket_name).create_signed_url(file_path, expires_seconds)
+            signed_url = signed.get('signedURL') or signed.get('signed_url')
+            if not signed_url:
+                raise ValueError("Failed to create signed URL for file stream")
+
+            if signed_url.startswith('/'):
+                signed_url = f"{self.supabase_url}{signed_url}"
+
+            logger.info(f"Opened streamed download for Supabase file: {file_path}")
+            return httpx.stream("GET", signed_url, timeout=300.0, follow_redirects=True)
+        except Exception as e:
+            logger.error(f"Failed to open download stream from Supabase: {e}")
+            raise
     
     def file_exists(self, file_path: str) -> bool:
         """
