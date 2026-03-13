@@ -29,9 +29,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 logger = logging.getLogger(__name__)
 
-# File size limits optimized for low-traffic deployment on ~1GB RAM EC2
-# With few concurrent users, we can be more aggressive
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB for online mode (streaming to disk + Supabase storage)
+# File size limits (online limit is configurable via env var)
+ONLINE_MAX_FILE_SIZE_MB = config('ONLINE_MAX_FILE_SIZE_MB', default=500, cast=int)
+MAX_FILE_SIZE = ONLINE_MAX_FILE_SIZE_MB * 1024 * 1024
 MAX_OFFLINE_FILE_SIZE = 20 * 1024 * 1024  # 20MB for offline mode (~11,000 QR codes)
 
 signer = TimestampSigner()
@@ -151,12 +151,6 @@ def upload_file(request):
     if expiry_hours < 1 or expiry_hours > 24:
         return Response({"error": "Expiry hours must be between 1 and 24"}, status=400)
     
-    if file.size > MAX_FILE_SIZE:
-        return Response(
-            {"error": "File too large"},
-            status=413
-    )
-
     try:
         session = UploadSession.objects.get(session_id=session_id, is_active=True, user=request.user)
     except UploadSession.DoesNotExist:
@@ -171,6 +165,12 @@ def upload_file(request):
             }, status=413)
     
     if session.mode == "ONLINE":
+        if file.size > MAX_FILE_SIZE:
+            return Response({
+                "error": f"Online mode limited to {ONLINE_MAX_FILE_SIZE_MB}MB.",
+                "max_size_mb": ONLINE_MAX_FILE_SIZE_MB
+            }, status=413)
+
         password = request.data.get("password")
 
         if not password:

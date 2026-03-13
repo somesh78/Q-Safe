@@ -149,7 +149,7 @@ export default function Home() {
                             <div className="mode-card animate-fade-in stagger-1" onClick={() => handleModeSelect("ONLINE")}>
                                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🌐</div>
                                 <h3>Online Secure Share</h3>
-                                <p style={{ marginBottom: '1rem' }}>Upload files (max 50MB) and generate a secure, self-destructing QR link. Perfect for quick internet-based sharing.</p>
+                                <p style={{ marginBottom: '1rem' }}>Upload files (up to 500MB) and generate a secure, self-destructing QR link. Perfect for quick internet-based sharing.</p>
                                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                                     <div style={{ marginBottom: '0.5rem' }}>✓ Custom expiration times</div>
                                     <div style={{ marginBottom: '0.5rem' }}>✓ IP address locking</div>
