@@ -183,7 +183,9 @@ jobs:
 
             echo "=== Rebuilding Docker containers ==="
             docker-compose down --remove-orphans
-            docker-compose build --no-cache
+            docker system prune -af --volumes || true
+            docker builder prune -af || true
+            docker-compose build
             docker-compose up -d
 
             echo "=== Waiting for app to start ==="
