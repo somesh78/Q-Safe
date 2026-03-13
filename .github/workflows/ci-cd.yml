@@ -89,6 +89,8 @@ jobs:
 
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
           node-version: "20"
           cache: npm
@@ -96,7 +98,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: frontend
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Build React app
         working-directory: frontend
@@ -104,6 +106,7 @@ jobs:
           REACT_APP_API_URL: https://q-safe.live
           REACT_APP_URL: https://q-safe.live
           CI: false
+          NODE_OPTIONS: --openssl-legacy-provider
         run: npm run build
 
       - name: Check build output exists
