@@ -1,15 +1,85 @@
 
 import { useParams } from "react-router-dom";
 import { useState } from "react";
-import axios from "axios";
 import ThemeToggle from "../components/ThemeToggle";
 import '../App.css';
+
+function getFilenameFromContentDisposition(dispositionHeader) {
+  if (!dispositionHeader) return "downloaded_file";
+
+  // RFC 5987: filename*=UTF-8''encoded-name
+  const utf8NameMatch = dispositionHeader.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8NameMatch && utf8NameMatch[1]) {
+    try {
+      return decodeURIComponent(utf8NameMatch[1]);
+    } catch {
+      return utf8NameMatch[1];
+    }
+  }
+
+  const plainNameMatch = dispositionHeader.match(/filename="?([^";]+)"?/i);
+  if (plainNameMatch && plainNameMatch[1]) {
+    return plainNameMatch[1];
+  }
+
+  return "downloaded_file";
+}
+
+async function streamToFile(response, filename, onProgress) {
+  if (!("showSaveFilePicker" in window)) {
+    return false;
+  }
+
+  const handle = await window.showSaveFilePicker({
+    suggestedName: filename,
+    types: [{
+      description: "Downloaded file",
+      accept: { "application/octet-stream": [".*"] }
+    }]
+  });
+
+  const writable = await handle.createWritable();
+  const reader = response.body?.getReader();
+
+  if (!reader) {
+    await writable.close();
+    throw new Error("Streaming is not supported by this browser response.");
+  }
+
+  const totalBytes = Number(response.headers.get("content-length") || 0);
+  let writtenBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      await writable.write(value);
+      writtenBytes += value.byteLength;
+
+      if (totalBytes > 0) {
+        onProgress(Math.min(100, Math.round((writtenBytes / totalBytes) * 100)));
+      }
+    }
+
+    await writable.close();
+    return true;
+  } catch (error) {
+    try {
+      await writable.abort();
+    } catch {
+      // Ignore abort failures.
+    }
+    throw error;
+  }
+}
 
 export default function OnlineDownload() {
   const { token } = useParams();
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
   const handleDownload = async (e) => {
     e.preventDefault();
@@ -21,46 +91,66 @@ export default function OnlineDownload() {
     }
 
     setLoading(true);
+    setDownloadProgress(0);
 
     try {
-      // Updated to use relative path if proxy is set or configurable URL
       const apiUrl = process.env.REACT_APP_API_URL || 'https://q-safe.onrender.com';
 
-      const response = await axios.post(
-        `${apiUrl}/download/${token}/`,
-        { password },
-        {
-          responseType: "blob",
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
+      const response = await fetch(`${apiUrl}/download/${token}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
 
-      let filename = "downloaded_file";
-      const disposition = response.headers["content-disposition"];
-      if (disposition && disposition.includes("filename=")) {
-        filename = disposition.split("filename=")[1].replace(/"/g, "");
+      if (!response.ok) {
+        let serverError = '';
+        try {
+          const errorJson = await response.json();
+          serverError = errorJson?.error || '';
+        } catch {
+          // Ignore JSON parsing issues for non-JSON error responses.
+        }
+
+        if (response.status === 410) {
+          throw new Error(serverError || "This link has expired.");
+        }
+        if (response.status === 403) {
+          throw new Error(serverError || "Access denied (IP Locked or Limit Reached).");
+        }
+        if (response.status === 404) {
+          throw new Error(serverError || "Invalid or unavailable link.");
+        }
+        if (response.status === 429) {
+          throw new Error(serverError || "Download limit reached.");
+        }
+
+        throw new Error(serverError || "Incorrect password or invalid link.");
       }
 
-      const blob = new Blob([response.data], { type: response.headers["content-type"] || "application/octet-stream" });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      const filename = getFilenameFromContentDisposition(response.headers.get("content-disposition"));
 
-      // Optional: Close window or show success message?
-      // For now, just reset loading state
+      const streamed = await streamToFile(response, filename, setDownloadProgress);
+
+      if (!streamed) {
+        // Fallback for browsers without File System Access API.
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
+
+      setDownloadProgress(100);
     } catch (err) {
       console.error(err);
-      if (err.response && err.response.status === 410) {
-        setError("This link has expired.");
-      } else if (err.response && err.response.status === 403) {
-        setError("Access denied (IP Locked or Limit Reached).");
+      if (err && err.name === 'AbortError') {
+        setError("Download was canceled.");
       } else {
-        setError("Incorrect password or invalid link.");
+        setError(err?.message || "Incorrect password or invalid link.");
       }
     } finally {
       setLoading(false);
@@ -132,6 +222,23 @@ export default function OnlineDownload() {
           >
             {loading ? "🔓 Decrypting & Downloading..." : "🔓 Unlock & Download"}
           </button>
+
+          {loading && (
+            <div style={{ marginTop: '1rem' }}>
+              <div className="progress-container">
+                <div className="progress-fill" style={{ width: `${downloadProgress}%` }} />
+              </div>
+              <p style={{
+                marginTop: '0.5rem',
+                marginBottom: 0,
+                textAlign: 'center',
+                fontSize: '0.85rem',
+                color: 'var(--text-secondary)'
+              }}>
+                {downloadProgress > 0 ? `Downloading: ${downloadProgress}%` : 'Preparing secure stream...'}
+              </p>
+            </div>
+          )}
         </form>
 
         <div style={{ 

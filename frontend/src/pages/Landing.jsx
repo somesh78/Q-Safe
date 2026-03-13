@@ -110,7 +110,7 @@ export default function Landing() {
                                 Online Sharing
                             </h3>
                             <p style={{ fontSize: '1.0625rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
-                                Upload files up to 50MB and generate secure, one-time links. Set custom expiration times,
+                                Upload files up to 500MB and generate secure, one-time links. Set custom expiration times,
                                 download limits, and optional IP locking for maximum security.
                             </p>
                             <ul style={{
@@ -397,7 +397,7 @@ export default function Landing() {
                         fontSize: '0.875rem',
                         color: 'var(--text-secondary)'
                     }}>
-                        Free forever • No credit card • 50MB file limit
+                        Free forever • No credit card • 500MB file limit
                     </p>
                 </section>
             </main>

@@ -362,7 +362,9 @@ LOGGING = {
 # File Upload Settings (optimized for low-traffic EC2 with ~1GB RAM)
 # Files larger than 5MB are streamed to disk, preventing memory exhaustion
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB - larger files written to disk (saves RAM)
-DATA_UPLOAD_MAX_MEMORY_SIZE = 55 * 1024 * 1024  # 55MB - maximum request body size
+ONLINE_MAX_FILE_SIZE_MB = config('ONLINE_MAX_FILE_SIZE_MB', default=500, cast=int)
+# Keep a small buffer above file size for multipart/form-data overhead.
+DATA_UPLOAD_MAX_MEMORY_SIZE = (ONLINE_MAX_FILE_SIZE_MB + 5) * 1024 * 1024
 
 # ── Email Configuration ──
 # Use Gmail SMTP in production, console backend in development
