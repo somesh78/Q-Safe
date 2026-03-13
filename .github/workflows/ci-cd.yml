@@ -5,6 +5,9 @@ on:
     branches: [dev]
   workflow_dispatch: # allows manual trigger from GitHub UI
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # ─────────────────────────────────────────────
   # JOB 1 — Backend checks
@@ -89,8 +92,6 @@ jobs:
 
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
           node-version: "20"
           cache: npm
@@ -99,6 +100,10 @@ jobs:
       - name: Install dependencies
         working-directory: frontend
         run: npm ci --legacy-peer-deps
+
+      - name: Ensure ajv compatibility for react-scripts toolchain
+        working-directory: frontend
+        run: npm install ajv@8.17.1 ajv-keywords@5.1.0 --no-save --legacy-peer-deps
 
       - name: Build React app
         working-directory: frontend
