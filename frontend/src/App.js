@@ -25,6 +25,8 @@ import Terms from "./pages/Terms.jsx";
 import Compliance from "./pages/Compliance.jsx";
 import VerifyEmail from "./pages/VerifyEmail.jsx";
 import NotFound from "./pages/NotFound.jsx";
+import P2PSend from "./pages/P2PSend.jsx";
+import P2PReceive from "./pages/P2PReceive.jsx";
 
 function App() {
   return (
@@ -39,6 +41,8 @@ function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/download/:token" element={<OnlineDownload />} />
             <Route path="/verify-email/:uid/:token" element={<VerifyEmail />} />
+            <Route path="/send" element={<P2PSend />} />
+            <Route path="/receive/:roomId" element={<P2PReceive />} />
 
             {/* Footer Pages - Product */}
             <Route path="/features" element={<Features />} />
