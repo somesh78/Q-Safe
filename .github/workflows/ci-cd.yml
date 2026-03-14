@@ -10,6 +10,7 @@ env:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   # ─────────────────────────────────────────────
@@ -131,6 +132,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-check, frontend-build]
     if: success()
+    outputs:
+      merged: ${{ steps.merge.outputs.merged }}
 
     steps:
       - name: Checkout repo (full history needed for merge)
@@ -145,11 +148,62 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Merge dev into production
+        id: merge
         run: |
+          set +e
           git checkout production
           git merge dev --no-ff -m "chore: auto-merge dev → production [CI passed] $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git push origin production
-          echo "Merged dev → production successfully"
+          merge_exit=$?
+
+          if [ $merge_exit -eq 0 ]; then
+            git push origin production
+            echo "Merged dev → production successfully"
+            echo "merged=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Auto-merge conflict detected. Falling back to PR flow."
+          git merge --abort || true
+          echo "merged=false" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Create PR for manual conflict resolution
+        if: steps.merge.outputs.merged == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+
+          existing_pr=$(gh api \
+            "repos/${{ github.repository }}/pulls?state=open&head=${{ github.repository_owner }}:dev&base=production" \
+            --jq '.[0].number')
+
+          if [ -n "$existing_pr" ] && [ "$existing_pr" != "null" ]; then
+            echo "Conflict PR already exists: #$existing_pr"
+            exit 0
+          fi
+
+          gh api \
+            --method POST \
+            "repos/${{ github.repository }}/pulls" \
+            -f title="chore: merge dev into production (manual conflict resolution required)" \
+            -f head="dev" \
+            -f base="production" \
+            -f body="CI could not auto-merge dev into production due to conflicts. Please resolve conflicts (notably in backend/transfers/views.py), then merge this PR."
+
+          pr_create_exit=$?
+          if [ $pr_create_exit -ne 0 ]; then
+            echo "Warning: Failed to create PR automatically (token/repo policy may block this)."
+            echo "Please create PR manually: dev -> production"
+          fi
+
+          exit 0
+
+      - name: Mark job as blocked by conflicts
+        if: steps.merge.outputs.merged == 'false'
+        run: |
+          echo "Auto-merge blocked by conflicts. PR created for manual resolution."
+          exit 1
 
   # ─────────────────────────────────────────────
   # JOB 4 — Deploy to EC2
@@ -158,7 +212,7 @@ jobs:
     name: Deploy to EC2
     runs-on: ubuntu-latest
     needs: [merge-to-production]
-    if: success()
+    if: needs.merge-to-production.outputs.merged == 'true'
 
     steps:
       - name: Deploy via SSH

@@ -3,14 +3,14 @@ import logging
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from django.http import HttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django.db.utils import OperationalError
 
 from transfers.serializers import DownloadAuditSerializer
 from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile, OfflineJob, UserProfile
-from .services.encryption import encrypt_file, decrypt_file
+from .services.encryption import encrypt_file, decrypt_file, decrypt_stream_chunks, LegacyEncryptedFormatError
 from .services.qr_generator import generate_qr, generate_qr_url
 from .services.chunking import chunk_bytes
 from .services.zipper import create_zip
@@ -524,13 +524,30 @@ def download_online_file(request, signed_token):
         return Response({"error": "Download limit reached"}, status=429)
 
     try:
-        logger.info(f"[DOWNLOAD] Downloading from Supabase Storage...")
         storage = get_storage()
-        encrypted_data = storage.download_file(encrypted_file.file_path)
-        
-        logger.info(f"[DOWNLOAD] Starting decryption...")
-        decrypted = decrypt_file(encrypted_data, password)
-        logger.info(f"[DOWNLOAD] Decryption successful! Decrypted size: {len(decrypted)} bytes")
+        logger.info(f"[DOWNLOAD] Opening streamed download from Supabase Storage...")
+        stream_ctx = storage.open_download_stream(encrypted_file.file_path)
+        upstream = stream_ctx.__enter__()
+
+        try:
+            decrypted_chunks = decrypt_stream_chunks(upstream.iter_bytes(chunk_size=65536), password)
+            first_chunk = next(decrypted_chunks, b"")
+            stream_mode = "v2"
+            logger.info("[DOWNLOAD] Using streamed v2 decryption path")
+        except LegacyEncryptedFormatError:
+            # Backward compatibility for files encrypted with the old format.
+            stream_ctx.__exit__(None, None, None)
+            stream_ctx = None
+            upstream = None
+
+            logger.info("[DOWNLOAD] Legacy encrypted format detected, using compatibility path")
+            encrypted_data = storage.download_file(encrypted_file.file_path)
+            decrypted = decrypt_file(encrypted_data, password)
+            stream_mode = "legacy"
+        except Exception:
+            if stream_ctx:
+                stream_ctx.__exit__(None, None, None)
+            raise
 
         encrypted_file.failed_attempts = 0
         encrypted_file.locked_until = None
@@ -551,7 +568,20 @@ def download_online_file(request, signed_token):
     will_delete = encrypted_file.download_count >= encrypted_file.max_downloads
     
     # Create response before committing changes
-    response = HttpResponse(decrypted, content_type="application/octet-stream")
+    if stream_mode == "v2":
+        def response_stream():
+            try:
+                if first_chunk:
+                    yield first_chunk
+                for chunk in decrypted_chunks:
+                    yield chunk
+            finally:
+                stream_ctx.__exit__(None, None, None)
+
+        response = StreamingHttpResponse(response_stream(), content_type="application/octet-stream")
+    else:
+        response = HttpResponse(decrypted, content_type="application/octet-stream")
+
     response["Content-Disposition"] = f'attachment; filename="{encrypted_file.original_filename}"'
 
     # Log audit BEFORE potentially deleting the file
