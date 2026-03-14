@@ -159,8 +159,20 @@ export default function Home() {
                                 </div>
                             </div>
 
+                            {/* P2P Mode Card */}
+                            <div className="mode-card animate-fade-in stagger-2" onClick={() => navigate("/send")}>
+                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚡</div>
+                                <h3>P2P Direct Transfer</h3>
+                                <p style={{ marginBottom: '1rem' }}>Send files browser-to-browser with WebRTC. Nothing is stored on the server, and the transfer stays live only while both peers are connected.</p>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                    <div style={{ marginBottom: '0.5rem' }}>✓ No server-side file storage</div>
+                                    <div style={{ marginBottom: '0.5rem' }}>✓ Direct browser-to-browser link</div>
+                                    <div>✓ Optional password encryption</div>
+                                </div>
+                            </div>
+
                             {/* Offline Mode Card */}
-                            <div className="mode-card animate-fade-in stagger-2" onClick={() => handleModeSelect("OFFLINE")}>
+                            <div className="mode-card animate-fade-in stagger-3" onClick={() => handleModeSelect("OFFLINE")}>
                                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📴</div>
                                 <h3>Offline Air-Gap</h3>
                                 <p style={{ marginBottom: '1rem' }}>Convert sensitive files into a series of QR codes. Reconstruct them on another device without any internet connection.</p>
@@ -172,7 +184,7 @@ export default function Home() {
                             </div>
 
                             {/* Reconstruct Card */}
-                            <div className="mode-card animate-fade-in stagger-3" onClick={() => navigate("/reconstruct")}>
+                            <div className="mode-card animate-fade-in stagger-4" onClick={() => navigate("/reconstruct")}>
                                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🧩</div>
                                 <h3>Reconstruct File</h3>
                                 <p style={{ marginBottom: '1rem' }}>Have a ZIP of QR codes or a series of images? Reassemble your original file here.</p>
