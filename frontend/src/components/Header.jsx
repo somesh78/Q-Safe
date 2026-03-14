@@ -11,6 +11,7 @@ const NAV_LINKS = [
     { label: 'Security', path: '/security' },
     { label: 'About', path: '/about' },
     { label: 'Blog', path: '/blog' },
+    { label: 'P2P Transfer', path: '/send' },
 ];
 
 export default function Header({ showLogout, showDashboardBtn = false, showHomeBtn = false }) {

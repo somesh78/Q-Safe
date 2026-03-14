@@ -39,6 +39,8 @@ if config('ALLOWED_HOSTS', default=''):
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -95,6 +97,16 @@ else:
     RATELIMIT_USE_CACHE = 'default'
     RATELIMIT_ENABLE = False  # Disable rate limiting in local development without Redis
 
+
+# ── Django Channels — WebSocket channel layer (Redis backend) ──
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.environ.get("REDIS_URL", "redis://localhost:6379/0")],
+        },
+    },
+}
 
 # Trust the X-Forwarded-Proto header from Nginx (HTTPS termination)
 # This makes Django aware it's behind HTTPS, so social-auth generates

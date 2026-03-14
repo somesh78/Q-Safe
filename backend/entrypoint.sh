@@ -25,15 +25,8 @@ echo "Starting Celery worker in background (single worker for free tier)..."
 celery -A backend worker --loglevel=info --concurrency=1 &
 
 echo "Starting Gunicorn..."
-# Use a conservative default worker count to avoid OOM during large uploads on low-memory hosts.
-# Override with GUNICORN_WORKERS if needed.
-GUNICORN_WORKERS=${GUNICORN_WORKERS:-1}
-# --limit-request-line 0 disables line length limit for large file uploads
-exec gunicorn backend.wsgi:application \
-    --bind 0.0.0.0:8000 \
-    --timeout 18800 \
-    --workers ${GUNICORN_WORKERS} \
-    --max-requests 100 \
-    --max-requests-jitter 10 \
-    --limit-request-line 0 \
-    --limit-request-field_size 0
+# Daphne is the ASGI server for Django Channels (supports HTTP + WebSocket).
+# HTTP_TIMEOUT covers large file upload/download requests.
+exec daphne -b 0.0.0.0 -p 8000 \
+    --http-timeout 18800 \
+    backend.asgi:application
