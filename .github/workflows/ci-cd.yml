@@ -10,6 +10,7 @@ env:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   # ─────────────────────────────────────────────
@@ -171,18 +172,32 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -e
-          existing_pr=$(gh pr list --base production --head dev --state open --json number --jq '.[0].number')
-          if [ -n "$existing_pr" ]; then
+          set +e
+
+          existing_pr=$(gh api \
+            "repos/${{ github.repository }}/pulls?state=open&head=${{ github.repository_owner }}:dev&base=production" \
+            --jq '.[0].number')
+
+          if [ -n "$existing_pr" ] && [ "$existing_pr" != "null" ]; then
             echo "Conflict PR already exists: #$existing_pr"
             exit 0
           fi
 
-          gh pr create \
-            --base production \
-            --head dev \
-            --title "chore: merge dev into production (manual conflict resolution required)" \
-            --body "CI could not auto-merge dev into production due to conflicts. Please resolve conflicts (notably in backend/transfers/views.py), then merge this PR."
+          gh api \
+            --method POST \
+            "repos/${{ github.repository }}/pulls" \
+            -f title="chore: merge dev into production (manual conflict resolution required)" \
+            -f head="dev" \
+            -f base="production" \
+            -f body="CI could not auto-merge dev into production due to conflicts. Please resolve conflicts (notably in backend/transfers/views.py), then merge this PR."
+
+          pr_create_exit=$?
+          if [ $pr_create_exit -ne 0 ]; then
+            echo "Warning: Failed to create PR automatically (token/repo policy may block this)."
+            echo "Please create PR manually: dev -> production"
+          fi
+
+          exit 0
 
       - name: Mark job as blocked by conflicts
         if: steps.merge.outputs.merged == 'false'
