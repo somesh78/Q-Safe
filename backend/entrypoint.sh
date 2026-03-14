@@ -25,12 +25,14 @@ echo "Starting Celery worker in background (single worker for free tier)..."
 celery -A backend worker --loglevel=info --concurrency=1 &
 
 echo "Starting Gunicorn..."
-# Use 2 workers so long operations (like QR reconstruction) don't block the site
+# Use a conservative default worker count to avoid OOM during large uploads on low-memory hosts.
+# Override with GUNICORN_WORKERS if needed.
+GUNICORN_WORKERS=${GUNICORN_WORKERS:-1}
 # --limit-request-line 0 disables line length limit for large file uploads
 exec gunicorn backend.wsgi:application \
     --bind 0.0.0.0:8000 \
     --timeout 18800 \
-    --workers 2 \
+    --workers ${GUNICORN_WORKERS} \
     --max-requests 100 \
     --max-requests-jitter 10 \
     --limit-request-line 0 \

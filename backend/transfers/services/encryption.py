@@ -72,7 +72,7 @@ def is_v2_encrypted(encrypted: bytes) -> bool:
         encrypted = bytes(encrypted)
     return encrypted.startswith(MAGIC_V2)
 
-def encrypt_file(data: bytes, password: str) -> bytes:
+def encrypt_file_chunks(chunks_iterable, password: str, chunk_size: int = DEFAULT_CHUNK_SIZE) -> bytes:
     salt = os.urandom(HEADER_SALT_LEN)
     key = derive_raw_key(password, salt)
     aesgcm = AESGCM(key)
@@ -80,10 +80,11 @@ def encrypt_file(data: bytes, password: str) -> bytes:
     output = bytearray()
     output.extend(MAGIC_V2)
     output.extend(salt)
-    output.extend(struct.pack("!I", DEFAULT_CHUNK_SIZE))
+    output.extend(struct.pack("!I", chunk_size))
 
-    for i in range(0, len(data), DEFAULT_CHUNK_SIZE):
-        chunk = data[i:i + DEFAULT_CHUNK_SIZE]
+    for chunk in chunks_iterable:
+        if not chunk:
+            continue
         nonce = os.urandom(NONCE_LEN)
         ciphertext = aesgcm.encrypt(nonce, chunk, None)
         output.extend(nonce)
@@ -91,6 +92,9 @@ def encrypt_file(data: bytes, password: str) -> bytes:
         output.extend(ciphertext)
 
     return bytes(output)
+
+def encrypt_file(data: bytes, password: str) -> bytes:
+    return encrypt_file_chunks((data[i:i + DEFAULT_CHUNK_SIZE] for i in range(0, len(data), DEFAULT_CHUNK_SIZE)), password)
 
 
 def decrypt_stream_chunks(chunks_iterable, password: str):

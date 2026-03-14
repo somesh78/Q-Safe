@@ -10,7 +10,7 @@ from django.db.utils import OperationalError
 
 from transfers.serializers import DownloadAuditSerializer
 from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile, OfflineJob, UserProfile
-from .services.encryption import encrypt_file, decrypt_file, decrypt_stream_chunks, LegacyEncryptedFormatError
+from .services.encryption import encrypt_file, encrypt_file_chunks, decrypt_file, decrypt_stream_chunks, LegacyEncryptedFormatError
 from .services.qr_generator import generate_qr, generate_qr_url
 from .services.chunking import chunk_bytes
 from .services.zipper import create_zip
@@ -193,10 +193,8 @@ def upload_file(request):
         if not password:
             return Response({"error": "Password is required for online mode"}, status=400)
         
-        # Encrypt file
-        file_data = file.read()
-        encrypted_data = encrypt_file(file_data, password)
-        del file_data
+        # Encrypt file from upload chunks to avoid loading full plaintext into memory.
+        encrypted_data = encrypt_file_chunks(file.chunks(), password)
         
         # Generate token first
         file_token = uuid.uuid4()
@@ -260,9 +258,8 @@ def upload_file(request):
         if not password:
             return Response({"error": "Password is required for offline mode"}, status=400)
         
-        # Read and encrypt file data
-        file_data = file.read()
-        encrypted_data = encrypt_file(file_data, password)
+        # Encrypt file from upload chunks to avoid loading full plaintext into memory.
+        encrypted_data = encrypt_file_chunks(file.chunks(), password)
         logger.info(f"[OFFLINE MODE] Encrypted data size: {len(encrypted_data)} bytes")
         
         # Store encrypted chunks in UploadedFile for the task to process
