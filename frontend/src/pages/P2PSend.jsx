@@ -35,9 +35,19 @@ async function encryptChunk(key, plaintext) {
 
 function wsUrl(roomId) {
   const proto = window.location.protocol === "https:" ? "wss" : "ws";
-  const host = process.env.REACT_APP_API_URL
-    ? process.env.REACT_APP_API_URL.replace(/^https?:\/\//, "")
-    : window.location.host;
+  let host;
+
+  if (!process.env.REACT_APP_API_URL) {
+    // No API URL configured, use current host
+    host = window.location.host;
+  } else if (process.env.REACT_APP_API_URL.startsWith('/')) {
+    // Relative URL like "/api" - use current host
+    host = window.location.host;
+  } else {
+    // Absolute URL like "http://example.com:8000/api" - strip protocol and path
+    host = process.env.REACT_APP_API_URL.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  }
+
   return `${proto}://${host}/ws/p2p/${roomId}/`;
 }
 
