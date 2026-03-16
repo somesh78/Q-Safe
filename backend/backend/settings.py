@@ -98,15 +98,28 @@ else:
     RATELIMIT_ENABLE = False  # Disable rate limiting in local development without Redis
 
 
-# ── Django Channels — WebSocket channel layer (Redis backend) ──
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [os.environ.get("REDIS_URL", "redis://localhost:6379/0")],
+# ── Django Channels — WebSocket channel layer ───────────────────────────────
+# Default to in-memory because this deployment runs as a single Daphne instance.
+# This avoids Redis becoming a hard dependency for WebRTC signaling.
+# To use Redis explicitly in a multi-instance deployment, set:
+# CHANNEL_LAYER_BACKEND=redis
+CHANNEL_LAYER_BACKEND = config('CHANNEL_LAYER_BACKEND', default='memory')
+
+if CHANNEL_LAYER_BACKEND == 'redis':
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [os.environ.get("REDIS_URL", "redis://localhost:6379/0")],
+            },
         },
-    },
-}
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        },
+    }
 
 # Trust the X-Forwarded-Proto header from Nginx (HTTPS termination)
 # This makes Django aware it's behind HTTPS, so social-auth generates
