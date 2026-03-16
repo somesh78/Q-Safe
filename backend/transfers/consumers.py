@@ -15,10 +15,13 @@ class P2PSignalingConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
         self.room_group = f"p2p_{self.room_id}"
-
-        await self.channel_layer.group_add(self.room_group, self.channel_name)
-        await self.accept()
-        logger.info(f"[P2P] Peer connected to room {self.room_id}")
+        try:
+            await self.channel_layer.group_add(self.room_group, self.channel_name)
+            await self.accept()
+            logger.info(f"[P2P] Peer connected to room {self.room_id}")
+        except Exception:
+            logger.exception(f"[P2P] Failed to accept websocket for room {self.room_id}")
+            await self.close(code=1011)
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.room_group, self.channel_name)
