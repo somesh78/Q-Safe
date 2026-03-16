@@ -37,7 +37,7 @@ function wsUrl(roomId) {
   if (!process.env.REACT_APP_API_URL) {
     // No API URL configured, use current host
     host = window.location.host;
-  } else if (process.env.REACT_APP_API_URL.startsWith('/')) {
+  } else if (process.env.REACT_APP_API_URL.startsWith("/")) {
     // Relative URL like "/api" - use current host
     host = window.location.host;
   } else {
