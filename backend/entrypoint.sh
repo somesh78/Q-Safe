@@ -22,7 +22,7 @@ echo "Cleaning up expired files..."
 python manage.py cleanup_expired_files || echo "Cleanup failed, continuing..."
 
 echo "Starting Celery worker in background (single worker for free tier)..."
-celery -A backend worker --loglevel=info --concurrency=1 &
+celery -A backend worker --loglevel=info --concurrency=1 --uid=nobody --gid=nogroup &
 
 echo "Starting Gunicorn..."
 # Daphne is the ASGI server for Django Channels (supports HTTP + WebSocket).
