@@ -45,7 +45,9 @@ function wsUrl(roomId) {
       const wsProto = parsed.protocol === "wss:" || parsed.protocol === "ws:"
         ? parsed.protocol
         : (parsed.protocol === "https:" ? "wss:" : "ws:");
-      return `${wsProto}//${parsed.host}/ws/p2p/${roomId}/`;
+      const badHost = !parsed.host || parsed.hostname === "api";
+      const host = badHost ? window.location.host : parsed.host;
+      return `${wsProto}//${host}/ws/p2p/${roomId}/`;
     } catch {
       // Fallback to same-origin host when env value is malformed.
     }
