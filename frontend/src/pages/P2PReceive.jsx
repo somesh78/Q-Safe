@@ -104,6 +104,7 @@ export default function P2PReceive() {
   const startTimeRef = useRef(null);
   const cryptoKeyRef = useRef(null);
   const fileMetaRef = useRef(null);
+  const dataChannelRef = useRef(null);
 
   // ── Connect to signaling server ────────────────────────────────────────────
   const connect = useCallback((passwordOverride) => {
@@ -175,6 +176,7 @@ export default function P2PReceive() {
 
     pc.ondatachannel = (event) => {
       const dc = event.channel;
+      dataChannelRef.current = dc;
 
       dc.onmessage = async (e) => {
         if (typeof e.data === "string") {
@@ -193,6 +195,7 @@ export default function P2PReceive() {
                 const saltBytes = Uint8Array.from(atob(msg.salt), (c) => c.charCodeAt(0));
                 cryptoKeyRef.current = await deriveKey(pw, saltBytes);
                 setStatus("receiving");
+                dc.send(JSON.stringify({ type: "receiver_ready" }));
               } else {
                 // No password in URL → ask user
                 setStatus("password_required");
@@ -200,6 +203,7 @@ export default function P2PReceive() {
             } else {
               cryptoKeyRef.current = null;
               setStatus("receiving");
+              dc.send(JSON.stringify({ type: "receiver_ready" }));
             }
           }
 
@@ -208,7 +212,10 @@ export default function P2PReceive() {
           }
         } else {
           // Binary chunk
-          if (status === "password_required") return; // drop chunks until password entered
+          // Never process encrypted chunks until decryption key is ready.
+          if (fileMetaRef.current?.encrypted && !cryptoKeyRef.current) {
+            return;
+          }
 
           let chunk;
           if (cryptoKeyRef.current) {
@@ -269,6 +276,7 @@ export default function P2PReceive() {
     const saltBytes = Uint8Array.from(atob(meta.salt), (c) => c.charCodeAt(0));
     cryptoKeyRef.current = await deriveKey(manualPassword, saltBytes);
     setStatus("receiving");
+    dataChannelRef.current?.send(JSON.stringify({ type: "receiver_ready" }));
   };
 
   function formatSpeed(bps) {
