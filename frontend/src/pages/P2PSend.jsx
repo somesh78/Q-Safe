@@ -33,7 +33,7 @@ async function encryptChunk(key, plaintext) {
 
 // ─── WebSocket URL helper ─────────────────────────────────────────────────────
 
-export function wsUrl(roomId) {
+function wsUrl(roomId) {
   const proto = window.location.protocol === "https:" ? "wss" : "ws";
   let host;
 
