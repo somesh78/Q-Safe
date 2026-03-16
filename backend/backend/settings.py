@@ -128,6 +128,16 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 
+# Session & CSRF cookies — required for OAuth state to survive the redirect round-trip.
+# SameSite=Lax (not Strict) is mandatory: Google redirects back cross-site and
+# Strict would block the session cookie on that return request, causing AuthStateMissing.
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+# Tell social-auth to build https:// redirect URIs when behind a proxy
+SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
+
 MIDDLEWARE = [
     'django_ratelimit.middleware.RatelimitMiddleware',
     'corsheaders.middleware.CorsMiddleware',
