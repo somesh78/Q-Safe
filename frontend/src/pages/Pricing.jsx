@@ -76,6 +76,7 @@ export default function Pricing() {
                     <div style={{ textAlign: 'left', marginBottom: '30px' }}>
                         {[
                             'Up to 500 MB per file (online mode)',
+                            'Live P2P browser-to-browser transfer (WebRTC)',
                             'Up to 20 MB per file (offline QR mode)',
                             'AES-256 encryption',
                             'QR code generation',
@@ -89,7 +90,7 @@ export default function Pricing() {
                         ].map((feature, index) => (
                             <div key={index} style={{
                                 padding: '12px 0',
-                                borderBottom: index < 10 ? '1px solid #1a1a1a' : 'none',
+                                borderBottom: index < 11 ? '1px solid #1a1a1a' : 'none',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '12px'
