@@ -91,6 +91,8 @@ export default function P2PSend() {
   const pcRef = useRef(null);
   const dcRef = useRef(null);
   const fileRef = useRef(null);
+  const transferStartedRef = useRef(false);
+  const transferSaltRef = useRef(null);
 
   // Build the shareable link
   const shareLink = `${window.location.origin}/receive/${roomId}${usePassword && password ? "#" + encodeURIComponent(password) : ""}`;
@@ -193,7 +195,22 @@ export default function P2PSend() {
     };
 
     dc.onopen = () => {
-      sendFile(dc);
+      transferStartedRef.current = false;
+      // Send metadata first; receiver will explicitly ACK when ready.
+      sendFileMeta(dc);
+    };
+
+    dc.onmessage = async (event) => {
+      if (typeof event.data !== "string") return;
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "receiver_ready" && !transferStartedRef.current) {
+          transferStartedRef.current = true;
+          await sendFile(dc);
+        }
+      } catch {
+        // Ignore non-JSON control messages.
+      }
     };
 
     dc.onerror = (e) => {
@@ -207,19 +224,13 @@ export default function P2PSend() {
     ws.send(JSON.stringify({ type: "offer", sdp: pc.localDescription.sdp }));
   };
 
-  // ── Send file over DataChannel ─────────────────────────────────────────────
-  const sendFile = async (dc) => {
-    setStatus("sending");
+  const sendFileMeta = async (dc) => {
     const f = fileRef.current;
     if (!f) return;
 
-    let cryptoKey = null;
-    let salt = null;
-
-    if (usePassword && password) {
-      salt = crypto.getRandomValues(new Uint8Array(16));
-      cryptoKey = await deriveKey(password, salt);
-    }
+    transferSaltRef.current = (usePassword && password)
+      ? crypto.getRandomValues(new Uint8Array(16))
+      : null;
 
     // Send file metadata first
     dc.send(JSON.stringify({
@@ -227,8 +238,28 @@ export default function P2PSend() {
       name: f.name,
       size: f.size,
       encrypted: !!(usePassword && password),
-      salt: salt ? btoa(String.fromCharCode(...salt)) : null,
+      salt: transferSaltRef.current ? btoa(String.fromCharCode(...transferSaltRef.current)) : null,
+      password_hint: usePassword && password ? "required" : null,
     }));
+  };
+
+  // ── Send file over DataChannel ─────────────────────────────────────────────
+  const sendFile = async (dc) => {
+    setStatus("sending");
+    const f = fileRef.current;
+    if (!f) return;
+
+    let cryptoKey = null;
+
+    if (usePassword && password) {
+      const saltBytes = transferSaltRef.current;
+      if (!saltBytes) {
+        setError("Transfer initialization failed. Please try again.");
+        setStatus("error");
+        return;
+      }
+      cryptoKey = await deriveKey(password, saltBytes);
+    }
 
     const totalChunks = Math.ceil(f.size / CHUNK_SIZE);
     let sentBytes = 0;
