@@ -31,11 +31,27 @@ async function decryptChunk(key, buffer) {
 // ─── WebSocket URL helper ─────────────────────────────────────────────────────
 
 function wsUrl(roomId) {
-  const proto = window.location.protocol === "https:" ? "wss" : "ws";
-  const host = process.env.REACT_APP_API_URL
-    ? process.env.REACT_APP_API_URL.replace(/^https?:\/\//, "")
-    : window.location.host;
-  return `${proto}://${host}/ws/p2p/${roomId}/`;
+  const defaultProto = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const configured = process.env.REACT_APP_WS_URL || process.env.REACT_APP_API_URL;
+
+  if (configured) {
+    try {
+      // Supports values like:
+      // - https://q-safe.live
+      // - wss://q-safe.live
+      // - /api
+      // - api (relative)
+      const parsed = new URL(configured, window.location.origin);
+      const wsProto = parsed.protocol === "wss:" || parsed.protocol === "ws:"
+        ? parsed.protocol
+        : (parsed.protocol === "https:" ? "wss:" : "ws:");
+      return `${wsProto}//${parsed.host}/ws/p2p/${roomId}/`;
+    } catch {
+      // Fallback to same-origin host when env value is malformed.
+    }
+  }
+
+  return `${defaultProto}//${window.location.host}/ws/p2p/${roomId}/`;
 }
 
 // ─── Download helpers ─────────────────────────────────────────────────────────
