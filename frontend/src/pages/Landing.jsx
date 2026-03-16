@@ -93,13 +93,17 @@ export default function Landing() {
                             margin: '0 auto',
                             lineHeight: '1.7'
                         }}>
-                            Two powerful transfer modes designed for different security requirements.
-                            Choose the method that fits your workflow.
+                            Three powerful transfer modes designed for different security requirements.
+                            Choose the method that best fits your workflow.
                         </p>
                     </div>
 
                     <div className="mode-grid">
-                        <div className="mode-card animate-fade-in stagger-1" style={{ cursor: 'default' }}>
+                        <div
+                            className="mode-card animate-fade-in stagger-1"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => navigate(isLoggedIn ? '/app' : '/signup')}
+                        >
                             <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>🌐</div>
                             <h3 style={{
                                 fontSize: '1.75rem',
@@ -139,7 +143,55 @@ export default function Landing() {
                             </ul>
                         </div>
 
-                        <div className="mode-card animate-fade-in stagger-2" style={{ cursor: 'default' }}>
+                        <div
+                            className="mode-card animate-fade-in stagger-2"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => navigate('/send')}
+                        >
+                            <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>⚡</div>
+                            <h3 style={{
+                                fontSize: '1.75rem',
+                                fontWeight: '700',
+                                marginBottom: '1rem',
+                                fontFamily: 'var(--font-display)'
+                            }}>
+                                P2P Direct Transfer
+                            </h3>
+                            <p style={{ fontSize: '1.0625rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
+                                Transfer files directly browser-to-browser using WebRTC. Data does not rest on server storage,
+                                and transfer remains active only while both peers are online.
+                            </p>
+                            <ul style={{
+                                listStyle: 'none',
+                                padding: 0,
+                                margin: 0,
+                                fontSize: '0.9375rem',
+                                color: 'var(--text-secondary)'
+                            }}>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>Browser-to-browser transport</span>
+                                </li>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>No server-side file storage</span>
+                                </li>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>Optional password encryption</span>
+                                </li>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>Ideal for instant live transfers</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div
+                            className="mode-card animate-fade-in stagger-3"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => navigate(isLoggedIn ? '/app' : '/signup')}
+                        >
                             <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>📴</div>
                             <h3 style={{
                                 fontSize: '1.75rem',

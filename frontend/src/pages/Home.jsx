@@ -142,7 +142,7 @@ export default function Home() {
                             </h1>
                             <p style={{ fontSize: '1.05rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
                                 Select the transfer method that best fits your security requirements. 
-                                Both modes use military-grade AES-256 encryption to keep your data safe.
+                                All modes use military-grade AES-256 encryption to keep your data safe.
                             </p>
                         </div>
                         

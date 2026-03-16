@@ -41,7 +41,6 @@ function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/download/:token" element={<OnlineDownload />} />
             <Route path="/verify-email/:uid/:token" element={<VerifyEmail />} />
-            <Route path="/send" element={<P2PSend />} />
             <Route path="/receive/:roomId" element={<P2PReceive />} />
 
             {/* Footer Pages - Product */}
@@ -65,6 +64,7 @@ function App() {
               <Route path="/audit" element={<Audit />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/reconstruct" element={<Reconstruct />} />
+              <Route path="/send" element={<P2PSend />} />
             </Route>
 
             {/* 404 Catch-all */}

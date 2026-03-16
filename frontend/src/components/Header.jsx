@@ -11,7 +11,6 @@ const NAV_LINKS = [
     { label: 'Security', path: '/security' },
     { label: 'About', path: '/about' },
     { label: 'Blog', path: '/blog' },
-    { label: 'P2P Transfer', path: '/send' },
 ];
 
 export default function Header({ showLogout, showDashboardBtn = false, showHomeBtn = false }) {
@@ -87,9 +86,9 @@ export default function Header({ showLogout, showDashboardBtn = false, showHomeB
                     <button
                         className="btn-primary"
                         style={{ padding: '0.5rem 1.25rem', fontSize: '0.875rem' }}
-                        onClick={() => handleNav("/signup")}
+                        onClick={() => handleNav("/login")}
                     >
-                        Sign Up
+                        Login
                     </button>
                 )}
                 <ThemeToggle />
@@ -146,9 +145,9 @@ export default function Header({ showLogout, showDashboardBtn = false, showHomeB
                         <button
                             className="btn-primary mobile-menu-item"
                             style={{ textAlign: 'center', width: '100%' }}
-                            onClick={() => handleNav("/signup")}
+                            onClick={() => handleNav("/login")}
                         >
-                            Sign Up Free
+                            Login
                         </button>
                     )}
                     <div className="mobile-menu-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)' }}>
