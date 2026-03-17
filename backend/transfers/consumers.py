@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 logger = logging.getLogger(__name__)
@@ -15,9 +16,15 @@ class P2PSignalingConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
         self.room_group = f"p2p_{self.room_id}"
+        # Stable per-connection id used by clients for directed signaling.
+        self.peer_id = uuid.uuid4().hex
         try:
             await self.channel_layer.group_add(self.room_group, self.channel_name)
             await self.accept()
+            await self.send(text_data=json.dumps({
+                "type": "peer_id",
+                "peer_id": self.peer_id,
+            }))
             logger.info(f"[P2P] Peer connected to room {self.room_id}")
         except Exception:
             logger.exception(f"[P2P] Failed to accept websocket for room {self.room_id}")
@@ -31,7 +38,7 @@ class P2PSignalingConsumer(AsyncWebsocketConsumer):
             {
                 "type": "relay_message",
                 "data": {"type": "peer_disconnected"},
-                "sender": self.channel_name,
+                "sender": self.peer_id,
             },
         )
         logger.info(f"[P2P] Peer disconnected from room {self.room_id}")
@@ -50,11 +57,21 @@ class P2PSignalingConsumer(AsyncWebsocketConsumer):
             {
                 "type": "relay_message",
                 "data": data,
-                "sender": self.channel_name,
+                "sender": self.peer_id,
+                "to": data.get("to"),
             },
         )
 
     async def relay_message(self, event):
-        # Only relay to the other peer, not back to sender
-        if event["sender"] != self.channel_name:
-            await self.send(text_data=json.dumps(event["data"]))
+        # Never relay back to sender.
+        if event["sender"] == self.peer_id:
+            return
+
+        # Directed signaling: only forward to target peer when provided.
+        target_peer = event.get("to")
+        if target_peer and target_peer != self.peer_id:
+            return
+
+        payload = dict(event["data"])
+        payload["from"] = event["sender"]
+        await self.send(text_data=json.dumps(payload))

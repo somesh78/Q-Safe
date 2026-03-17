@@ -67,6 +67,7 @@ const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
 ];
+const ICE_SERVERS_LOCAL_ONLY = [];
 
 function randomRoomId() {
   return crypto.randomUUID();
@@ -87,16 +88,30 @@ export default function P2PSend() {
   const [progress, setProgress] = useState(0);
   const [copied, setCopied] = useState(false);
   const [transferSpeed, setTransferSpeed] = useState("");
+  const [strategy, setStrategy] = useState("auto"); // auto | lan | internet
+  const [allowBroadcast, setAllowBroadcast] = useState(true);
+  const [connectedReceivers, setConnectedReceivers] = useState(0);
+  const [completedReceivers, setCompletedReceivers] = useState(0);
 
   const wsRef = useRef(null);
-  const pcRef = useRef(null);
-  const dcRef = useRef(null);
+  const senderPeerIdRef = useRef(null);
+  const peersRef = useRef(new Map()); // peerId => { pc, dc, transferStarted, transferSalt, completed, fallbackTried }
   const fileRef = useRef(null);
-  const transferStartedRef = useRef(false);
-  const transferSaltRef = useRef(null);
+
+  const resolvedStrategy = (() => {
+    if (strategy !== "auto") return strategy;
+    const size = fileRef.current?.size || file?.size || 0;
+    // Auto strategy for hybrid mode: local-first for medium files, internet for large files.
+    return size > 100 * 1024 * 1024 ? "internet" : "lan";
+  })();
+
+  const shareQuery = new URLSearchParams({
+    strategy: resolvedStrategy,
+    multi: allowBroadcast ? "1" : "0",
+  }).toString();
 
   // Build the shareable link (never include password in URL)
-  const shareLink = `${window.location.origin}/p2p/${roomId}`;
+  const shareLink = `${window.location.origin}/p2p/${roomId}?${shareQuery}`;
 
   const copyLink = async () => {
     try {
@@ -110,9 +125,12 @@ export default function P2PSend() {
 
   // ── Clean up on unmount ────────────────────────────────────────────────────
   useEffect(() => {
+    const peers = peersRef.current;
     return () => {
-      dcRef.current?.close();
-      pcRef.current?.close();
+      peers.forEach((peer) => {
+        peer.dc?.close();
+        peer.pc?.close();
+      });
       wsRef.current?.close();
     };
   }, []);
@@ -122,6 +140,17 @@ export default function P2PSend() {
     if (!fileRef.current) return;
     setStatus("waiting");
     setError("");
+    setProgress(0);
+    setTransferSpeed("");
+    setCompletedReceivers(0);
+
+    // Reset any stale peers from previous attempts.
+    peersRef.current.forEach((peer) => {
+      peer.dc?.close();
+      peer.pc?.close();
+    });
+    peersRef.current.clear();
+    setConnectedReceivers(0);
 
     const ws = new WebSocket(wsUrl(roomId));
     wsRef.current = ws;
@@ -144,50 +173,99 @@ export default function P2PSend() {
     ws.onmessage = async (event) => {
       const msg = JSON.parse(event.data);
 
-      if (msg.type === "receiver_joined" || msg.type === "answer" || msg.type === "ice_candidate") {
-        // Receiver is connecting — set up PeerConnection if not yet done
-        if (!pcRef.current && msg.type === "receiver_joined") {
-          await setupPeerConnection(ws);
+      if (msg.type === "peer_id") {
+        senderPeerIdRef.current = msg.peer_id;
+      }
+
+      if (msg.type === "receiver_joined" && msg.from) {
+        if (!allowBroadcast && peersRef.current.size > 0) {
+          return;
         }
-        if (msg.type === "answer" && pcRef.current) {
-          await pcRef.current.setRemoteDescription({ type: "answer", sdp: msg.sdp });
+        if (!peersRef.current.has(msg.from)) {
+          const preferLocal = msg.prefer_local === true || resolvedStrategy === "lan";
+          await setupPeerConnection(ws, msg.from, preferLocal, false);
+          setConnectedReceivers(peersRef.current.size);
+          setStatus("connected");
         }
-        if (msg.type === "ice_candidate" && pcRef.current) {
+      }
+
+      if (msg.type === "answer" && msg.from) {
+        const peer = peersRef.current.get(msg.from);
+        if (peer?.pc) {
+          await peer.pc.setRemoteDescription({ type: "answer", sdp: msg.sdp });
+        }
+      }
+
+      if (msg.type === "ice_candidate" && msg.from) {
+        const peer = peersRef.current.get(msg.from);
+        if (peer?.pc) {
           try {
-            await pcRef.current.addIceCandidate(msg.candidate);
+            await peer.pc.addIceCandidate(msg.candidate);
           } catch {
             // Benign: stale candidate
           }
         }
       }
 
-      if (msg.type === "peer_disconnected" && status !== "done") {
-        setError("Receiver disconnected before the transfer was complete.");
-        setStatus("error");
+      if (msg.type === "peer_disconnected" && msg.from) {
+        const peer = peersRef.current.get(msg.from);
+        if (peer) {
+          peer.dc?.close();
+          peer.pc?.close();
+          peersRef.current.delete(msg.from);
+          setConnectedReceivers(peersRef.current.size);
+          if (peersRef.current.size === 0 && status !== "done") {
+            setError("Receiver disconnected before the transfer was complete.");
+            setStatus("error");
+          }
+        }
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId]);
+  }, [allowBroadcast, resolvedStrategy, roomId, status]);
 
   // ── Set up WebRTC peer connection ──────────────────────────────────────────
-  const setupPeerConnection = async (ws) => {
-    setStatus("connected");
-
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-    pcRef.current = pc;
+  const setupPeerConnection = async (ws, receiverPeerId, preferLocal, fallbackTried) => {
+    const pc = new RTCPeerConnection({
+      iceServers: preferLocal ? ICE_SERVERS_LOCAL_ONLY : ICE_SERVERS,
+    });
 
     // Create data channel for file transfer
     const dc = pc.createDataChannel("file-transfer", { ordered: true });
-    dcRef.current = dc;
+
+    const peerState = {
+      pc,
+      dc,
+      transferStarted: false,
+      transferSalt: null,
+      completed: false,
+      preferLocal,
+      fallbackTried,
+    };
+    peersRef.current.set(receiverPeerId, peerState);
 
     pc.onicecandidate = (e) => {
       if (e.candidate) {
-        ws.send(JSON.stringify({ type: "ice_candidate", candidate: e.candidate }));
+        ws.send(JSON.stringify({
+          type: "ice_candidate",
+          candidate: e.candidate,
+          to: receiverPeerId,
+        }));
       }
     };
 
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+    pc.onconnectionstatechange = async () => {
+      if ((pc.connectionState === "failed" || pc.connectionState === "disconnected") && !peerState.completed) {
+        if (peerState.preferLocal && !peerState.fallbackTried) {
+          // Automatic proximity fallback: retry with internet STUN if LAN-only fails.
+          peerState.fallbackTried = true;
+          peerState.dc?.close();
+          peerState.pc?.close();
+          peersRef.current.delete(receiverPeerId);
+          await setupPeerConnection(ws, receiverPeerId, false, true);
+          return;
+        }
+
         if (status !== "done") {
           setError("WebRTC connection lost.");
           setStatus("error");
@@ -196,18 +274,18 @@ export default function P2PSend() {
     };
 
     dc.onopen = () => {
-      transferStartedRef.current = false;
+      peerState.transferStarted = false;
       // Send metadata first; receiver will explicitly ACK when ready.
-      sendFileMeta(dc);
+      sendFileMeta(receiverPeerId);
     };
 
     dc.onmessage = async (event) => {
       if (typeof event.data !== "string") return;
       try {
         const msg = JSON.parse(event.data);
-        if (msg.type === "receiver_ready" && !transferStartedRef.current) {
-          transferStartedRef.current = true;
-          await sendFile(dc);
+        if (msg.type === "receiver_ready" && !peerState.transferStarted) {
+          peerState.transferStarted = true;
+          await sendFile(receiverPeerId);
         }
       } catch {
         // Ignore non-JSON control messages.
@@ -215,37 +293,48 @@ export default function P2PSend() {
     };
 
     dc.onerror = (e) => {
-      setError("Data channel error: " + e.message);
+      setError("Data channel error: " + (e?.message || "unknown"));
       setStatus("error");
     };
 
     // Create and send offer
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    ws.send(JSON.stringify({ type: "offer", sdp: pc.localDescription.sdp }));
+    ws.send(JSON.stringify({
+      type: "offer",
+      sdp: pc.localDescription.sdp,
+      to: receiverPeerId,
+      strategy: preferLocal ? "lan" : "internet",
+    }));
   };
 
-  const sendFileMeta = async (dc) => {
+  const sendFileMeta = async (receiverPeerId) => {
+    const peer = peersRef.current.get(receiverPeerId);
+    if (!peer?.dc) return;
+
     const f = fileRef.current;
     if (!f) return;
 
-    transferSaltRef.current = (usePassword && password)
+    peer.transferSalt = (usePassword && password)
       ? crypto.getRandomValues(new Uint8Array(16))
       : null;
 
     // Send file metadata first
-    dc.send(JSON.stringify({
+    peer.dc.send(JSON.stringify({
       type: "file_meta",
       name: f.name,
       size: f.size,
       encrypted: !!(usePassword && password),
-      salt: transferSaltRef.current ? btoa(String.fromCharCode(...transferSaltRef.current)) : null,
+      salt: peer.transferSalt ? btoa(String.fromCharCode(...peer.transferSalt)) : null,
       password_hint: usePassword && password ? "required" : null,
     }));
   };
 
   // ── Send file over DataChannel ─────────────────────────────────────────────
-  const sendFile = async (dc) => {
+  const sendFile = async (receiverPeerId) => {
+    const peer = peersRef.current.get(receiverPeerId);
+    if (!peer?.dc) return;
+
     setStatus("sending");
     const f = fileRef.current;
     if (!f) return;
@@ -253,7 +342,7 @@ export default function P2PSend() {
     let cryptoKey = null;
 
     if (usePassword && password) {
-      const saltBytes = transferSaltRef.current;
+      const saltBytes = peer.transferSalt;
       if (!saltBytes) {
         setError("Transfer initialization failed. Please try again.");
         setStatus("error");
@@ -268,7 +357,7 @@ export default function P2PSend() {
 
     for (let i = 0; i < totalChunks; i++) {
       // Back-pressure: pause when buffer is full
-      while (dc.bufferedAmount > 4 * 1024 * 1024) {
+      while (peer.dc.bufferedAmount > 4 * 1024 * 1024) {
         await new Promise((r) => setTimeout(r, 10));
       }
 
@@ -277,9 +366,9 @@ export default function P2PSend() {
 
       if (cryptoKey) {
         const encrypted = await encryptChunk(cryptoKey, ab);
-        dc.send(encrypted);
+        peer.dc.send(encrypted);
       } else {
-        dc.send(ab);
+        peer.dc.send(ab);
       }
 
       sentBytes += ab.byteLength;
@@ -296,8 +385,15 @@ export default function P2PSend() {
       }
     }
 
-    dc.send(JSON.stringify({ type: "transfer_complete" }));
-    setStatus("done");
+    peer.dc.send(JSON.stringify({ type: "transfer_complete" }));
+    peer.completed = true;
+    setCompletedReceivers((prev) => {
+      const next = prev + 1;
+      if (next >= Math.max(1, peersRef.current.size)) {
+        setStatus("done");
+      }
+      return next;
+    });
     setProgress(100);
   };
 
@@ -418,6 +514,42 @@ export default function P2PSend() {
                   />
                 )}
 
+                <div style={{
+                  marginBottom: "1rem",
+                  display: "grid",
+                  gap: "0.75rem"
+                }}>
+                  <label style={{ color: "var(--text-secondary)", fontSize: "0.9rem", display: "grid", gap: "0.35rem" }}>
+                    Transfer strategy
+                    <select
+                      value={strategy}
+                      onChange={(e) => setStrategy(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "0.65rem 0.75rem",
+                        borderRadius: 8,
+                        border: "1px solid var(--border-color)",
+                        background: "var(--bg-secondary)",
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      <option value="auto">Auto (recommended)</option>
+                      <option value="lan">Proximity LAN first</option>
+                      <option value="internet">Internet optimized</option>
+                    </select>
+                  </label>
+
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+                    <input
+                      type="checkbox"
+                      checked={allowBroadcast}
+                      onChange={(e) => setAllowBroadcast(e.target.checked)}
+                      style={{ width: 16, height: 16 }}
+                    />
+                    Allow multiple receivers (broadcast mode)
+                  </label>
+                </div>
+
                 <button
                   className="btn-primary"
                   style={{ width: "100%", padding: "0.875rem", fontSize: "1rem" }}
@@ -441,6 +573,9 @@ export default function P2PSend() {
                   </div>
                   <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
                     <strong>{file?.name}</strong> ({file ? (file.size / (1024 * 1024)).toFixed(2) : 0} MB)
+                  </div>
+                  <div style={{ color: "var(--text-secondary)", fontSize: "0.82rem", marginTop: "0.35rem" }}>
+                    👥 Receivers connected: {connectedReceivers} · Completed: {completedReceivers}
                   </div>
                 </div>
 
