@@ -86,6 +86,9 @@ const ICE_SERVERS = [
 
 export default function P2PReceive() {
   const { roomId } = useParams();
+  const query = new URLSearchParams(window.location.search);
+  const requestedStrategy = query.get("strategy") || "auto";
+  const preferLocal = requestedStrategy === "lan";
 
   // Backward compatibility: consume password from legacy hash links once.
   const [legacyHashPassword] = useState(() => {
@@ -107,6 +110,8 @@ export default function P2PReceive() {
 
   const wsRef = useRef(null);
   const pcRef = useRef(null);
+  const receiverPeerIdRef = useRef(null);
+  const senderPeerIdRef = useRef(null);
   const chunksRef = useRef([]);
   const receivedBytesRef = useRef(0);
   const startTimeRef = useRef(null);
@@ -129,16 +134,24 @@ export default function P2PReceive() {
 
     ws.onopen = () => {
       setStatus("waiting");
-      ws.send(JSON.stringify({ type: "receiver_joined" }));
+      ws.send(JSON.stringify({ type: "receiver_joined", prefer_local: preferLocal }));
     };
 
     ws.onmessage = async (event) => {
       const msg = JSON.parse(event.data);
 
+      if (msg.type === "peer_id") {
+        receiverPeerIdRef.current = msg.peer_id;
+        return;
+      }
+
       if (msg.type === "offer") {
-        await setupPeerConnection(ws, msg.sdp, passwordOverride);
+        if (msg.to && msg.to !== receiverPeerIdRef.current) return;
+        senderPeerIdRef.current = msg.from || senderPeerIdRef.current;
+        await setupPeerConnection(ws, msg.sdp, passwordOverride, msg.from || null, msg.strategy || requestedStrategy);
       }
       if (msg.type === "ice_candidate" && pcRef.current) {
+        if (msg.to && msg.to !== receiverPeerIdRef.current) return;
         try {
           await pcRef.current.addIceCandidate(msg.candidate);
         } catch {
@@ -151,7 +164,7 @@ export default function P2PReceive() {
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId]); // intentionally omit 'status' and 'setupPeerConnection' — they are stable refs
+  }, [preferLocal, requestedStrategy, roomId]); // intentionally omit 'status' and 'setupPeerConnection' — they are stable refs
 
   useEffect(() => {
     // Remove hash from address bar so password isn't exposed after page load.
@@ -168,15 +181,23 @@ export default function P2PReceive() {
   }, []); // run once on mount only
 
   // ── Set up WebRTC on receiving offer ───────────────────────────────────────
-  const setupPeerConnection = async (ws, offerSdp, passwordOverride) => {
+  const setupPeerConnection = async (ws, offerSdp, passwordOverride, senderPeerId, transportStrategy) => {
     setStatus("waiting");
 
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    pcRef.current?.close();
+
+    const pc = new RTCPeerConnection({
+      iceServers: transportStrategy === "lan" ? [] : ICE_SERVERS,
+    });
     pcRef.current = pc;
 
     pc.onicecandidate = (e) => {
       if (e.candidate) {
-        ws.send(JSON.stringify({ type: "ice_candidate", candidate: e.candidate }));
+        ws.send(JSON.stringify({
+          type: "ice_candidate",
+          candidate: e.candidate,
+          to: senderPeerId || senderPeerIdRef.current,
+        }));
       }
     };
 
@@ -265,7 +286,11 @@ export default function P2PReceive() {
     await pc.setRemoteDescription({ type: "offer", sdp: offerSdp });
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    ws.send(JSON.stringify({ type: "answer", sdp: pc.localDescription.sdp }));
+    ws.send(JSON.stringify({
+      type: "answer",
+      sdp: pc.localDescription.sdp,
+      to: senderPeerId || senderPeerIdRef.current,
+    }));
   };
 
   const finalize = async () => {
