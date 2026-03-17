@@ -62,7 +62,8 @@ function wsUrl(roomId) {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CHUNK_SIZE = 64 * 1024; // 64 KB — good balance for DataChannel throughput
+const CHUNK_SIZE = 256 * 1024; // 256 KB improves throughput for large file transfers
+const BUFFER_HIGH_WATERMARK = 16 * 1024 * 1024;
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
@@ -100,9 +101,9 @@ export default function P2PSend() {
 
   const resolvedStrategy = (() => {
     if (strategy !== "auto") return strategy;
-    const size = fileRef.current?.size || file?.size || 0;
-    // Auto strategy for hybrid mode: local-first for medium files, internet for large files.
-    return size > 100 * 1024 * 1024 ? "internet" : "lan";
+    // Auto is LAN-first for best same-WiFi performance, with automatic
+    // fallback to internet STUN if local candidate connectivity fails.
+    return "lan";
   })();
 
   const shareQuery = new URLSearchParams({
@@ -357,8 +358,8 @@ export default function P2PSend() {
 
     for (let i = 0; i < totalChunks; i++) {
       // Back-pressure: pause when buffer is full
-      while (peer.dc.bufferedAmount > 4 * 1024 * 1024) {
-        await new Promise((r) => setTimeout(r, 10));
+      while (peer.dc.bufferedAmount > BUFFER_HIGH_WATERMARK) {
+        await new Promise((r) => setTimeout(r, 2));
       }
 
       const slice = f.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
