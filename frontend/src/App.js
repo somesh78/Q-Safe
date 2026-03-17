@@ -42,6 +42,7 @@ function App() {
             <Route path="/download/:token" element={<OnlineDownload />} />
             <Route path="/verify-email/:uid/:token" element={<VerifyEmail />} />
             <Route path="/receive/:roomId" element={<P2PReceive />} />
+            <Route path="/p2p/:roomId" element={<P2PReceive />} />
 
             {/* Footer Pages - Product */}
             <Route path="/features" element={<Features />} />

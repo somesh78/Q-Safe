@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { QRCodeCanvas } from "qrcode.react";
 import Header from "../components/Header";
 import "../App.css";
 
@@ -95,7 +96,7 @@ export default function P2PSend() {
   const transferSaltRef = useRef(null);
 
   // Build the shareable link (never include password in URL)
-  const shareLink = `${window.location.origin}/receive/${roomId}`;
+  const shareLink = `${window.location.origin}/p2p/${roomId}`;
 
   const copyLink = async () => {
     try {
@@ -454,6 +455,34 @@ export default function P2PSend() {
                   fontFamily: "monospace"
                 }}>
                   {shareLink}
+                </div>
+
+                <div style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  marginBottom: "1rem",
+                  padding: "0.75rem",
+                  background: "#fff",
+                  borderRadius: 12,
+                  border: "1px solid var(--border-color)"
+                }}>
+                  <QRCodeCanvas
+                    value={shareLink}
+                    size={180}
+                    includeMargin={true}
+                    bgColor="#ffffff"
+                    fgColor="#111111"
+                    level="M"
+                  />
+                </div>
+
+                <div style={{
+                  marginBottom: "1rem",
+                  textAlign: "center",
+                  fontSize: "0.82rem",
+                  color: "var(--text-secondary)"
+                }}>
+                  Scan this QR to open the receiver page instantly.
                 </div>
 
                 <button
