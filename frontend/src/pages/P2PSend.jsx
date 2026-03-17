@@ -94,8 +94,8 @@ export default function P2PSend() {
   const transferStartedRef = useRef(false);
   const transferSaltRef = useRef(null);
 
-  // Build the shareable link
-  const shareLink = `${window.location.origin}/receive/${roomId}${usePassword && password ? "#" + encodeURIComponent(password) : ""}`;
+  // Build the shareable link (never include password in URL)
+  const shareLink = `${window.location.origin}/receive/${roomId}`;
 
   const copyLink = async () => {
     try {
@@ -474,7 +474,7 @@ export default function P2PSend() {
                     fontSize: "0.82rem",
                     color: "var(--text-secondary)"
                   }}>
-                    🔒 Password is embedded in the link. The receiver will be prompted automatically.
+                    🔒 Password is NOT included in the link. Share it separately with the receiver.
                   </div>
                 )}
               </>
