@@ -87,8 +87,16 @@ const ICE_SERVERS = [
 export default function P2PReceive() {
   const { roomId } = useParams();
 
-  // Password may be in URL hash: /receive/ROOM_ID#mypassword
-  const hashPassword = decodeURIComponent(window.location.hash.slice(1));
+  // Backward compatibility: consume password from legacy hash links once.
+  const [legacyHashPassword] = useState(() => {
+    const rawHash = window.location.hash.slice(1);
+    if (!rawHash) return "";
+    try {
+      return decodeURIComponent(rawHash);
+    } catch {
+      return rawHash;
+    }
+  });
 
   const [status, setStatus] = useState("connecting"); // connecting | waiting | receiving | done | error | password_required
   const [error, setError] = useState("");
@@ -146,7 +154,12 @@ export default function P2PReceive() {
   }, [roomId]); // intentionally omit 'status' and 'setupPeerConnection' — they are stable refs
 
   useEffect(() => {
-    connect(hashPassword || null);
+    // Remove hash from address bar so password isn't exposed after page load.
+    if (window.location.hash) {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    }
+
+    connect(legacyHashPassword || null);
     return () => {
       pcRef.current?.close();
       wsRef.current?.close();
@@ -190,7 +203,7 @@ export default function P2PReceive() {
             startTimeRef.current = Date.now();
 
             if (msg.encrypted) {
-              const pw = passwordOverride || hashPassword;
+              const pw = passwordOverride;
               if (pw) {
                 const saltBytes = Uint8Array.from(atob(msg.salt), (c) => c.charCodeAt(0));
                 cryptoKeyRef.current = await deriveKey(pw, saltBytes);
@@ -386,7 +399,7 @@ export default function P2PReceive() {
                 <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>❌</div>
                 <div style={{ color: "var(--text-primary)", fontWeight: 600, marginBottom: "0.5rem" }}>Connection Error</div>
                 <div style={{ color: "var(--text-secondary)", fontSize: "0.875rem", marginBottom: "1.5rem" }}>{error}</div>
-                <button className="btn-secondary" onClick={() => connect(hashPassword || null)}>
+                <button className="btn-secondary" onClick={() => connect(legacyHashPassword || null)}>
                   Retry
                 </button>
               </>
