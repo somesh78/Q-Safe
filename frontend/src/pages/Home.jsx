@@ -5,6 +5,8 @@ import { createSession, uploadFile, getJobStatus, downloadJobResult } from "../s
 import Header from "../components/Header";
 import '../App.css';
 
+const MAX_ONLINE_FILE_SIZE = 50 * 1024 * 1024;
+
 export default function Home() {
     const [session, setSession] = useState(null);
     const [uploadResult, setUploadResult] = useState(null);
@@ -89,8 +91,15 @@ export default function Home() {
     };
 
     const handleFileUpload = async (file) => {
+        if (!file) return;
+
         if (!password) {
             alert("Please enter a password before uploading the file.");
+            return;
+        }
+
+        if (session.mode === "ONLINE" && file.size > MAX_ONLINE_FILE_SIZE) {
+            alert("Online mode supports files up to 50MB. Please choose a smaller file.");
             return;
         }
 
@@ -151,7 +160,7 @@ export default function Home() {
                             <div className="mode-card animate-fade-in stagger-1" onClick={() => handleModeSelect("ONLINE")}>
                                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🌐</div>
                                 <h3>Online Secure Share</h3>
-                                <p style={{ marginBottom: '1rem' }}>Upload files (up to 500MB) and generate a secure, self-destructing QR link. Perfect for quick internet-based sharing.</p>
+                                <p style={{ marginBottom: '1rem' }}>Upload files (up to 50MB) and generate a secure, self-destructing QR link. Perfect for quick internet-based sharing.</p>
                                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                                     <div style={{ marginBottom: '0.5rem' }}>✓ Custom expiration times</div>
                                     <div style={{ marginBottom: '0.5rem' }}>✓ IP address locking</div>
@@ -362,6 +371,11 @@ export default function Home() {
                                 <div className="upload-zone">
                                     <div className="upload-icon">📁</div>
                                     <p>Click or Drag file here to upload</p>
+                                    {session.mode === 'ONLINE' && (
+                                        <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                                            Online mode limit: 50MB
+                                        </p>
+                                    )}
                                     <input
                                         type="file"
                                         onChange={(e) => handleFileUpload(e.target.files[0])}
