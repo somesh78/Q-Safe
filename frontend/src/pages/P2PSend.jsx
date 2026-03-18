@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
 import Header from "../components/Header";
+import { createSession, uploadFile, getJobStatus, downloadJobResult } from "../services/api";
 import "../App.css";
 
 // ─── Web Crypto helpers ───────────────────────────────────────────────────────
@@ -64,6 +65,7 @@ function wsUrl(roomId) {
 
 const CHUNK_SIZE = 256 * 1024; // 256 KB improves throughput for large file transfers
 const BUFFER_HIGH_WATERMARK = 16 * 1024 * 1024;
+const HYBRID_AIRGAP_MAX_BYTES = 2 * 1024 * 1024;
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
@@ -84,7 +86,7 @@ export default function P2PSend() {
   const [usePassword, setUsePassword] = useState(false);
 
   const [roomId] = useState(() => randomRoomId());
-  const [status, setStatus] = useState("idle"); // idle | waiting | connected | sending | done | error
+  const [status, setStatus] = useState("idle"); // idle | waiting | connected | sending | done | offline_processing | offline_done | error
   const [error, setError] = useState("");
   const [progress, setProgress] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -93,6 +95,10 @@ export default function P2PSend() {
   const [allowBroadcast, setAllowBroadcast] = useState(true);
   const [connectedReceivers, setConnectedReceivers] = useState(0);
   const [completedReceivers, setCompletedReceivers] = useState(0);
+  const [offlineJobId, setOfflineJobId] = useState(null);
+  const [offlineJobStatus, setOfflineJobStatus] = useState(null);
+  const [offlineJobProgress, setOfflineJobProgress] = useState(0);
+  const [offlineZipName, setOfflineZipName] = useState("");
 
   const wsRef = useRef(null);
   const senderPeerIdRef = useRef(null);
@@ -105,6 +111,8 @@ export default function P2PSend() {
     // fallback to internet STUN if local candidate connectivity fails.
     return "lan";
   })();
+
+  const hybridAirGapEligible = strategy === "auto" && !!file && file.size <= HYBRID_AIRGAP_MAX_BYTES;
 
   const shareQuery = new URLSearchParams({
     strategy: resolvedStrategy,
@@ -124,6 +132,19 @@ export default function P2PSend() {
     }
   };
 
+  const downloadOfflineResult = async (jobId, filename) => {
+    const response = await downloadJobResult(jobId);
+    const blob = new Blob([response.data], { type: "application/zip" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `offline_qr_${filename}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   // ── Clean up on unmount ────────────────────────────────────────────────────
   useEffect(() => {
     const peers = peersRef.current;
@@ -135,6 +156,38 @@ export default function P2PSend() {
       wsRef.current?.close();
     };
   }, []);
+
+  // ── Poll offline QR job status for Hybrid Air-Gap path ───────────────────
+  useEffect(() => {
+    if (!offlineJobId || status !== "offline_processing") return;
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await getJobStatus(offlineJobId);
+        const data = response.data;
+
+        setOfflineJobStatus(data.status);
+        setOfflineJobProgress(data.progress?.percent || 0);
+
+        if (data.status === "COMPLETED") {
+          clearInterval(interval);
+          const filename = data.original_filename || fileRef.current?.name || "q_safe_bundle";
+          await downloadOfflineResult(offlineJobId, filename);
+          setStatus("offline_done");
+        } else if (data.status === "FAILED") {
+          clearInterval(interval);
+          setError(data.error_message || "Offline QR generation failed.");
+          setStatus("error");
+        }
+      } catch {
+        clearInterval(interval);
+        setError("Failed to fetch offline generation status.");
+        setStatus("error");
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [offlineJobId, status]);
 
   // ── Start signaling (called when user clicks "Create Transfer Link") ────────
   const startSignaling = useCallback(() => {
@@ -224,6 +277,48 @@ export default function P2PSend() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowBroadcast, resolvedStrategy, roomId, status]);
+
+  const startHybridAirGap = async () => {
+    const f = fileRef.current;
+    if (!f) return;
+    if (!password) {
+      setError("Hybrid Air-Gap requires a password for offline QR generation.");
+      setStatus("error");
+      return;
+    }
+
+    setStatus("offline_processing");
+    setError("");
+    setProgress(0);
+    setTransferSpeed("");
+    setOfflineJobProgress(0);
+    setOfflineJobStatus("PENDING");
+
+    try {
+      const sessionRes = await createSession("OFFLINE");
+      const sessionId = sessionRes.data?.session_id;
+      if (!sessionId) {
+        throw new Error("Failed to create offline session.");
+      }
+
+      const uploadRes = await uploadFile(f, sessionId, password, {
+        maxDownloads: 3,
+        expiryHours: 1,
+        enableIpLock: true,
+      });
+
+      const jobId = uploadRes.data?.job_id;
+      if (!jobId) {
+        throw new Error("Failed to start offline QR generation job.");
+      }
+
+      setOfflineJobId(jobId);
+      setOfflineZipName(`${f.name}_qr_bundle.zip`);
+    } catch (e) {
+      setError(e?.response?.data?.error || e?.message || "Could not start Hybrid Air-Gap flow.");
+      setStatus("error");
+    }
+  };
 
   // ── Set up WebRTC peer connection ──────────────────────────────────────────
   const setupPeerConnection = async (ws, receiverPeerId, preferLocal, fallbackTried) => {
@@ -414,6 +509,10 @@ export default function P2PSend() {
 
   const handleStart = () => {
     if (!file) return;
+    if (hybridAirGapEligible) {
+      startHybridAirGap();
+      return;
+    }
     startSignaling();
   };
 
@@ -495,10 +594,10 @@ export default function P2PSend() {
                   <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Encrypt with password</span>
                 </label>
 
-                {usePassword && (
+                {(usePassword || hybridAirGapEligible) && (
                   <input
                     type="password"
-                    placeholder="Enter password"
+                    placeholder={hybridAirGapEligible ? "Enter password (required for Hybrid Air-Gap)" : "Enter password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     style={{
@@ -513,6 +612,20 @@ export default function P2PSend() {
                       boxSizing: "border-box"
                     }}
                   />
+                )}
+
+                {hybridAirGapEligible && (
+                  <div style={{
+                    marginBottom: "1rem",
+                    padding: "0.75rem",
+                    background: "rgba(16, 185, 129, 0.12)",
+                    border: "1px solid rgba(16, 185, 129, 0.35)",
+                    borderRadius: 8,
+                    fontSize: "0.82rem",
+                    color: "var(--text-secondary)"
+                  }}>
+                    📴 Hybrid Air-Gap detected: this file is ≤ 2MB. In Auto mode, Q-Safe will generate an offline QR ZIP bundle instead of a live P2P stream.
+                  </div>
                 )}
 
                 <div style={{
@@ -555,9 +668,9 @@ export default function P2PSend() {
                   className="btn-primary"
                   style={{ width: "100%", padding: "0.875rem", fontSize: "1rem" }}
                   onClick={handleStart}
-                  disabled={!file || (usePassword && !password)}
+                  disabled={!file || ((usePassword || hybridAirGapEligible) && !password)}
                 >
-                  Create Transfer Link
+                  {hybridAirGapEligible ? "Generate Offline QR Bundle" : "Create Transfer Link"}
                 </button>
               </>
             )}
@@ -671,6 +784,61 @@ export default function P2PSend() {
                   {progress}%
                 </div>
               </>
+            )}
+
+            {/* Hybrid Air-Gap Processing */}
+            {status === "offline_processing" && (
+              <>
+                <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+                  <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>📴</div>
+                  <div style={{ color: "var(--text-primary)", fontWeight: 600, marginBottom: "0.25rem" }}>
+                    Generating Offline QR Bundle…
+                  </div>
+                  <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+                    {file?.name} · {offlineJobProgress}%
+                  </div>
+                </div>
+
+                <div style={{ background: "var(--bg-secondary)", borderRadius: 100, height: 8, overflow: "hidden", marginBottom: "0.5rem" }}>
+                  <div style={{
+                    height: "100%",
+                    width: `${offlineJobProgress}%`,
+                    background: "var(--accent-gradient)",
+                    borderRadius: 100,
+                    transition: "width 0.2s ease"
+                  }} />
+                </div>
+
+                <div style={{ textAlign: "center", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                  Job status: {offlineJobStatus || "PENDING"}
+                </div>
+              </>
+            )}
+
+            {/* Hybrid Air-Gap Done */}
+            {status === "offline_done" && (
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "3rem", marginBottom: "0.75rem" }}>✅</div>
+                <div style={{ color: "var(--text-primary)", fontWeight: 700, fontSize: "1.25rem", marginBottom: "0.5rem" }}>
+                  Offline QR Bundle Ready
+                </div>
+                <div style={{ color: "var(--text-secondary)", marginBottom: "1.5rem" }}>
+                  <strong>{offlineZipName || `${file?.name}_qr_bundle.zip`}</strong> has been generated and downloaded.
+                </div>
+                <button
+                  className="btn-primary"
+                  style={{ marginRight: "0.75rem" }}
+                  onClick={() => offlineJobId && downloadOfflineResult(offlineJobId, file?.name || "q_safe_bundle")}
+                >
+                  Download Again
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={() => navigate("/send")}
+                >
+                  Start New Transfer
+                </button>
+              </div>
             )}
 
             {/* Step 4 — Done */}
