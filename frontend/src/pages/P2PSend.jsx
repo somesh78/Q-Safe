@@ -66,6 +66,7 @@ function wsUrl(roomId) {
 const CHUNK_SIZE = 256 * 1024; // 256 KB improves throughput for large file transfers
 const BUFFER_HIGH_WATERMARK = 16 * 1024 * 1024;
 const HYBRID_AIRGAP_MAX_BYTES = 2 * 1024 * 1024;
+const LOCAL_CONNECT_TIMEOUT_MS = 8000;
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
@@ -104,6 +105,14 @@ export default function P2PSend() {
   const senderPeerIdRef = useRef(null);
   const peersRef = useRef(new Map()); // peerId => { pc, dc, transferStarted, transferSalt, completed, fallbackTried }
   const fileRef = useRef(null);
+
+  const getOpenPeerCount = () => {
+    let openCount = 0;
+    peersRef.current.forEach((peer) => {
+      if (peer.channelOpen) openCount += 1;
+    });
+    return openCount;
+  };
 
   const resolvedStrategy = (() => {
     if (strategy !== "auto") return strategy;
@@ -238,8 +247,6 @@ export default function P2PSend() {
         if (!peersRef.current.has(msg.from)) {
           const preferLocal = msg.prefer_local === true || resolvedStrategy === "lan";
           await setupPeerConnection(ws, msg.from, preferLocal, false);
-          setConnectedReceivers(peersRef.current.size);
-          setStatus("connected");
         }
       }
 
@@ -264,10 +271,13 @@ export default function P2PSend() {
       if (msg.type === "peer_disconnected" && msg.from) {
         const peer = peersRef.current.get(msg.from);
         if (peer) {
+          if (peer.connectTimeout) {
+            clearTimeout(peer.connectTimeout);
+          }
           peer.dc?.close();
           peer.pc?.close();
           peersRef.current.delete(msg.from);
-          setConnectedReceivers(peersRef.current.size);
+          setConnectedReceivers(getOpenPeerCount());
           if (peersRef.current.size === 0 && status !== "done") {
             setError("Receiver disconnected before the transfer was complete.");
             setStatus("error");
@@ -322,6 +332,13 @@ export default function P2PSend() {
 
   // ── Set up WebRTC peer connection ──────────────────────────────────────────
   const setupPeerConnection = async (ws, receiverPeerId, preferLocal, fallbackTried) => {
+    const previousPeer = peersRef.current.get(receiverPeerId);
+    if (previousPeer?.connectTimeout) {
+      clearTimeout(previousPeer.connectTimeout);
+    }
+    previousPeer?.dc?.close();
+    previousPeer?.pc?.close();
+
     const pc = new RTCPeerConnection({
       iceServers: preferLocal ? ICE_SERVERS_LOCAL_ONLY : ICE_SERVERS,
     });
@@ -337,6 +354,8 @@ export default function P2PSend() {
       completed: false,
       preferLocal,
       fallbackTried,
+      channelOpen: false,
+      connectTimeout: null,
     };
     peersRef.current.set(receiverPeerId, peerState);
 
@@ -352,6 +371,10 @@ export default function P2PSend() {
 
     pc.onconnectionstatechange = async () => {
       if ((pc.connectionState === "failed" || pc.connectionState === "disconnected") && !peerState.completed) {
+        if (peerState.connectTimeout) {
+          clearTimeout(peerState.connectTimeout);
+          peerState.connectTimeout = null;
+        }
         if (peerState.preferLocal && !peerState.fallbackTried) {
           // Automatic proximity fallback: retry with internet STUN if LAN-only fails.
           peerState.fallbackTried = true;
@@ -370,9 +393,21 @@ export default function P2PSend() {
     };
 
     dc.onopen = () => {
+      if (peerState.connectTimeout) {
+        clearTimeout(peerState.connectTimeout);
+        peerState.connectTimeout = null;
+      }
+      peerState.channelOpen = true;
+      setConnectedReceivers(getOpenPeerCount());
+      setStatus("connected");
       peerState.transferStarted = false;
       // Send metadata first; receiver will explicitly ACK when ready.
       sendFileMeta(receiverPeerId);
+    };
+
+    dc.onclose = () => {
+      peerState.channelOpen = false;
+      setConnectedReceivers(getOpenPeerCount());
     };
 
     dc.onmessage = async (event) => {
@@ -402,6 +437,22 @@ export default function P2PSend() {
       to: receiverPeerId,
       strategy: preferLocal ? "lan" : "internet",
     }));
+
+    // Some networks stay in "connecting" for too long without firing "failed".
+    // In LAN-first mode, proactively retry with STUN after a timeout.
+    if (preferLocal && !fallbackTried) {
+      peerState.connectTimeout = setTimeout(async () => {
+        const currentPeer = peersRef.current.get(receiverPeerId);
+        if (!currentPeer || currentPeer.channelOpen || currentPeer.completed || currentPeer.fallbackTried) {
+          return;
+        }
+        currentPeer.fallbackTried = true;
+        currentPeer.dc?.close();
+        currentPeer.pc?.close();
+        peersRef.current.delete(receiverPeerId);
+        await setupPeerConnection(ws, receiverPeerId, false, true);
+      }, LOCAL_CONNECT_TIMEOUT_MS);
+    }
   };
 
   const sendFileMeta = async (receiverPeerId) => {
