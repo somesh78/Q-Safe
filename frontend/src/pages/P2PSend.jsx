@@ -274,6 +274,9 @@ export default function P2PSend() {
           if (peer.connectTimeout) {
             clearTimeout(peer.connectTimeout);
           }
+          if (peer.readyTimeout) {
+            clearTimeout(peer.readyTimeout);
+          }
           peer.dc?.close();
           peer.pc?.close();
           peersRef.current.delete(msg.from);
@@ -336,6 +339,9 @@ export default function P2PSend() {
     if (previousPeer?.connectTimeout) {
       clearTimeout(previousPeer.connectTimeout);
     }
+    if (previousPeer?.readyTimeout) {
+      clearTimeout(previousPeer.readyTimeout);
+    }
     previousPeer?.dc?.close();
     previousPeer?.pc?.close();
 
@@ -375,6 +381,10 @@ export default function P2PSend() {
           clearTimeout(peerState.connectTimeout);
           peerState.connectTimeout = null;
         }
+        if (peerState.readyTimeout) {
+          clearTimeout(peerState.readyTimeout);
+          peerState.readyTimeout = null;
+        }
         if (peerState.preferLocal && !peerState.fallbackTried) {
           // Automatic proximity fallback: retry with internet STUN if LAN-only fails.
           peerState.fallbackTried = true;
@@ -401,8 +411,18 @@ export default function P2PSend() {
       setConnectedReceivers(getOpenPeerCount());
       setStatus("connected");
       peerState.transferStarted = false;
+      console.log("[P2PSend] Data channel opened for receiver:", receiverPeerId);
       // Send metadata first; receiver will explicitly ACK when ready.
       sendFileMeta(receiverPeerId);
+
+      // Set timeout for receiver_ready acknowledgment (10 seconds)
+      peerState.readyTimeout = setTimeout(() => {
+        if (!peerState.transferStarted && peerState.channelOpen) {
+          console.error("[P2PSend] Timeout waiting for receiver_ready from:", receiverPeerId);
+          setError("Receiver did not respond. The connection may have been interrupted.");
+          setStatus("error");
+        }
+      }, 10000);
     };
 
     dc.onclose = () => {
@@ -414,11 +434,19 @@ export default function P2PSend() {
       if (typeof event.data !== "string") return;
       try {
         const msg = JSON.parse(event.data);
+        console.log("[P2PSend] Received message from receiver:", msg.type);
         if (msg.type === "receiver_ready" && !peerState.transferStarted) {
+          console.log("[P2PSend] Receiver ready, starting file transfer to:", receiverPeerId);
+          // Clear the ready timeout
+          if (peerState.readyTimeout) {
+            clearTimeout(peerState.readyTimeout);
+            peerState.readyTimeout = null;
+          }
           peerState.transferStarted = true;
           await sendFile(receiverPeerId);
         }
-      } catch {
+      } catch (err) {
+        console.error("[P2PSend] Error parsing receiver message:", err);
         // Ignore non-JSON control messages.
       }
     };
@@ -466,15 +494,18 @@ export default function P2PSend() {
       ? crypto.getRandomValues(new Uint8Array(16))
       : null;
 
-    // Send file metadata first
-    peer.dc.send(JSON.stringify({
+    const metadata = {
       type: "file_meta",
       name: f.name,
       size: f.size,
       encrypted: !!(usePassword && password),
       salt: peer.transferSalt ? btoa(String.fromCharCode(...peer.transferSalt)) : null,
       password_hint: usePassword && password ? "required" : null,
-    }));
+    };
+
+    console.log("[P2PSend] Sending file metadata to receiver:", receiverPeerId, metadata);
+    // Send file metadata first
+    peer.dc.send(JSON.stringify(metadata));
   };
 
   // ── Send file over DataChannel ─────────────────────────────────────────────
