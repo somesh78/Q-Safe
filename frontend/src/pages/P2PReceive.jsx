@@ -212,6 +212,11 @@ export default function P2PReceive() {
       const dc = event.channel;
       dataChannelRef.current = dc;
 
+      // Wait for data channel to be fully open before processing messages
+      dc.onopen = () => {
+        console.log("[P2PReceive] Data channel opened, ready to receive");
+      };
+
       dc.onmessage = async (e) => {
         if (typeof e.data === "string") {
           const msg = JSON.parse(e.data);
@@ -228,16 +233,32 @@ export default function P2PReceive() {
               if (pw) {
                 const saltBytes = Uint8Array.from(atob(msg.salt), (c) => c.charCodeAt(0));
                 cryptoKeyRef.current = await deriveKey(pw, saltBytes);
-                setStatus("receiving");
-                dc.send(JSON.stringify({ type: "receiver_ready" }));
+                // Ensure data channel is open before sending receiver_ready
+                if (dc.readyState === "open") {
+                  console.log("[P2PReceive] Sending receiver_ready (encrypted file)");
+                  dc.send(JSON.stringify({ type: "receiver_ready" }));
+                  setStatus("receiving");
+                } else {
+                  console.error("[P2PReceive] Data channel not open, cannot send receiver_ready");
+                  setError("Connection not ready. Please try again.");
+                  setStatus("error");
+                }
               } else {
                 // No password in URL → ask user
                 setStatus("password_required");
               }
             } else {
               cryptoKeyRef.current = null;
-              setStatus("receiving");
-              dc.send(JSON.stringify({ type: "receiver_ready" }));
+              // Ensure data channel is open before sending receiver_ready
+              if (dc.readyState === "open") {
+                console.log("[P2PReceive] Sending receiver_ready (unencrypted file)");
+                dc.send(JSON.stringify({ type: "receiver_ready" }));
+                setStatus("receiving");
+              } else {
+                console.error("[P2PReceive] Data channel not open, cannot send receiver_ready");
+                setError("Connection not ready. Please try again.");
+                setStatus("error");
+              }
             }
           }
 
@@ -311,10 +332,18 @@ export default function P2PReceive() {
     const meta = fileMetaRef.current;
     if (!meta?.salt) return;
 
+    const dc = dataChannelRef.current;
+    if (!dc || dc.readyState !== "open") {
+      setError("Connection not ready. Please try again.");
+      setStatus("error");
+      return;
+    }
+
     const saltBytes = Uint8Array.from(atob(meta.salt), (c) => c.charCodeAt(0));
     cryptoKeyRef.current = await deriveKey(manualPassword, saltBytes);
+    console.log("[P2PReceive] Sending receiver_ready (manual password)");
+    dc.send(JSON.stringify({ type: "receiver_ready" }));
     setStatus("receiving");
-    dataChannelRef.current?.send(JSON.stringify({ type: "receiver_ready" }));
   };
 
   function formatSpeed(bps) {
