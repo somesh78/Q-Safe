@@ -241,33 +241,51 @@ jobs:
             git checkout production
             git pull --ff-only origin production
 
+            echo "=== Recording current production commit for rollback ==="
+            PREV=$(git rev-parse HEAD)
+            echo "Previous commit: $PREV"
+
             echo "=== Rebuilding Docker containers ==="
             docker-compose down --remove-orphans
-            docker system prune -af --volumes || true
             docker builder prune -af || true
-            docker-compose build
+            # Note: NOT removing volumes; only prune unused images
+            docker-compose build --no-cache
             docker-compose up -d
 
-            echo "=== Waiting for app to start ==="
-            sleep 15
+            echo "=== Waiting for app to start (45s for migrations/collectstatic) ==="
+            sleep 45
 
             echo "=== Health check ==="
-            for i in 1 2 3 4 5; do
-              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/health/ --max-time 10)
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+                http://localhost:8000/api/health/ \
+                --connect-timeout 3 --max-time 10 || echo "000")
+
               if [ "$STATUS" = "200" ]; then
                 echo "Health check passed (HTTP $STATUS)"
                 break
               fi
-              if [ $i -eq 5 ]; then
-                echo "Health check FAILED after 5 attempts (HTTP $STATUS)"
-                echo "Rolling back..."
-                docker-compose down
-                git checkout HEAD~1
-                docker-compose build
+
+              echo "Attempt $i failed (HTTP $STATUS). Container status:"
+              docker-compose ps || true
+
+              if [ $i -eq 10 ]; then
+                echo "Health check FAILED after $i attempts (HTTP $STATUS)"
+                echo "=== Rolling back to $PREV ==="
+                echo "=== docker-compose logs (web, last 200 lines) ==="
+                docker-compose logs --tail=200 web || true
+                echo "=== docker-compose logs (redis, last 200 lines) ==="
+                docker-compose logs --tail=200 redis || true
+                echo "=== Performing rollback ==="
+                docker-compose down --remove-orphans
+                git checkout production
+                git reset --hard "$PREV"
+                docker-compose build --no-cache
                 docker-compose up -d
+                echo "Rollback to $PREV complete. Please verify manually."
                 exit 1
               fi
-              echo "Attempt $i failed (HTTP $STATUS), retrying in 10s..."
+
               sleep 10
             done
 
