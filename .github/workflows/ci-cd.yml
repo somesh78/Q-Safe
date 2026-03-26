@@ -111,10 +111,6 @@ jobs:
         working-directory: frontend
         run: npm ci --legacy-peer-deps
 
-      - name: Ensure ajv compatibility for react-scripts toolchain
-        working-directory: frontend
-        run: npm install ajv@8.17.1 ajv-keywords@5.1.0 --no-save --legacy-peer-deps
-
       - name: Build React app
         working-directory: frontend
         env:
