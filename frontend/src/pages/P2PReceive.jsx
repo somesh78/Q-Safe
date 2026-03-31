@@ -80,6 +80,18 @@ function saveAsBlobUrl(chunks, filename) {
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
+  // Free public TURN servers for symmetric-NAT traversal.
+  // Replace with a private coturn/Cloudflare TURN server in production.
+  {
+    urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443"],
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
+  {
+    urls: "turns:openrelay.metered.ca:443",
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -159,8 +171,14 @@ export default function P2PReceive() {
         }
       }
       if (msg.type === "peer_disconnected" && status !== "done") {
-        setError("Sender disconnected.");
-        setStatus("error");
+        // Only show error if the data channel was already open (real mid-transfer
+        // disconnect). If dc never opened, the sender may just be doing a fallback
+        // retry — a new offer will arrive on the same WebSocket shortly.
+        const dcState = dataChannelRef.current?.readyState;
+        if (dcState === "open" || dcState === "closing") {
+          setError("Sender disconnected.");
+          setStatus("error");
+        }
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps

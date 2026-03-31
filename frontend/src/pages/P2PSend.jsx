@@ -66,10 +66,22 @@ function wsUrl(roomId) {
 const CHUNK_SIZE = 256 * 1024; // 256 KB improves throughput for large file transfers
 const BUFFER_HIGH_WATERMARK = 16 * 1024 * 1024;
 const HYBRID_AIRGAP_MAX_BYTES = 2 * 1024 * 1024;
-const LOCAL_CONNECT_TIMEOUT_MS = 8000;
+const LOCAL_CONNECT_TIMEOUT_MS = 15000; // 15s — give ICE more time before STUN fallback
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
+  // Free public TURN servers for symmetric-NAT traversal.
+  // Replace with a private coturn/Cloudflare TURN server in production.
+  {
+    urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443"],
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
+  {
+    urls: "turns:openrelay.metered.ca:443",
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
 ];
 const ICE_SERVERS_LOCAL_ONLY = [];
 
@@ -105,6 +117,9 @@ export default function P2PSend() {
   const senderPeerIdRef = useRef(null);
   const peersRef = useRef(new Map()); // peerId => { pc, dc, transferStarted, transferSalt, completed, fallbackTried }
   const fileRef = useRef(null);
+  // Ref so ws.onmessage closures always read the *current* status, not stale captured value.
+  const statusRef = useRef(status);
+  useEffect(() => { statusRef.current = status; }, [status]);
 
   const getOpenPeerCount = () => {
     let openCount = 0;
@@ -281,7 +296,9 @@ export default function P2PSend() {
           peer.pc?.close();
           peersRef.current.delete(msg.from);
           setConnectedReceivers(getOpenPeerCount());
-          if (peersRef.current.size === 0 && status !== "done") {
+          // Use statusRef.current to avoid stale closure — status captured at
+          // startSignaling() time is always "idle", not the live value.
+          if (peersRef.current.size === 0 && statusRef.current !== "done") {
             setError("Receiver disconnected before the transfer was complete.");
             setStatus("error");
           }
