@@ -352,25 +352,26 @@ export default function P2PSend() {
 
   // ── Set up WebRTC peer connection ──────────────────────────────────────────
   const setupPeerConnection = async (ws, receiverPeerId, preferLocal, fallbackTried) => {
-    const previousPeer = peersRef.current.get(receiverPeerId);
-    if (previousPeer?.connectTimeout) {
-      clearTimeout(previousPeer.connectTimeout);
-    }
-    if (previousPeer?.readyTimeout) {
-      clearTimeout(previousPeer.readyTimeout);
-    }
-    previousPeer?.dc?.close();
-    previousPeer?.pc?.close();
+    try {
+      const previousPeer = peersRef.current.get(receiverPeerId);
+      if (previousPeer?.connectTimeout) {
+        clearTimeout(previousPeer.connectTimeout);
+      }
+      if (previousPeer?.readyTimeout) {
+        clearTimeout(previousPeer.readyTimeout);
+      }
+      previousPeer?.dc?.close();
+      previousPeer?.pc?.close();
 
-    const pc = new RTCPeerConnection({
-      iceServers: preferLocal ? ICE_SERVERS_LOCAL_ONLY : ICE_SERVERS,
-    });
+      const pc = new RTCPeerConnection({
+        iceServers: preferLocal ? ICE_SERVERS_LOCAL_ONLY : ICE_SERVERS,
+      });
 
-    // Create data channel for file transfer
-    const dc = pc.createDataChannel("file-transfer", { ordered: true });
+      // Create data channel for file transfer
+      const dc = pc.createDataChannel("file-transfer", { ordered: true });
 
-    const peerState = {
-      pc,
+      const peerState = {
+        pc,
       dc,
       transferStarted: false,
       transferSalt: null,
@@ -412,8 +413,9 @@ export default function P2PSend() {
           return;
         }
 
-        if (status !== "done") {
-          setError("WebRTC connection lost.");
+        // Use statusRef.current to avoid being masked by stale closure
+        if (statusRef.current !== "done") {
+          setError(`WebRTC connection lost (${pc.connectionState}). Ensure firewall allows P2P.`);
           setStatus("error");
         }
       }
@@ -497,8 +499,27 @@ export default function P2PSend() {
         peersRef.current.delete(receiverPeerId);
         await setupPeerConnection(ws, receiverPeerId, false, true);
       }, LOCAL_CONNECT_TIMEOUT_MS);
+    } else if (!preferLocal) {
+      // Absolute timeout for Internet ICE attempt (35s)
+      peerState.connectTimeout = setTimeout(() => {
+        const currentPeer = peersRef.current.get(receiverPeerId);
+        if (!currentPeer || currentPeer.channelOpen || currentPeer.completed) {
+          return;
+        }
+        currentPeer.dc?.close();
+        currentPeer.pc?.close();
+        if (statusRef.current !== "done") {
+          setError(`Transfer failed. Ensure you aren't on a strict VPN/firewall.`);
+          setStatus("error");
+        }
+      }, 35000);
     }
-  };
+  } catch (err) {
+    console.error("PeerConnection failed: ", err);
+    setError("Failed to establish P2P: " + err.message);
+    setStatus("error");
+  }
+};
 
   const sendFileMeta = async (receiverPeerId) => {
     const peer = peersRef.current.get(receiverPeerId);
@@ -779,10 +800,12 @@ export default function P2PSend() {
               <>
                 <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
                   <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>
-                    {status === "waiting" ? "⏳" : "🔗"}
+                    {status === "waiting" ? (peersRef.current.size > 0 ? "⚡" : "⏳") : "🔗"}
                   </div>
                   <div style={{ color: "var(--text-primary)", fontWeight: 600, marginBottom: "0.25rem" }}>
-                    {status === "waiting" ? "Waiting for receiver…" : "Receiver connected! Setting up transfer…"}
+                    {status === "waiting" 
+                      ? (peersRef.current.size > 0 ? "Negotiating P2P Connection…" : "Waiting for receiver…") 
+                      : "Receiver connected! Setting up transfer…"}
                   </div>
                   <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
                     <strong>{file?.name}</strong> ({file ? (file.size / (1024 * 1024)).toFixed(2) : 0} MB)
