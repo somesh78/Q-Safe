@@ -206,6 +206,8 @@ export default function P2PReceive() {
 
     const pc = new RTCPeerConnection({
       iceServers: transportStrategy === "lan" ? [] : ICE_SERVERS,
+      iceCandidatePoolSize: 10,
+      iceTransportPolicy: "all",
     });
     pcRef.current = pc;
 

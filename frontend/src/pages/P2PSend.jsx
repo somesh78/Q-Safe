@@ -63,8 +63,11 @@ function wsUrl(roomId) {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CHUNK_SIZE = 256 * 1024; // 256 KB improves throughput for large file transfers
-const BUFFER_HIGH_WATERMARK = 1024 * 1024; // 1 MB — keeps buffer well below Chrome's 16MB hard limit to prevent 'send queue is full' crash
+// Dynamic chunks and watermarks based on connection type
+const CHUNK_SIZE_LAN = 1024 * 1024; // 1 MB chunks on fast LAN
+const CHUNK_SIZE_INTERNET = 256 * 1024; // 256 KB chunks for internet STUN/TURN
+const BUFFER_HIGH_WATERMARK_LAN = 12 * 1024 * 1024; // 12 MB - safetly below browser 16MB limit to prevent queue overflow
+const BUFFER_HIGH_WATERMARK_INTERNET = 1024 * 1024; // 1 MB — strict pacing for slow TURN relays
 const HYBRID_AIRGAP_MAX_BYTES = 2 * 1024 * 1024;
 const LOCAL_CONNECT_TIMEOUT_MS = 15000; // 15s — give ICE more time before STUN fallback
 const ICE_SERVERS = [
@@ -112,6 +115,7 @@ export default function P2PSend() {
   const [offlineJobStatus, setOfflineJobStatus] = useState(null);
   const [offlineJobProgress, setOfflineJobProgress] = useState(0);
   const [offlineZipName, setOfflineZipName] = useState("");
+  const [connectionType, setConnectionType] = useState(null); // "lan" | "relay" | "stun"
 
   const wsRef = useRef(null);
   const senderPeerIdRef = useRef(null);
@@ -365,6 +369,8 @@ export default function P2PSend() {
 
       const pc = new RTCPeerConnection({
         iceServers: preferLocal ? ICE_SERVERS_LOCAL_ONLY : ICE_SERVERS,
+        iceCandidatePoolSize: 10,
+        iceTransportPolicy: "all",
       });
 
       // Create data channel for file transfer
@@ -421,7 +427,7 @@ export default function P2PSend() {
       }
     };
 
-    dc.onopen = () => {
+    dc.onopen = async () => {
       if (peerState.connectTimeout) {
         clearTimeout(peerState.connectTimeout);
         peerState.connectTimeout = null;
@@ -430,6 +436,34 @@ export default function P2PSend() {
       setConnectedReceivers(getOpenPeerCount());
       setStatus("connected");
       peerState.transferStarted = false;
+      
+      // Check LAN connection via getStats()
+      try {
+        const stats = await pc.getStats();
+        let selectedPairId = null;
+        stats.forEach((report) => {
+          if (report.type === "transport" && report.selectedCandidatePairId) {
+            selectedPairId = report.selectedCandidatePairId;
+          }
+        });
+        if (selectedPairId) {
+          const activePair = stats.get(selectedPairId);
+          if (activePair) {
+            const local = stats.get(activePair.localCandidateId);
+            const remote = stats.get(activePair.remoteCandidateId);
+            if (local && remote && local.candidateType === "host" && remote.candidateType === "host") {
+              setConnectionType("lan");
+            } else if (local?.candidateType === "relay" || remote?.candidateType === "relay") {
+              setConnectionType("relay");
+            } else {
+              setConnectionType("stun");
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Could not get WebRTC stats:", err);
+      }
+
       console.log("[P2PSend] Data channel opened for receiver:", receiverPeerId);
       // Send metadata first; receiver will explicitly ACK when ready.
       sendFileMeta(receiverPeerId);
@@ -567,17 +601,22 @@ export default function P2PSend() {
       cryptoKey = await deriveKey(password, saltBytes);
     }
 
-    const totalChunks = Math.ceil(f.size / CHUNK_SIZE);
+    // Dynamic optimization based on LAN detection
+    const isLan = connectionType === "lan";
+    const ActiveChunkSize = isLan ? CHUNK_SIZE_LAN : CHUNK_SIZE_INTERNET;
+    const ActiveHighWatermark = isLan ? BUFFER_HIGH_WATERMARK_LAN : BUFFER_HIGH_WATERMARK_INTERNET;
+
+    const totalChunks = Math.ceil(f.size / ActiveChunkSize);
     let sentBytes = 0;
     const startTime = Date.now();
 
     for (let i = 0; i < totalChunks; i++) {
       // Back-pressure: pause when buffer is full
-      while (peer.dc.bufferedAmount > BUFFER_HIGH_WATERMARK) {
+      while (peer.dc.bufferedAmount > ActiveHighWatermark) {
         await new Promise((r) => setTimeout(r, 2));
       }
 
-      const slice = f.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      const slice = f.slice(i * ActiveChunkSize, (i + 1) * ActiveChunkSize);
       const ab = await slice.arrayBuffer();
 
       if (cryptoKey) {
@@ -888,6 +927,19 @@ export default function P2PSend() {
                   <div style={{ color: "var(--text-primary)", fontWeight: 600, marginBottom: "0.25rem" }}>
                     Sending…
                   </div>
+                  {connectionType && (
+                    <div style={{ 
+                      display: "inline-block", 
+                      padding: "0.2rem 0.6rem", 
+                      borderRadius: 12, 
+                      fontSize: "0.75rem", 
+                      background: connectionType === "lan" ? "rgba(16, 185, 129, 0.15)" : (connectionType === "relay" ? "rgba(239, 68, 68, 0.15)" : "rgba(59, 130, 246, 0.15)"),
+                      color: connectionType === "lan" ? "#10b981" : (connectionType === "relay" ? "#ef4444" : "#3b82f6"),
+                      marginBottom: "0.5rem"
+                    }}>
+                      {connectionType === "lan" ? "⚡ Direct LAN Connection" : (connectionType === "relay" ? "☁ Relayed Connection" : "🌐 Direct STUN Connection")}
+                    </div>
+                  )}
                   <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
                     {file?.name} · {transferSpeed}
                   </div>
