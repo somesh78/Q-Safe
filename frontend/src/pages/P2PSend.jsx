@@ -427,6 +427,38 @@ export default function P2PSend() {
       }
     };
 
+    pc.oniceconnectionstatechange = async () => {
+      if (pc.iceConnectionState === 'connected') {
+        try {
+          const stats = await pc.getStats();
+          let localType = 'unknown';
+          let remoteType = 'unknown';
+          
+          stats.forEach(report => {
+            if (report.type === 'candidate-pair' && report.state === 'succeeded' && report.nominated) {
+              const local = [...stats.values()].find(s => s.id === report.localCandidateId);
+              const remote = [...stats.values()].find(s => s.id === report.remoteCandidateId);
+              
+              if (local) localType = local.candidateType;
+              if (remote) remoteType = remote.candidateType;
+            }
+          });
+
+          console.log(`[P2PSend] WebRTC connected! Nominated pair types: Local=${localType}, Remote=${remoteType}`);
+          
+          if (localType === 'host' && remoteType === 'host') {
+            setConnectionType("lan");
+          } else if (localType === 'relay' || remoteType === 'relay') {
+            setConnectionType("relay");
+          } else {
+            setConnectionType("stun");
+          }
+        } catch (err) {
+          console.warn("Could not get WebRTC stats:", err);
+        }
+      }
+    };
+
     dc.onopen = async () => {
       if (peerState.connectTimeout) {
         clearTimeout(peerState.connectTimeout);
@@ -437,33 +469,6 @@ export default function P2PSend() {
       setStatus("connected");
       peerState.transferStarted = false;
       
-      // Check LAN connection via getStats()
-      try {
-        const stats = await pc.getStats();
-        let selectedPairId = null;
-        stats.forEach((report) => {
-          if (report.type === "transport" && report.selectedCandidatePairId) {
-            selectedPairId = report.selectedCandidatePairId;
-          }
-        });
-        if (selectedPairId) {
-          const activePair = stats.get(selectedPairId);
-          if (activePair) {
-            const local = stats.get(activePair.localCandidateId);
-            const remote = stats.get(activePair.remoteCandidateId);
-            if (local && remote && local.candidateType === "host" && remote.candidateType === "host") {
-              setConnectionType("lan");
-            } else if (local?.candidateType === "relay" || remote?.candidateType === "relay") {
-              setConnectionType("relay");
-            } else {
-              setConnectionType("stun");
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("Could not get WebRTC stats:", err);
-      }
-
       console.log("[P2PSend] Data channel opened for receiver:", receiverPeerId);
       // Send metadata first; receiver will explicitly ACK when ready.
       sendFileMeta(receiverPeerId);
