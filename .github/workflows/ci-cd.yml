@@ -111,17 +111,12 @@ jobs:
         working-directory: frontend
         run: npm ci --legacy-peer-deps
 
-      - name: Ensure ajv compatibility for react-scripts toolchain
-        working-directory: frontend
-        run: npm install ajv@8.17.1 ajv-keywords@5.1.0 --no-save --legacy-peer-deps
-
       - name: Build React app
         working-directory: frontend
         env:
           REACT_APP_API_URL: https://q-safe.live
           REACT_APP_URL: https://q-safe.live
           CI: false
-          NODE_OPTIONS: --openssl-legacy-provider
         run: npm run build
 
       - name: Check build output exists

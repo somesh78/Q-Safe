@@ -42,5 +42,19 @@
   },
   "devDependencies": {
     "typescript": "^4.9.5"
+  },
+  "overrides": {
+    "schema-utils@^2.0.0": {
+      "ajv": "6.12.6",
+      "ajv-keywords": "3.5.2"
+    },
+    "schema-utils@^3.0.0": {
+      "ajv": "6.12.6",
+      "ajv-keywords": "3.5.2"
+    },
+    "fork-ts-checker-webpack-plugin": {
+      "ajv": "6.12.6",
+      "ajv-keywords": "3.5.2"
+    }
   }
 }
