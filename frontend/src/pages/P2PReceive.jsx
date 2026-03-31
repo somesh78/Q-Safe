@@ -309,13 +309,17 @@ export default function P2PReceive() {
 
           const meta = fileMetaRef.current;
           if (meta?.size > 0) {
-            const pct = Math.min(100, Math.round((receivedBytesRef.current / meta.size) * 100));
-            setProgress(pct);
+            // Throttle UI updates to only trigger on percentage change or every ~10 chunks
+            // to prevent massively choking the React render thread on fast networks.
+            if (!chunksRef.current.length || chunksRef.current.length % 10 === 0) {
+              const pct = Math.min(100, Math.round((receivedBytesRef.current / meta.size) * 100));
+              setProgress(pct);
 
-            const elapsed = (Date.now() - startTimeRef.current) / 1000;
-            if (elapsed > 0) {
-              const bps = receivedBytesRef.current / elapsed;
-              setTransferSpeed(formatSpeed(bps));
+              const elapsed = (Date.now() - startTimeRef.current) / 1000;
+              if (elapsed > 0) {
+                const bps = receivedBytesRef.current / elapsed;
+                setTransferSpeed(formatSpeed(bps));
+              }
             }
           }
         }
