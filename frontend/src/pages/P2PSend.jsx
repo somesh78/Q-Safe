@@ -64,7 +64,7 @@ function wsUrl(roomId) {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CHUNK_SIZE = 256 * 1024; // 256 KB improves throughput for large file transfers
-const BUFFER_HIGH_WATERMARK = 16 * 1024 * 1024;
+const BUFFER_HIGH_WATERMARK = 1024 * 1024; // 1 MB — keeps buffer well below Chrome's 16MB hard limit to prevent 'send queue is full' crash
 const HYBRID_AIRGAP_MAX_BYTES = 2 * 1024 * 1024;
 const LOCAL_CONNECT_TIMEOUT_MS = 15000; // 15s — give ICE more time before STUN fallback
 const ICE_SERVERS = [
