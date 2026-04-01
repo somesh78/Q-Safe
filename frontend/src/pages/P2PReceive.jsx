@@ -81,17 +81,12 @@ const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
   {
-    urls: "turn:openrelay.metered.ca:80",
-    username: "openrelayproject",
-    credential: "openrelayproject"
-  },
-  {
-    urls: "turns:openrelay.metered.ca:443",
-    username: "openrelayproject",
-    credential: "openrelayproject"
-  },
-  {
-    urls: "turn:openrelay.metered.ca:443?transport=tcp",
+    urls: [
+      "turn:openrelay.metered.ca:80",
+      "turn:openrelay.metered.ca:80?transport=tcp",
+      "turns:openrelay.metered.ca:443",
+      "turns:openrelay.metered.ca:443?transport=tcp",
+    ],
     username: "openrelayproject",
     credential: "openrelayproject"
   }
@@ -224,11 +219,20 @@ export default function P2PReceive() {
       }
     };
 
+    pc.onicecandidateerror = (e) => {
+      console.warn(`[P2PReceive] ICE candidate error: ${e.errorCode} ${e.errorText} url=${e.url}`);
+    };
+
     pc.onconnectionstatechange = () => {
+      console.log('[P2PReceive] Connection state:', pc.connectionState);
       if (pc.connectionState === "failed") {
         setError("WebRTC connection failed. The sender may be behind a strict firewall.");
         setStatus("error");
       }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log('[P2PReceive] ICE state:', pc.iceConnectionState);
     };
 
     pc.ondatachannel = (event) => {
