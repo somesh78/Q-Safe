@@ -374,7 +374,7 @@ export default function P2PSend() {
 
       const NUM_CHANNELS = 4;
       const channels = Array.from({ length: NUM_CHANNELS }, (_, i) => {
-        const channel = pc.createDataChannel(`file-${i}`, { ordered: false });
+        const channel = pc.createDataChannel(`file-${i}`, { ordered: true });
         channel.bufferedAmountLowThreshold = 1024 * 1024; // 1MB
         return channel;
       });
@@ -663,18 +663,18 @@ export default function P2PSend() {
         if (channel.readyState === "open") {
             try {
                 channel.send(data);
-                return;
+                return true;
             } catch (err) {
                 console.warn(`[P2PSend] Send failed on channel ${channel.label}, attempt ${i+1}:`, err);
             }
         }
         if (channel.readyState === "closed" || channel.readyState === "closing") {
-            throw new Error(`Data channel ${channel.label} is permanently closed.`);
+            return false; // Return failure to allow fallback
         }
         // Wait for state to recover or for a moment before retry
         await new Promise((res) => setTimeout(res, 100 * (i + 1)));
     }
-    throw new Error(`Data channel ${channel.label} failed to recover after ${retries} retries.`);
+    return false;
   };
 
   const sendFile = async (receiverPeerId) => {
@@ -697,16 +697,26 @@ export default function P2PSend() {
       cryptoKey = await deriveKey(password, saltBytes);
     }
 
-    const CHUNK_SIZE = 256 * 1024; // 256 KB strictly for striping
+    const CHUNK_SIZE = 64 * 1024; // 64KB for better stability
     const totalChunks = Math.ceil(f.size / CHUNK_SIZE);
     let sentBytes = 0;
     const startTime = Date.now();
     const NUM_CHANNELS = peer.channels.length;
 
     for (let i = 0; i < totalChunks; i++) {
-      const channel = peer.channels[i % NUM_CHANNELS];
+      let channel = peer.channels[i % NUM_CHANNELS];
 
       try {
+        // If the selected channel is closed, dynamically switch to an open one
+        if (channel.readyState !== "open") {
+          channel = peer.channels.find(ch => ch.readyState === "open");
+          if (!channel) {
+            setError("All data channels closed. Connection unstable.");
+            setStatus("error");
+            return;
+          }
+        }
+
         await waitForBuffer(channel);
         
         const slice = f.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
@@ -724,7 +734,19 @@ export default function P2PSend() {
         view.setUint32(0, i); 
         finalPayload.set(new Uint8Array(payload), 4);
 
-        await sendOnChannelWithRetry(channel, finalPayload.buffer);
+        const success = await sendOnChannelWithRetry(channel, finalPayload.buffer);
+        
+        if (!success) {
+          // If a retry failed or channel died mid-loop, find a survivor channel
+          const fallback = peer.channels.find(ch => ch.readyState === "open");
+          if (!fallback) {
+            setError("All data channels failed during transfer.");
+            setStatus("error");
+            return;
+          }
+          await sendOnChannelWithRetry(fallback, finalPayload.buffer);
+        }
+
         sentBytes += ab.byteLength;
       } catch (err) {
         console.error("[P2PSend] Critical error during striping:", err);
