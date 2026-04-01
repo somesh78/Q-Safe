@@ -73,9 +73,9 @@ if (-not $SkipGitPush) {
     git commit -m $commitMsg
     
     Write-Host "🚀 Pushing to remote repository..." -ForegroundColor Yellow
-    git push origin main
+    git push origin dev
     
-    Write-Host "   ✓ Code pushed to repository" -ForegroundColor Green
+    Write-Host "   ✓ Code pushed to dev branch" -ForegroundColor Green
     Start-Sleep -Seconds 2
 }
 
@@ -97,8 +97,14 @@ echo ""
 
 cd $REMOTE_DIR
 
-echo "📥 Pulling latest code from repository..."
-git pull origin main
+echo "🛡️  Stashing local server-side changes (nginx.conf preservation)..."
+git stash --include-untracked || true
+
+echo "📥 Pulling latest code from repository (dev branch)..."
+git pull origin dev
+
+echo "🔄 Re-applying local server-side changes..."
+git stash pop || true
 
 echo ""
 echo "🐳 Stopping Docker containers..."
