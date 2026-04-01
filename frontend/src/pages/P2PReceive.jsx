@@ -68,12 +68,14 @@ async function saveWithFSAPI(chunks, filename) {
 }
 
 function saveAsBlobUrl(chunks, filename) {
-  const blob = new Blob(chunks);
+  const blob = new Blob(chunks, { type: "application/octet-stream" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = filename;
+  a.download = filename || "download";
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
@@ -327,6 +329,11 @@ export default function P2PReceive() {
           if (!(chunkIndex in chunksRef.current)) {
             chunksRef.current[chunkIndex] = chunk instanceof ArrayBuffer ? new Uint8Array(chunk) : chunk;
             receivedBytesRef.current += payload.byteLength; // original size for progress
+            
+            // Periodic debug log (every ~100 chunks)
+            if (chunkIndex % 100 === 0) {
+              console.log(`[P2PReceive] Progress: Chunk ${chunkIndex} received.`);
+            }
           }
 
           const meta = fileMetaRef.current;
@@ -363,20 +370,40 @@ export default function P2PReceive() {
 
   const finalize = async () => {
     const meta = fileMetaRef.current;
-    if (!meta || !chunksRef.current) return;
+    if (!meta || !chunksRef.current) {
+        console.error("[P2PReceive] Finalize called but no metadata or chunks found.");
+        return;
+    }
 
     setStatus("processing");
-    console.log("[P2PReceive] Reassembling chunks for download...");
+    console.log("[P2PReceive] Transfer complete triggered. Reassembling chunks...");
 
     // Reassemble ordered array of chunks
+    // To handle potential missing chunks (if any), we ensure the indices are checked.
     const chunkIndices = Object.keys(chunksRef.current).map(Number).sort((a,b) => a - b);
+    console.log(`[P2PReceive] Total chunks collected: ${chunkIndices.length}`);
+    
+    if (chunkIndices.length === 0) {
+        console.error("[P2PReceive] Reassembly failed: 0 chunks received.");
+        setError("Reassembly failed: No data received.");
+        setStatus("error");
+        return;
+    }
+
     const orderedChunks = chunkIndices.map(idx => chunksRef.current[idx]);
 
-    const saved = await saveWithFSAPI(orderedChunks, meta.name).catch(() => false);
+    console.log("[P2PReceive] Triggering download...");
+    const saved = await saveWithFSAPI(orderedChunks, meta.name).catch((err) => {
+        console.warn("[P2PReceive] FSAPI failed, falling back to Blob URL:", err);
+        return false;
+    });
+
     if (!saved) {
       saveAsBlobUrl(orderedChunks, meta.name);
     }
+    
     setStatus("done");
+    console.log("[P2PReceive] File reassembled and saved successfully.");
   };
 
   const handleManualPasswordSubmit = async () => {
