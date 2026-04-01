@@ -461,6 +461,7 @@ export default function P2PSend() {
           const stats = await pc.getStats();
           let localType = 'unknown';
           let remoteType = 'unknown';
+          let localProtocol = 'unknown';
           
           stats.forEach(report => {
             if (report.type === 'candidate-pair' && report.state === 'succeeded' && report.nominated) {
