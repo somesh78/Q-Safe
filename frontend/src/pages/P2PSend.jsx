@@ -71,19 +71,20 @@ const BUFFER_HIGH_WATERMARK_INTERNET = 1024 * 1024; // 1 MB — strict pacing fo
 const HYBRID_AIRGAP_MAX_BYTES = 2 * 1024 * 1024;
 const LOCAL_CONNECT_TIMEOUT_MS = 15000; // 15s — give ICE more time before STUN fallback
 const ICE_SERVERS = [
-  { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun1.l.google.com:19302" },
-  // Free public TURN servers for symmetric-NAT traversal.
-  // Replace with a private coturn/Cloudflare TURN server in production.
+  // Google STUN — hardcoded IP to completely bypass DNS resolution blocks
+  { urls: "stun:74.125.197.127:19302" },
+  
+  // Dedicated Self-Hosted TURN on EC2 (52.63.153.228)
   {
     urls: [
-      "turn:openrelay.metered.ca:80",
-      "turn:openrelay.metered.ca:80?transport=tcp",
-      "turns:openrelay.metered.ca:443",
-      "turns:openrelay.metered.ca:443?transport=tcp",
+      "turn:52.63.153.228:3478?transport=udp",
+      "turn:52.63.153.228:3478?transport=tcp",
+      // TLS TURN (TURNS) on standard secure proxy port
+      "turns:52.63.153.228:5349?transport=tcp"
     ],
-    username: "openrelayproject",
-    credential: "openrelayproject"
+    username: "qsafe",
+    // Make sure to match this exact password in your turnserver.conf
+    credential: "QSAFE_SECURE_PASSWORD_123!"
   }
 ];
 const ICE_SERVERS_LOCAL_ONLY = [];
