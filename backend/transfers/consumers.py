@@ -21,11 +21,26 @@ class P2PSignalingConsumer(AsyncWebsocketConsumer):
         try:
             await self.channel_layer.group_add(self.room_group, self.channel_name)
             await self.accept()
+            
+            # Send initial peer ID to the newly connected peer.
             await self.send(text_data=json.dumps({
                 "type": "peer_id",
                 "peer_id": self.peer_id,
             }))
-            logger.info(f"[P2P] Peer connected to room {self.room_id}")
+            
+            # Broadcast join event to the room group so sender begins handshake.
+            await self.channel_layer.group_send(
+                self.room_group,
+                {
+                    "type": "relay_message",
+                    "data": {
+                        "type": "receiver_joined",
+                    },
+                    "sender": self.peer_id,
+                },
+            )
+            
+            logger.info(f"[P2P] Peer {self.peer_id} connected to room {self.room_id}")
         except Exception:
             logger.exception(f"[P2P] Failed to accept websocket for room {self.room_id}")
             await self.close(code=1011)
