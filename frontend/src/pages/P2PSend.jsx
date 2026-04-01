@@ -69,7 +69,7 @@ const CHUNK_SIZE_INTERNET = 256 * 1024; // 256 KB chunks for internet STUN/TURN
 const BUFFER_HIGH_WATERMARK_LAN = 12 * 1024 * 1024; // 12 MB - safetly below browser 16MB limit to prevent queue overflow
 const BUFFER_HIGH_WATERMARK_INTERNET = 1024 * 1024; // 1 MB — strict pacing for slow TURN relays
 const HYBRID_AIRGAP_MAX_BYTES = 2 * 1024 * 1024;
-const LOCAL_CONNECT_TIMEOUT_MS = 15000; // 15s — give ICE more time before STUN fallback
+const LOCAL_CONNECT_TIMEOUT_MS = 25000; // 25s — give ICE more time for host candidates on restrictive WiFi
 const ICE_SERVERS = [
   // Self-Hosted STUN on EC2 bypassing DNS
   { urls: "stun:52.63.153.228:3478" },
@@ -109,6 +109,7 @@ export default function P2PSend() {
   const [strategy, setStrategy] = useState("auto"); // auto | lan | internet
   const [allowBroadcast, setAllowBroadcast] = useState(true);
   const [connectedReceivers, setConnectedReceivers] = useState(0);
+  const [joinedReceivers, setJoinedReceivers] = useState(0);
   const [completedReceivers, setCompletedReceivers] = useState(0);
   const [offlineJobId, setOfflineJobId] = useState(null);
   const [offlineJobStatus, setOfflineJobStatus] = useState(null);
@@ -232,6 +233,7 @@ export default function P2PSend() {
     });
     peersRef.current.clear();
     setConnectedReceivers(0);
+    setJoinedReceivers(0);
 
     const ws = new WebSocket(wsUrl(roomId));
     wsRef.current = ws;
@@ -263,6 +265,7 @@ export default function P2PSend() {
           return;
         }
         if (!peersRef.current.has(msg.from)) {
+          setJoinedReceivers(prev => prev + 1);
           const preferLocal = msg.prefer_local === true || resolvedStrategy === "lan";
           await setupPeerConnection(ws, msg.from, preferLocal, false);
         }
@@ -299,6 +302,7 @@ export default function P2PSend() {
           peer.pc?.close();
           peersRef.current.delete(msg.from);
           setConnectedReceivers(getOpenPeerCount());
+          setJoinedReceivers(prev => Math.max(0, prev - 1));
           // Use statusRef.current to avoid stale closure — status captured at
           // startSignaling() time is always "idle", not the live value.
           if (peersRef.current.size === 0 && statusRef.current !== "done") {
@@ -393,6 +397,11 @@ export default function P2PSend() {
     peersRef.current.set(receiverPeerId, peerState);
 
     pc.onicecandidate = (e) => {
+      // 1. Enforce LAN-first candidate filtering (Filter for ONLY host candidates when preferring local)
+      if (preferLocal && e.candidate && !e.candidate.candidate.includes("host")) {
+        console.log("[P2PSend] Skipping non-host candidate to prioritize LAN path:", e.candidate.candidate);
+        return;
+      }
       if (e.candidate) {
         ws.send(JSON.stringify({
           type: "ice_candidate",
@@ -408,7 +417,31 @@ export default function P2PSend() {
 
     pc.onconnectionstatechange = async () => {
       console.log('[P2PSend] Connection state:', pc.connectionState);
-      if ((pc.connectionState === "failed" || pc.connectionState === "disconnected") && !peerState.completed) {
+      
+      // Attempt connection type detection if connected successfully
+      if (pc.connectionState === 'connected') {
+        try {
+          const stats = await pc.getStats();
+          stats.forEach(report => {
+            if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+              const local = stats.get(report.localCandidateId);
+              const remote = stats.get(report.remoteCandidateId);
+              
+              if (local?.candidateType === 'host' && remote?.candidateType === 'host') {
+                setConnectionType("lan");
+              } else if (local?.candidateType === 'relay' || remote?.candidateType === 'relay') {
+                setConnectionType("relay");
+              } else {
+                setConnectionType("stun");
+              }
+            }
+          });
+        } catch (err) {
+          console.warn("[P2PSend] Connection detection failed:", err);
+        }
+      }
+
+      if (pc.connectionState === "failed" && !peerState.completed) {
         if (peerState.connectTimeout) {
           clearTimeout(peerState.connectTimeout);
           peerState.connectTimeout = null;
@@ -697,17 +730,21 @@ export default function P2PSend() {
       cryptoKey = await deriveKey(password, saltBytes);
     }
 
-    const CHUNK_SIZE = 64 * 1024; // 64KB for better stability
+    const isLAN = connectionType === "lan";
+    const useMulti = isLAN; // True for LAN, false (Single Lane) for internet to ensure maximum reliability
+    
+    const CHUNK_SIZE = isLAN ? 256 * 1024 : 64 * 1024;
     const totalChunks = Math.ceil(f.size / CHUNK_SIZE);
     let sentBytes = 0;
     const startTime = Date.now();
-    const NUM_CHANNELS = peer.channels.length;
+    const activeChannels = useMulti ? peer.channels : [peer.channels[0]];
+    const NUM_ACTIVE = activeChannels.length;
 
     for (let i = 0; i < totalChunks; i++) {
-      let channel = peer.channels[i % NUM_CHANNELS];
+      let channel = activeChannels[i % NUM_ACTIVE];
 
       try {
-        // If the selected channel is closed, dynamically switch to an open one
+        // Dynamic lane protection: if single-channel or current lane died, find any survivor
         if (channel.readyState !== "open") {
           channel = peer.channels.find(ch => ch.readyState === "open");
           if (!channel) {
@@ -991,7 +1028,7 @@ export default function P2PSend() {
                     <strong>{file?.name}</strong> ({file ? (file.size / (1024 * 1024)).toFixed(2) : 0} MB)
                   </div>
                   <div style={{ color: "var(--text-secondary)", fontSize: "0.82rem", marginTop: "0.35rem" }}>
-                    👥 Receivers connected: {connectedReceivers} · Completed: {completedReceivers}
+                    👥 Joined: {joinedReceivers} · Connected: {connectedReceivers} · Completed: {completedReceivers}
                   </div>
                 </div>
 
