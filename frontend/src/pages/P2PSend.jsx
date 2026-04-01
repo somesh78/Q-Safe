@@ -372,20 +372,24 @@ export default function P2PSend() {
         iceTransportPolicy: "all",
       });
 
-      // Create data channel for file transfer
-      const dc = pc.createDataChannel("file-transfer", { ordered: true });
+      const NUM_CHANNELS = 4;
+      const channels = Array.from({ length: NUM_CHANNELS }, (_, i) => {
+        const channel = pc.createDataChannel(`file-${i}`, { ordered: false });
+        channel.bufferedAmountLowThreshold = 1024 * 1024; // 1MB
+        return channel;
+      });
 
       const peerState = {
         pc,
-      dc,
-      transferStarted: false,
-      transferSalt: null,
-      completed: false,
-      preferLocal,
-      fallbackTried,
-      channelOpen: false,
-      connectTimeout: null,
-    };
+        channels,
+        transferStarted: false,
+        transferSalt: null,
+        completed: false,
+        preferLocal,
+        fallbackTried,
+        channelOpen: false,
+        connectTimeout: null,
+      };
     peersRef.current.set(receiverPeerId, peerState);
 
     pc.onicecandidate = (e) => {
@@ -490,60 +494,70 @@ export default function P2PSend() {
       }
     };
 
-    dc.onopen = async () => {
-      if (peerState.connectTimeout) {
-        clearTimeout(peerState.connectTimeout);
-        peerState.connectTimeout = null;
-      }
-      peerState.channelOpen = true;
-      setConnectedReceivers(getOpenPeerCount());
-      setStatus("connected");
-      peerState.transferStarted = false;
-      
-      console.log("[P2PSend] Data channel opened for receiver:", receiverPeerId);
-      // Send metadata first; receiver will explicitly ACK when ready.
-      sendFileMeta(receiverPeerId);
+    let openCount = 0;
 
-      // Set timeout for receiver_ready acknowledgment (10 seconds)
-      peerState.readyTimeout = setTimeout(() => {
-        if (!peerState.transferStarted && peerState.channelOpen) {
-          console.error("[P2PSend] Timeout waiting for receiver_ready from:", receiverPeerId);
-          setError("Receiver did not respond. The connection may have been interrupted.");
-          setStatus("error");
-        }
-      }, 10000);
-    };
-
-    dc.onclose = () => {
-      peerState.channelOpen = false;
-      setConnectedReceivers(getOpenPeerCount());
-    };
-
-    dc.onmessage = async (event) => {
-      if (typeof event.data !== "string") return;
-      try {
-        const msg = JSON.parse(event.data);
-        console.log("[P2PSend] Received message from receiver:", msg.type);
-        if (msg.type === "receiver_ready" && !peerState.transferStarted) {
-          console.log("[P2PSend] Receiver ready, starting file transfer to:", receiverPeerId);
-          // Clear the ready timeout
-          if (peerState.readyTimeout) {
-            clearTimeout(peerState.readyTimeout);
-            peerState.readyTimeout = null;
+    channels.forEach((dc, index) => {
+      dc.onopen = async () => {
+        openCount++;
+        console.log(`[P2PSend] Data channel ${index} opened`);
+        
+        if (openCount === NUM_CHANNELS) {
+          if (peerState.connectTimeout) {
+            clearTimeout(peerState.connectTimeout);
+            peerState.connectTimeout = null;
           }
-          peerState.transferStarted = true;
-          await sendFile(receiverPeerId);
-        }
-      } catch (err) {
-        console.error("[P2PSend] Error parsing receiver message:", err);
-        // Ignore non-JSON control messages.
-      }
-    };
+          peerState.channelOpen = true;
+          setConnectedReceivers(getOpenPeerCount());
+          setStatus("connected");
+          peerState.transferStarted = false;
+          
+          console.log("[P2PSend] All parallel Data channels opened for receiver:", receiverPeerId);
+          sendFileMeta(receiverPeerId);
 
-    dc.onerror = (e) => {
-      setError("Data channel error: " + (e?.message || "unknown"));
-      setStatus("error");
-    };
+          peerState.readyTimeout = setTimeout(() => {
+            if (!peerState.transferStarted && peerState.channelOpen) {
+              console.error("[P2PSend] Timeout waiting for receiver_ready from:", receiverPeerId);
+              setError("Receiver did not respond. The connection may have been interrupted.");
+              setStatus("error");
+            }
+          }, 10000);
+        }
+      };
+
+      dc.onclose = () => {
+        if (peerState.channelOpen) {
+          peerState.channelOpen = false;
+          setConnectedReceivers(getOpenPeerCount());
+        }
+      };
+
+      dc.onerror = (e) => {
+        setError("Data channel error: " + (e?.message || "unknown"));
+        setStatus("error");
+      };
+      
+      // Use channel 0 for signaling to guarantee metadata ordering
+      if (index === 0) {
+        dc.onmessage = async (event) => {
+          if (typeof event.data !== "string") return;
+          try {
+            const msg = JSON.parse(event.data);
+            console.log("[P2PSend] Received message from receiver:", msg.type);
+            if (msg.type === "receiver_ready" && !peerState.transferStarted) {
+              console.log("[P2PSend] Receiver ready, starting file transfer to:", receiverPeerId);
+              if (peerState.readyTimeout) {
+                clearTimeout(peerState.readyTimeout);
+                peerState.readyTimeout = null;
+              }
+              peerState.transferStarted = true;
+              await sendFile(receiverPeerId);
+            }
+          } catch (err) {
+            console.error("[P2PSend] Error parsing receiver message:", err);
+          }
+        };
+      }
+    });
 
     // Create and send offer
     const offer = await pc.createOffer();
@@ -564,7 +578,7 @@ export default function P2PSend() {
           return;
         }
         currentPeer.fallbackTried = true;
-        currentPeer.dc?.close();
+        currentPeer.channels?.forEach(ch => ch.close());
         currentPeer.pc?.close();
         peersRef.current.delete(receiverPeerId);
         await setupPeerConnection(ws, receiverPeerId, false, true);
@@ -576,7 +590,7 @@ export default function P2PSend() {
         if (!currentPeer || currentPeer.channelOpen || currentPeer.completed) {
           return;
         }
-        currentPeer.dc?.close();
+        currentPeer.channels?.forEach(ch => ch.close());
         currentPeer.pc?.close();
         if (statusRef.current !== "done") {
           setError(`Could not establish connection on this network. Try mobile data instead.`);
@@ -591,9 +605,10 @@ export default function P2PSend() {
   }
 };
 
+  // ── Send metadata to Peer ──────────────────────────────────────────────────
   const sendFileMeta = async (receiverPeerId) => {
     const peer = peersRef.current.get(receiverPeerId);
-    if (!peer?.dc) return;
+    if (!peer?.channels || peer.channels.length === 0) return;
 
     const f = fileRef.current;
     if (!f) return;
@@ -612,14 +627,14 @@ export default function P2PSend() {
     };
 
     console.log("[P2PSend] Sending file metadata to receiver:", receiverPeerId, metadata);
-    // Send file metadata first
-    peer.dc.send(JSON.stringify(metadata));
+    // Send file metadata on primary channel
+    peer.channels[0].send(JSON.stringify(metadata));
   };
 
   // ── Send file over DataChannel ─────────────────────────────────────────────
   const sendFile = async (receiverPeerId) => {
     const peer = peersRef.current.get(receiverPeerId);
-    if (!peer?.dc) return;
+    if (!peer?.channels || peer.channels.length === 0) return;
 
     setStatus("sending");
     const f = fileRef.current;
@@ -637,37 +652,41 @@ export default function P2PSend() {
       cryptoKey = await deriveKey(password, saltBytes);
     }
 
-    // Dynamic optimization based on LAN detection
-    const isLan = connectionType === "lan";
-    const ActiveChunkSize = isLan ? CHUNK_SIZE_LAN : CHUNK_SIZE_INTERNET;
-    const ActiveHighWatermark = isLan ? BUFFER_HIGH_WATERMARK_LAN : BUFFER_HIGH_WATERMARK_INTERNET;
-
-    const totalChunks = Math.ceil(f.size / ActiveChunkSize);
+    const CHUNK_SIZE = 256 * 1024; // 256 KB strictly for striping
+    const totalChunks = Math.ceil(f.size / CHUNK_SIZE);
     let sentBytes = 0;
     const startTime = Date.now();
+    const NUM_CHANNELS = peer.channels.length;
 
     for (let i = 0; i < totalChunks; i++) {
-      // Back-pressure: pause when buffer is full
-      while (peer.dc.bufferedAmount > ActiveHighWatermark) {
-        await new Promise((r) => setTimeout(r, 2));
+      const channel = peer.channels[i % NUM_CHANNELS];
+
+      if (channel.bufferedAmount > 2 * 1024 * 1024) {
+        await new Promise(resolve => {
+          channel.onbufferedamountlow = () => {
+            channel.onbufferedamountlow = null;
+            resolve();
+          };
+        });
       }
 
-      const slice = f.slice(i * ActiveChunkSize, (i + 1) * ActiveChunkSize);
+      const slice = f.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
       const ab = await slice.arrayBuffer();
 
       if (cryptoKey) {
         const encrypted = await encryptChunk(cryptoKey, ab);
-        peer.dc.send(encrypted);
+        channel.send(encrypted);
       } else {
-        peer.dc.send(ab);
+        channel.send(ab);
       }
 
       sentBytes += ab.byteLength;
-      const pct = Math.round((sentBytes / f.size) * 100);
-      setProgress(pct);
+      
+      // Update UI only roughly every MB to keep high throughput uninterrupted
+      if (i % 4 === 0 || i === totalChunks - 1) {
+        const pct = Math.round((sentBytes / f.size) * 100);
+        setProgress(pct);
 
-      // Calculate speed every ~10 chunks
-      if (i % 10 === 0) {
         const elapsed = (Date.now() - startTime) / 1000;
         if (elapsed > 0) {
           const bps = sentBytes / elapsed;
@@ -676,7 +695,8 @@ export default function P2PSend() {
       }
     }
 
-    peer.dc.send(JSON.stringify({ type: "transfer_complete" }));
+    // Tell receiver we are explicitly done on the primary signaling channel
+    peer.channels[0].send(JSON.stringify({ type: "transfer_complete" }));
     peer.completed = true;
     setCompletedReceivers((prev) => {
       const next = prev + 1;
