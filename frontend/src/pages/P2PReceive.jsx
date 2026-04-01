@@ -78,17 +78,20 @@ function saveAsBlobUrl(chunks, filename) {
 }
 
 const ICE_SERVERS = [
-  { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun1.l.google.com:19302" },
+  // Google STUN — hardcoded IP to completely bypass DNS resolution blocks
+  { urls: "stun:74.125.197.127:19302" },
+  
+  // Dedicated Self-Hosted TURN on EC2 (52.63.153.228)
   {
     urls: [
-      "turn:openrelay.metered.ca:80",
-      "turn:openrelay.metered.ca:80?transport=tcp",
-      "turns:openrelay.metered.ca:443",
-      "turns:openrelay.metered.ca:443?transport=tcp",
+      "turn:52.63.153.228:3478?transport=udp",
+      "turn:52.63.153.228:3478?transport=tcp",
+      // TLS TURN (TURNS) on standard secure proxy port
+      "turns:52.63.153.228:5349?transport=tcp"
     ],
-    username: "openrelayproject",
-    credential: "openrelayproject"
+    username: "qsafe",
+    // Make sure to match this exact password in your turnserver.conf
+    credential: "QSAFE_SECURE_PASSWORD_123!"
   }
 ];
 
