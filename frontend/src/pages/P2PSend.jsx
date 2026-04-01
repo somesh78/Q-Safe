@@ -544,7 +544,21 @@ export default function P2PSend() {
             const msg = JSON.parse(event.data);
             console.log("[P2PSend] Received message from receiver:", msg.type);
             if (msg.type === "receiver_ready" && !peerState.transferStarted) {
-              console.log("[P2PSend] Receiver ready, starting file transfer to:", receiverPeerId);
+              console.log("[P2PSend] Receiver ready, checking if all channels are open...");
+              
+              // Wait for all 4 channels to reach "open" state before striping data
+              const allOpen = peerState.channels.every(ch => ch.readyState === "open");
+              if (!allOpen) {
+                console.log("[P2PSend] Waiting for all parallel channels to sync...");
+                await Promise.all(
+                  peerState.channels.map(ch => ch.readyState === "open" 
+                    ? Promise.resolve() 
+                    : new Promise(res => ch.addEventListener("open", res, { once: true }))
+                  )
+                );
+              }
+
+              console.log("[P2PSend] All channels open, starting file transfer to:", receiverPeerId);
               if (peerState.readyTimeout) {
                 clearTimeout(peerState.readyTimeout);
                 peerState.readyTimeout = null;
@@ -685,6 +699,19 @@ export default function P2PSend() {
       const view = new DataView(finalPayload.buffer);
       view.setUint32(0, i); // Index i
       finalPayload.set(new Uint8Array(payload), 4);
+
+      // Guard: Ensure current channel is still open before sending
+      if (channel.readyState !== "open") {
+        console.warn(`[P2PSend] Channel ${i % NUM_CHANNELS} was used before it was ready or after it closed. Waiting...`);
+        await new Promise(resolve => {
+          channel.addEventListener("open", resolve, { once: true });
+          // If it fails to open within 5s, we must stop to prevent infinite hang
+          setTimeout(resolve, 5000); 
+        });
+        if (channel.readyState !== "open") {
+          throw new Error(`Data channel ${i % NUM_CHANNELS} failed to recover.`);
+        }
+      }
 
       channel.send(finalPayload.buffer);
 
