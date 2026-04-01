@@ -18,17 +18,18 @@ services:
   web:
     build: .
     container_name: q_safe_web
-    ports:
-      - "127.0.0.1:8000:8000"
+    # Only reachable via nginx container link to reduce attack surface
+    expose:
+      - "8000"
     volumes:
       - ./backend/logs:/app/logs
       - ./backend/storage:/app/storage
       - ./backend/data:/app/data
     env_file:
       - .env
+    # ... (environment vars kept same)
     environment:
       DEBUG: "False"
-      # Override or add env vars from .env file above; keep secrets in .env
       SECRET_KEY: ${SECRET_KEY}
       DATABASE_URL: ${DATABASE_URL}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS}
@@ -41,7 +42,6 @@ services:
       REDIS_URL: ${REDIS_URL}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL}
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
-      # Email (Gmail SMTP)
       EMAIL_BACKEND: ${EMAIL_BACKEND}
       EMAIL_HOST: ${EMAIL_HOST}
       EMAIL_PORT: ${EMAIL_PORT}
@@ -49,7 +49,6 @@ services:
       EMAIL_HOST_USER: ${EMAIL_HOST_USER}
       EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD}
       DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL}
-      # Google OAuth
       SOCIAL_AUTH_GOOGLE_OAUTH2_KEY: ${SOCIAL_AUTH_GOOGLE_OAUTH2_KEY}
       SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET: ${SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET}
     depends_on:
@@ -62,6 +61,27 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: q_safe_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - web
+    restart: always
+
+  turn:
+    image: coturn/coturn:latest
+    container_name: q_safe_turn
+    network_mode: "host" # High-throughput UDP/TCP parallel lanes require host networking for dynamic port allocation
+    volumes:
+      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    restart: always
 
 volumes:
   redis_data:
