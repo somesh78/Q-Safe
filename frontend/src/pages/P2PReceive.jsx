@@ -78,16 +78,14 @@ function saveAsBlobUrl(chunks, filename) {
 }
 
 const ICE_SERVERS = [
-  // Google STUN — hardcoded IP to completely bypass DNS resolution blocks
-  { urls: "stun:74.125.197.127:19302" },
+  // Self-Hosted STUN on EC2 bypassing DNS
+  { urls: "stun:52.63.153.228:3478" },
   
   // Dedicated Self-Hosted TURN on EC2 (52.63.153.228)
   {
     urls: [
       "turn:52.63.153.228:3478?transport=udp",
-      "turn:52.63.153.228:3478?transport=tcp",
-      // TLS TURN (TURNS) on standard secure proxy port
-      "turns:52.63.153.228:5349?transport=tcp"
+      "turn:52.63.153.228:3478?transport=tcp"
     ],
     username: "qsafe",
     // Make sure to match this exact password in your turnserver.conf
