@@ -76,20 +76,15 @@ const ICE_SERVERS = [
   // Free public TURN servers for symmetric-NAT traversal.
   // Replace with a private coturn/Cloudflare TURN server in production.
   {
-    urls: "turn:openrelay.metered.ca:80",
+    urls: [
+      "turn:openrelay.metered.ca:80",
+      "turn:openrelay.metered.ca:80?transport=tcp",
+      "turns:openrelay.metered.ca:443",
+      "turns:openrelay.metered.ca:443?transport=tcp",
+    ],
     username: "openrelayproject",
-    credential: "openrelayproject",
-  },
-  {
-    urls: "turns:openrelay.metered.ca:443",
-    username: "openrelayproject",
-    credential: "openrelayproject",
-  },
-  {
-    urls: "turn:openrelay.metered.ca:443?transport=tcp",
-    username: "openrelayproject",
-    credential: "openrelayproject",
-  },
+    credential: "openrelayproject"
+  }
 ];
 const ICE_SERVERS_LOCAL_ONLY = [];
 
@@ -404,7 +399,12 @@ export default function P2PSend() {
       }
     };
 
+    pc.onicecandidateerror = (e) => {
+      console.warn(`[P2PSend] ICE candidate error: ${e.errorCode} ${e.errorText} url=${e.url}`);
+    };
+
     pc.onconnectionstatechange = async () => {
+      console.log('[P2PSend] Connection state:', pc.connectionState);
       if ((pc.connectionState === "failed" || pc.connectionState === "disconnected") && !peerState.completed) {
         if (peerState.connectTimeout) {
           clearTimeout(peerState.connectTimeout);
@@ -433,23 +433,50 @@ export default function P2PSend() {
     };
 
     pc.oniceconnectionstatechange = async () => {
+      console.log('[P2PSend] ICE state:', pc.iceConnectionState);
+      
+      if (pc.iceConnectionState === 'disconnected') {
+        console.warn('[P2PSend] ICE disconnected — may recover...');
+        setTimeout(() => {
+          if (pc.iceConnectionState === 'disconnected') {
+            console.error('[P2PSend] ICE did not recover, triggering failure UI');
+            if (statusRef.current !== "done") {
+              setError("Connection dropped. Please retry.");
+              setStatus("error");
+            }
+          }
+        }, 5000);
+      }
+      
+      if (pc.iceConnectionState === 'failed') {
+        console.error('[P2PSend] ICE failed — no viable candidate pair found');
+        if (statusRef.current !== "done") {
+          setError("Could not establish connection on this network. Try mobile data instead.");
+          setStatus("error");
+        }
+      }
+
       if (pc.iceConnectionState === 'connected') {
         try {
           const stats = await pc.getStats();
           let localType = 'unknown';
           let remoteType = 'unknown';
+          let localProtocol = 'unknown';
           
           stats.forEach(report => {
             if (report.type === 'candidate-pair' && report.state === 'succeeded' && report.nominated) {
               const local = [...stats.values()].find(s => s.id === report.localCandidateId);
               const remote = [...stats.values()].find(s => s.id === report.remoteCandidateId);
               
-              if (local) localType = local.candidateType;
+              if (local) {
+                localType = local.candidateType;
+                localProtocol = local.protocol;
+              }
               if (remote) remoteType = remote.candidateType;
             }
           });
 
-          console.log(`[P2PSend] WebRTC connected! Nominated pair types: Local=${localType}, Remote=${remoteType}`);
+          console.log(`[P2PSend] Selected path: ${localType} → ${remoteType} | Protocol: ${localProtocol}`);
           
           if (localType === 'host' && remoteType === 'host') {
             setConnectionType("lan");
@@ -553,10 +580,10 @@ export default function P2PSend() {
         currentPeer.dc?.close();
         currentPeer.pc?.close();
         if (statusRef.current !== "done") {
-          setError(`Transfer failed. Ensure you aren't on a strict VPN/firewall.`);
+          setError(`Could not establish connection on this network. Try mobile data instead.`);
           setStatus("error");
         }
-      }, 35000);
+      }, 30000);
     }
   } catch (err) {
     console.error("PeerConnection failed: ", err);
