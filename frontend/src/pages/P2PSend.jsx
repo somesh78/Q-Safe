@@ -397,11 +397,6 @@ export default function P2PSend() {
     peersRef.current.set(receiverPeerId, peerState);
 
     pc.onicecandidate = (e) => {
-      // 1. Enforce LAN-first candidate filtering (Filter for ONLY host candidates when preferring local)
-      if (preferLocal && e.candidate && !e.candidate.candidate.includes("host")) {
-        console.log("[P2PSend] Skipping non-host candidate to prioritize LAN path:", e.candidate.candidate);
-        return;
-      }
       if (e.candidate) {
         ws.send(JSON.stringify({
           type: "ice_candidate",
@@ -731,19 +726,25 @@ export default function P2PSend() {
     }
 
     const isLAN = connectionType === "lan";
-    const useMulti = isLAN; // True for LAN, false (Single Lane) for internet to ensure maximum reliability
+    // 🚧 PRODUCTION TUNING: LAN uses 2 lanes (stable multi-stream), Internet uses 1 lane (max reliability)
+    const activeChannels = isLAN ? peer.channels.slice(0, 2) : [peer.channels[0]];
+    const NUM_ACTIVE = activeChannels.length;
     
-    const CHUNK_SIZE = isLAN ? 256 * 1024 : 64 * 1024;
+    // 📦 PRODUCTION TUNING: 128KB on LAN, 64KB on Internet to prevent SCTP window overflow
+    const CHUNK_SIZE = isLAN ? 128 * 1024 : 64 * 1024;
     const totalChunks = Math.ceil(f.size / CHUNK_SIZE);
     let sentBytes = 0;
     const startTime = Date.now();
-    const activeChannels = useMulti ? peer.channels : [peer.channels[0]];
-    const NUM_ACTIVE = activeChannels.length;
 
     for (let i = 0; i < totalChunks; i++) {
       let channel = activeChannels[i % NUM_ACTIVE];
 
       try {
+        // 🚦 CONGESTION CONTROL: If buffer is getting deep, breathe for 5ms to let SCTP ack/drain
+        if (channel.bufferedAmount > 2 * 1024 * 1024) {
+          await new Promise(res => setTimeout(res, 5));
+        }
+
         // Dynamic lane protection: if single-channel or current lane died, find any survivor
         if (channel.readyState !== "open") {
           channel = peer.channels.find(ch => ch.readyState === "open");
