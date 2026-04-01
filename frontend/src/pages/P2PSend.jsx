@@ -76,12 +76,17 @@ const ICE_SERVERS = [
   // Free public TURN servers for symmetric-NAT traversal.
   // Replace with a private coturn/Cloudflare TURN server in production.
   {
-    urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443"],
+    urls: "turn:openrelay.metered.ca:80",
     username: "openrelayproject",
     credential: "openrelayproject",
   },
   {
     urls: "turns:openrelay.metered.ca:443",
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
+  {
+    urls: "turn:openrelay.metered.ca:443?transport=tcp",
     username: "openrelayproject",
     credential: "openrelayproject",
   },
@@ -830,12 +835,24 @@ export default function P2PSend() {
 
                 <button
                   className="btn-primary"
-                  style={{ width: "100%", padding: "0.875rem", fontSize: "1rem" }}
+                  style={{ width: "100%", padding: "0.875rem", fontSize: "1rem", marginBottom: "0.75rem" }}
                   onClick={handleStart}
                   disabled={!file || ((usePassword || hybridAirGapEligible) && !password)}
                 >
                   {hybridAirGapEligible ? "Generate Offline QR Bundle" : "Create Transfer Link"}
                 </button>
+
+                <div style={{
+                  padding: "0.6rem",
+                  background: "var(--bg-secondary)",
+                  borderRadius: 8,
+                  fontSize: "0.75rem",
+                  color: "var(--text-secondary)",
+                  textAlign: "center",
+                  lineHeight: "1.3"
+                }}>
+                  <span style={{color: "var(--accent-primary)", fontWeight: 500}}>Note for College / Office Networks:</span> Strict firewalls may automatically route transfers through an encrypted relay server (slower speeds).
+                </div>
               </>
             )}
 
