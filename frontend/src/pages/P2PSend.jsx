@@ -646,6 +646,37 @@ export default function P2PSend() {
   };
 
   // ── Send file over DataChannel ─────────────────────────────────────────────
+  const waitForBuffer = async (channel, threshold = 1024 * 1024) => {
+    if (channel.bufferedAmount <= threshold) return;
+    await new Promise((res) => {
+      channel.bufferedAmountLowThreshold = threshold;
+      const onLow = () => {
+        channel.removeEventListener("bufferedamountlow", onLow);
+        res();
+      };
+      channel.addEventListener("bufferedamountlow", onLow);
+    });
+  };
+
+  const sendOnChannelWithRetry = async (channel, data, retries = 5) => {
+    for (let i = 0; i < retries; i++) {
+        if (channel.readyState === "open") {
+            try {
+                channel.send(data);
+                return;
+            } catch (err) {
+                console.warn(`[P2PSend] Send failed on channel ${channel.label}, attempt ${i+1}:`, err);
+            }
+        }
+        if (channel.readyState === "closed" || channel.readyState === "closing") {
+            throw new Error(`Data channel ${channel.label} is permanently closed.`);
+        }
+        // Wait for state to recover or for a moment before retry
+        await new Promise((res) => setTimeout(res, 100 * (i + 1)));
+    }
+    throw new Error(`Data channel ${channel.label} failed to recover after ${retries} retries.`);
+  };
+
   const sendFile = async (receiverPeerId) => {
     const peer = peersRef.current.get(receiverPeerId);
     if (!peer?.channels || peer.channels.length === 0) return;
@@ -675,47 +706,32 @@ export default function P2PSend() {
     for (let i = 0; i < totalChunks; i++) {
       const channel = peer.channels[i % NUM_CHANNELS];
 
-      if (channel.bufferedAmount > 2 * 1024 * 1024) {
-        await new Promise(resolve => {
-          channel.onbufferedamountlow = () => {
-            channel.onbufferedamountlow = null;
-            resolve();
-          };
-        });
-      }
+      try {
+        await waitForBuffer(channel);
+        
+        const slice = f.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        const ab = await slice.arrayBuffer();
+        let payload;
 
-      const slice = f.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      const ab = await slice.arrayBuffer();
-      let payload;
-
-      if (cryptoKey) {
-        payload = await encryptChunk(cryptoKey, ab);
-      } else {
-        payload = ab;
-      }
-
-      // Prepend a 4-byte chunk index for reliable out-of-order reassembly
-      const finalPayload = new Uint8Array(4 + payload.byteLength);
-      const view = new DataView(finalPayload.buffer);
-      view.setUint32(0, i); // Index i
-      finalPayload.set(new Uint8Array(payload), 4);
-
-      // Guard: Ensure current channel is still open before sending
-      if (channel.readyState !== "open") {
-        console.warn(`[P2PSend] Channel ${i % NUM_CHANNELS} was used before it was ready or after it closed. Waiting...`);
-        await new Promise(resolve => {
-          channel.addEventListener("open", resolve, { once: true });
-          // If it fails to open within 5s, we must stop to prevent infinite hang
-          setTimeout(resolve, 5000); 
-        });
-        if (channel.readyState !== "open") {
-          throw new Error(`Data channel ${i % NUM_CHANNELS} failed to recover.`);
+        if (cryptoKey) {
+            payload = await encryptChunk(cryptoKey, ab);
+        } else {
+            payload = ab;
         }
+
+        const finalPayload = new Uint8Array(4 + payload.byteLength);
+        const view = new DataView(finalPayload.buffer);
+        view.setUint32(0, i); 
+        finalPayload.set(new Uint8Array(payload), 4);
+
+        await sendOnChannelWithRetry(channel, finalPayload.buffer);
+        sentBytes += ab.byteLength;
+      } catch (err) {
+        console.error("[P2PSend] Critical error during striping:", err);
+        setError(`Transfer aborted: ${err.message}`);
+        setStatus("error");
+        return;
       }
-
-      channel.send(finalPayload.buffer);
-
-      sentBytes += ab.byteLength;
       
       // Update UI only roughly every MB to keep high throughput uninterrupted
       if (i % 4 === 0 || i === totalChunks - 1) {
