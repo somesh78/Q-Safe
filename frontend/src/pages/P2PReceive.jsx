@@ -123,10 +123,11 @@ export default function P2PReceive() {
   const pcRef = useRef(null);
   const receiverPeerIdRef = useRef(null);
   const senderPeerIdRef = useRef(null);
-  const chunksRef = useRef([]);
+  const chunksRef = useRef({});
   const receivedBytesRef = useRef(0);
   const startTimeRef = useRef(null);
   const cryptoKeyRef = useRef(null);
+  const lastProgressRef = useRef(0);
   const fileMetaRef = useRef(null);
   const dataChannelRef = useRef(null);
 
@@ -238,7 +239,10 @@ export default function P2PReceive() {
 
     pc.ondatachannel = (event) => {
       const dc = event.channel;
-      dataChannelRef.current = dc;
+      // All channels are useful for binary data, but we use the first to track global status/metadata
+      if (!dataChannelRef.current) {
+        dataChannelRef.current = dc;
+      }
 
       // Wait for data channel to be fully open before processing messages
       dc.onopen = () => {
@@ -252,9 +256,10 @@ export default function P2PReceive() {
           if (msg.type === "file_meta") {
             fileMetaRef.current = msg;
             setFileMeta(msg);
-            chunksRef.current = [];
+            chunksRef.current = {};
             receivedBytesRef.current = 0;
             startTimeRef.current = Date.now();
+            lastProgressRef.current = 0;
 
             if (msg.encrypted) {
               const pw = passwordOverride;
@@ -294,16 +299,19 @@ export default function P2PReceive() {
             await finalize();
           }
         } else {
-          // Binary chunk
-          // Never process encrypted chunks until decryption key is ready.
-          if (fileMetaRef.current?.encrypted && !cryptoKeyRef.current) {
-            return;
-          }
+          // Parallel Binary chunk received from any channel
+          const buffer = e.data;
+          if (buffer.byteLength < 4) return;
+          
+          const view = new DataView(buffer);
+          const chunkIndex = view.getUint32(0); // Extract 4-byte index
+          const payload = buffer.slice(4); // Actual binary data (original OR encrypted)
 
           let chunk;
-          if (cryptoKeyRef.current) {
+          if (fileMetaRef.current?.encrypted) {
+            if (!cryptoKeyRef.current) return; // Drop until key is ready
             try {
-              chunk = await decryptChunk(cryptoKeyRef.current, e.data);
+              chunk = await decryptChunk(cryptoKeyRef.current, payload);
             } catch {
               setError("Decryption failed. The password may be incorrect.");
               setStatus("error");
@@ -311,19 +319,26 @@ export default function P2PReceive() {
               return;
             }
           } else {
-            chunk = e.data;
+            chunk = payload;
           }
 
-          chunksRef.current.push(chunk instanceof ArrayBuffer ? new Uint8Array(chunk) : chunk);
-          receivedBytesRef.current += (chunk instanceof ArrayBuffer ? chunk.byteLength : chunk.byteLength);
+          // Use a Map or sparse array to store chunks out of order
+          if (!chunksRef.current) chunksRef.current = {};
+          if (!(chunkIndex in chunksRef.current)) {
+            chunksRef.current[chunkIndex] = chunk instanceof ArrayBuffer ? new Uint8Array(chunk) : chunk;
+            receivedBytesRef.current += payload.byteLength; // original size for progress
+          }
 
           const meta = fileMetaRef.current;
+
           if (meta?.size > 0) {
-            // Throttle UI updates to only trigger on percentage change or every ~10 chunks
-            // to prevent massively choking the React render thread on fast networks.
-            if (!chunksRef.current.length || chunksRef.current.length % 10 === 0) {
-              const pct = Math.min(100, Math.round((receivedBytesRef.current / meta.size) * 100));
+            // Throttle UI updates relative to bytes received
+            const lastUpdate = lastProgressRef.current || 0;
+            const pct = Math.min(100, Math.round((receivedBytesRef.current / meta.size) * 100));
+            
+            if (pct > lastUpdate || receivedBytesRef.current === meta.size) {
               setProgress(pct);
+              lastProgressRef.current = pct;
 
               const elapsed = (Date.now() - startTimeRef.current) / 1000;
               if (elapsed > 0) {
@@ -348,15 +363,20 @@ export default function P2PReceive() {
 
   const finalize = async () => {
     const meta = fileMetaRef.current;
-    if (!meta) return;
+    if (!meta || !chunksRef.current) return;
 
-    setProgress(100);
-    setStatus("done");
+    setStatus("processing");
+    console.log("[P2PReceive] Reassembling chunks for download...");
 
-    const saved = await saveWithFSAPI(chunksRef.current, meta.name).catch(() => false);
+    // Reassemble ordered array of chunks
+    const chunkIndices = Object.keys(chunksRef.current).map(Number).sort((a,b) => a - b);
+    const orderedChunks = chunkIndices.map(idx => chunksRef.current[idx]);
+
+    const saved = await saveWithFSAPI(orderedChunks, meta.name).catch(() => false);
     if (!saved) {
-      saveAsBlobUrl(chunksRef.current, meta.name);
+      saveAsBlobUrl(orderedChunks, meta.name);
     }
+    setStatus("done");
   };
 
   const handleManualPasswordSubmit = async () => {
