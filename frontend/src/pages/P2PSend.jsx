@@ -672,13 +672,21 @@ export default function P2PSend() {
 
       const slice = f.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
       const ab = await slice.arrayBuffer();
+      let payload;
 
       if (cryptoKey) {
-        const encrypted = await encryptChunk(cryptoKey, ab);
-        channel.send(encrypted);
+        payload = await encryptChunk(cryptoKey, ab);
       } else {
-        channel.send(ab);
+        payload = ab;
       }
+
+      // Prepend a 4-byte chunk index for reliable out-of-order reassembly
+      const finalPayload = new Uint8Array(4 + payload.byteLength);
+      const view = new DataView(finalPayload.buffer);
+      view.setUint32(0, i); // Index i
+      finalPayload.set(new Uint8Array(payload), 4);
+
+      channel.send(finalPayload.buffer);
 
       sentBytes += ab.byteLength;
       
