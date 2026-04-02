@@ -224,7 +224,8 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          timeout: 300s
+          timeout: 1200s
+          command_timeout: 20m
           script: |
             set -e
 
