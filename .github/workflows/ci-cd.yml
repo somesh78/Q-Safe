@@ -231,19 +231,21 @@ jobs:
             echo "=== Starting deployment ==="
             cd ~/Q-Safe
 
-            echo "=== Fixing folder permissions and clearing git locks ==="
-            sudo chown -R ubuntu:ubuntu .
-            rm -f .git/config.lock .git/index.lock || true
+            echo "=== Nuclear Git Cleanup (Bypassing config write) ==="
+            sudo rm -f .git/config.lock .git/index.lock .git/HEAD.lock || true
+            sudo chown -R ubuntu:ubuntu .git || true
 
-            echo "=== Pulling latest production ==="
-            git remote set-url origin https://${{ github.repository_owner }}:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git
-            git fetch origin
+            AUTH_URL="https://${{ github.repository_owner }}:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git"
+            
+            echo "=== Fetching latest production ==="
+            git fetch "$AUTH_URL" production
             
             echo "🛡️  Stashing local server-side changes (preserves manually tuned nginx.conf/configs)..."
             git stash --include-untracked || true
             
-            git checkout production
-            git pull --ff-only origin production
+            echo "=== Updating to production branch ==="
+            git checkout production || git checkout -b production
+            git reset --hard FETCH_HEAD
             
             echo "🔄 Re-applying local server-side changes..."
             git stash pop || true
