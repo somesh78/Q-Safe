@@ -231,6 +231,11 @@ jobs:
             echo "=== Starting deployment ==="
             cd ~/Q-Safe
 
+            echo "=== Emergency Disk Cleanup (Fixing 'No space left' error) ==="
+            docker system prune -af || true
+            docker builder prune -af || true
+            sudo apt-get clean || true
+
             echo "=== Nuclear Git Cleanup (Bypassing config write) ==="
             sudo rm -f .git/config.lock .git/index.lock .git/HEAD.lock || true
             sudo chown -R ubuntu:ubuntu .git || true
@@ -256,7 +261,6 @@ jobs:
 
             echo "=== Rebuilding Docker containers ==="
             docker-compose down --remove-orphans
-            docker builder prune -af || true
             # Note: NOT removing volumes; only prune unused images
             docker-compose build --no-cache
             docker-compose up -d
