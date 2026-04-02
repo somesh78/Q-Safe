@@ -46,9 +46,9 @@ EXPOSE 8000
 # Make entrypoint executable
 RUN chmod +x entrypoint.sh
 
-# Health check
+# Health check (Use httpx or python-native since requests is not in requirements.txt)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/api/health/', timeout=5)"
+    CMD python -c "import httpx; httpx.get('http://localhost:8000/api/health/', timeout=5)"
 
 # Run entrypoint script
 CMD ["./entrypoint.sh"]
