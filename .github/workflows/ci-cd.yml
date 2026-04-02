@@ -228,12 +228,17 @@ jobs:
           script: |
             set -e
 
+            # Enable BuildKit for faster builds
+            export DOCKER_BUILDKIT=1
+            export COMPOSE_DOCKER_CLI_BUILD=1
+
             echo "=== Starting deployment ==="
             cd ~/Q-Safe
 
-            echo "=== Emergency Disk Cleanup (Fixing 'No space left' error) ==="
-            docker system prune -af || true
-            docker builder prune -af || true
+            echo "=== Disk Maintenance (Pruning only unused content) ==="
+            # Prune only dangling images and older build cache to preserve base image layers
+            docker image prune -f || true
+            docker builder prune -f --filter "until=24h" || true
             sudo apt-get clean || true
 
             echo "=== Nuclear Git Cleanup (Bypassing config write) ==="
@@ -259,10 +264,12 @@ jobs:
             PREV=$(git rev-parse HEAD)
             echo "Previous commit: $PREV"
 
-            echo "=== Rebuilding Docker containers ==="
+            echo "=== Rebuilding Docker containers (Using Cache) ==="
+            # Build first so we can transition with minimal downtime
+            docker-compose build
+            
+            # Restart services
             docker-compose down --remove-orphans
-            # Note: NOT removing volumes; only prune unused images
-            docker-compose build --no-cache
             docker-compose up -d
 
             echo "=== Waiting for app to start (45s for migrations/collectstatic) ==="
@@ -293,7 +300,7 @@ jobs:
                 docker-compose down --remove-orphans
                 git checkout production
                 git reset --hard "$PREV"
-                docker-compose build --no-cache
+                docker-compose build
                 docker-compose up -d
                 echo "Rollback to $PREV complete. Please verify manually."
                 exit 1
