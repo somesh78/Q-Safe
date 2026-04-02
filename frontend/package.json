@@ -57,6 +57,7 @@
       "ajv-keywords": "3.5.2"
     },
     "ajv": "6.12.6",
-    "ajv-keywords": "3.5.2"
+    "ajv-keywords": "3.5.2",
+    "ajv-formats": "1.6.1"
   }
 }
