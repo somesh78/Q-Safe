@@ -8,16 +8,15 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci --omit=dev --legacy-peer-deps
 
-# Bypass ESLint during build to prevent Ajv v8 conflict crashes
+# Suppress ESLint plugin warnings that can cause build failures
 ENV DISABLE_ESLINT_PLUGIN=true
-
 COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Python backend with frontend static files
 FROM python:3.11-slim
 
-# Install system dependencies
+# Install system dependencies (curl required for healthcheck)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libzbar0 \
     libpq-dev \
@@ -47,9 +46,9 @@ EXPOSE 8000
 # Make entrypoint executable
 RUN chmod +x entrypoint.sh
 
-# Health check (Use httpx or python-native since requests is not in requirements.txt)
+# Health check — use curl (already installed); avoids depending on Python package availability
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:8000/api/health/', timeout=5)"
+    CMD curl -f http://localhost:8000/api/health/ || exit 1
 
 # Run entrypoint script
 CMD ["./entrypoint.sh"]

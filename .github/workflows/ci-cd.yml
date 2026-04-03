@@ -117,7 +117,6 @@ jobs:
           REACT_APP_API_URL: https://q-safe.live
           REACT_APP_URL: https://q-safe.live
           CI: false
-          DISABLE_ESLINT_PLUGIN: true
         run: npm run build
 
       - name: Check build output exists
@@ -224,51 +223,36 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          timeout: 1200s
-          command_timeout: 20m
+          timeout: 300s
           script: |
             set -e
 
             echo "=== Starting deployment ==="
             cd ~/Q-Safe
 
-            echo "=== Disk Status (Before Build) ==="
-            df -h || true
-            docker system df || true
-
-            echo "=== Quick Prune (30s timeout) ==="
-            timeout 30s docker image prune -f || true
-            sudo apt-get clean || true
-
-            echo "=== Nuclear Git Cleanup (Bypassing config write) ==="
-            sudo rm -f .git/config.lock .git/index.lock .git/HEAD.lock || true
-            sudo chown -R ubuntu:ubuntu .git || true
-
-            AUTH_URL="https://${{ github.repository_owner }}:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git"
-            
-            echo "=== Fetching latest production ==="
-            git fetch "$AUTH_URL" production
-            
-            echo "🛡️  Stashing local server-side changes (preserves manually tuned nginx.conf/configs)..."
-            git stash --include-untracked || true
-            
-            echo "=== Updating to production branch ==="
-            git checkout production || git checkout -b production
-            git reset --hard FETCH_HEAD
-            
-            echo "🔄 Re-applying local server-side changes..."
-            git stash pop || true
+            echo "=== Pulling latest production ==="
+            git remote set-url origin https://${{ github.repository_owner }}:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git
+            git fetch origin
+            git checkout production
+            git pull --ff-only origin production
 
             echo "=== Recording current production commit for rollback ==="
             PREV=$(git rev-parse HEAD)
             echo "Previous commit: $PREV"
 
-            echo "=== Rebuilding Docker containers (Using Cache) ==="
-            # Build first so we can transition with minimal downtime
-            docker-compose build
-            
-            # Restart services
+            echo "=== Rebuilding Docker containers ==="
             docker-compose down --remove-orphans
+            docker builder prune -af || true
+            # Note: NOT removing volumes; only prune unused images
+
+            # Free ports 80 and 443 if already in use (stale host nginx or leftover containers)
+            echo "=== Freeing ports 80/443 if occupied ==="
+            sudo systemctl stop nginx 2>/dev/null || true
+            sudo fuser -k 80/tcp 2>/dev/null || true
+            sudo fuser -k 443/tcp 2>/dev/null || true
+            sleep 2
+
+            docker-compose build --no-cache
             docker-compose up -d
 
             echo "=== Waiting for app to start (45s for migrations/collectstatic) ==="
@@ -299,8 +283,9 @@ jobs:
                 docker-compose down --remove-orphans
                 git checkout production
                 git reset --hard "$PREV"
-                docker-compose build
+                docker-compose build --no-cache
                 docker-compose up -d
+                sudo systemctl start nginx 2>/dev/null || true
                 echo "Rollback to $PREV complete. Please verify manually."
                 exit 1
               fi
@@ -308,13 +293,11 @@ jobs:
               sleep 10
             done
 
-            echo "=== Final Disk Cleanup (2m timeout) ==="
-            timeout 120s docker image prune -f || true
-            timeout 120s docker builder prune -f --filter "until=24h" || true
+            echo "=== Cleaning up old Docker images ==="
+            docker image prune -f
 
-            echo "=== Final Disk Status ==="
-            df -h || true
-            docker system df || true
+            echo "=== Restarting host nginx proxy ==="
+            sudo systemctl start nginx 2>/dev/null || true
 
             echo "=== Deployment complete ==="
 

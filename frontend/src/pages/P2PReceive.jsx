@@ -131,6 +131,9 @@ export default function P2PReceive() {
   const cryptoKeyRef = useRef(null);
   const lastProgressRef = useRef(0);
   const fileMetaRef = useRef(null);
+  // dataChannelRef tracks the primary signaling channel (channel-0 from ondatachannel).
+  // The sender listens for receiver_ready ONLY on channel index 0, so we must
+  // ensure we always send back on the same channel that carried file_meta.
   const dataChannelRef = useRef(null);
 
   // ── Connect to signaling server ────────────────────────────────────────────
@@ -241,14 +244,17 @@ export default function P2PReceive() {
 
     pc.ondatachannel = (event) => {
       const dc = event.channel;
-      // All channels are useful for binary data, but we use the first to track global status/metadata
-      if (!dataChannelRef.current) {
+
+      // The sender always creates channels as `file-0`, `file-1`, etc.
+      // We track the channel labelled "file-0" as the primary signaling channel
+      // because the sender's onmessage listener for receiver_ready is ONLY on index 0.
+      if (dc.label === "file-0" || !dataChannelRef.current) {
         dataChannelRef.current = dc;
       }
 
       // Wait for data channel to be fully open before processing messages
       dc.onopen = () => {
-        console.log("[P2PReceive] Data channel opened, ready to receive");
+        console.log("[P2PReceive] Data channel opened:", dc.label);
       };
 
       dc.onmessage = async (e) => {
@@ -263,15 +269,19 @@ export default function P2PReceive() {
             startTimeRef.current = Date.now();
             lastProgressRef.current = 0;
 
+            // Always respond on the same channel that delivered file_meta
+            // (which is always channel-0 / "file-0" from the sender).
+            const signalingChannel = dc;
+
             if (msg.encrypted) {
               const pw = passwordOverride;
               if (pw) {
                 const saltBytes = Uint8Array.from(atob(msg.salt), (c) => c.charCodeAt(0));
                 cryptoKeyRef.current = await deriveKey(pw, saltBytes);
                 // Ensure data channel is open before sending receiver_ready
-                if (dc.readyState === "open") {
+                if (signalingChannel.readyState === "open") {
                   console.log("[P2PReceive] Sending receiver_ready (encrypted file)");
-                  dc.send(JSON.stringify({ type: "receiver_ready" }));
+                  signalingChannel.send(JSON.stringify({ type: "receiver_ready" }));
                   setStatus("receiving");
                 } else {
                   console.error("[P2PReceive] Data channel not open, cannot send receiver_ready");
@@ -279,15 +289,15 @@ export default function P2PReceive() {
                   setStatus("error");
                 }
               } else {
-                // No password in URL → ask user
+                // No password provided → ask user
                 setStatus("password_required");
               }
             } else {
               cryptoKeyRef.current = null;
               // Ensure data channel is open before sending receiver_ready
-              if (dc.readyState === "open") {
+              if (signalingChannel.readyState === "open") {
                 console.log("[P2PReceive] Sending receiver_ready (unencrypted file)");
-                dc.send(JSON.stringify({ type: "receiver_ready" }));
+                signalingChannel.send(JSON.stringify({ type: "receiver_ready" }));
                 setStatus("receiving");
               } else {
                 console.error("[P2PReceive] Data channel not open, cannot send receiver_ready");
@@ -309,11 +319,17 @@ export default function P2PReceive() {
           const chunkIndex = view.getUint32(0); // Extract 4-byte index
           const payload = buffer.slice(4); // Actual binary data (original OR encrypted)
 
+          // Deduplicate: multi-channel striping can deliver the same index twice
+          if (chunkIndex in chunksRef.current) return;
+
           let chunk;
+          let chunkByteSize;
           if (fileMetaRef.current?.encrypted) {
             if (!cryptoKeyRef.current) return; // Drop until key is ready
             try {
               chunk = await decryptChunk(cryptoKeyRef.current, payload);
+              // Use decrypted size for accurate progress (payload includes 16-byte GCM tag overhead)
+              chunkByteSize = chunk.byteLength;
             } catch {
               setError("Decryption failed. The password may be incorrect.");
               setStatus("error");
@@ -322,18 +338,15 @@ export default function P2PReceive() {
             }
           } else {
             chunk = payload;
+            chunkByteSize = payload.byteLength;
           }
 
-          // Use a Map or sparse array to store chunks out of order
-          if (!chunksRef.current) chunksRef.current = {};
-          if (!(chunkIndex in chunksRef.current)) {
-            chunksRef.current[chunkIndex] = chunk instanceof ArrayBuffer ? new Uint8Array(chunk) : chunk;
-            receivedBytesRef.current += payload.byteLength; // original size for progress
-            
-            // Periodic debug log (every ~100 chunks)
-            if (chunkIndex % 100 === 0) {
-              console.log(`[P2PReceive] Progress: Chunk ${chunkIndex} received.`);
-            }
+          chunksRef.current[chunkIndex] = chunk instanceof ArrayBuffer ? new Uint8Array(chunk) : chunk;
+          receivedBytesRef.current += chunkByteSize;
+          
+          // Periodic debug log (every ~100 chunks)
+          if (chunkIndex % 100 === 0) {
+            console.log(`[P2PReceive] Progress: Chunk ${chunkIndex} received.`);
           }
 
           const meta = fileMetaRef.current;
@@ -343,7 +356,7 @@ export default function P2PReceive() {
             const lastUpdate = lastProgressRef.current || 0;
             const pct = Math.min(100, Math.round((receivedBytesRef.current / meta.size) * 100));
             
-            if (pct > lastUpdate || receivedBytesRef.current === meta.size) {
+            if (pct > lastUpdate || receivedBytesRef.current >= meta.size) {
               setProgress(pct);
               lastProgressRef.current = pct;
 
