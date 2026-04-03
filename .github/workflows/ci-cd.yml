@@ -232,10 +232,12 @@ jobs:
             echo "=== Starting deployment ==="
             cd ~/Q-Safe
 
-            echo "=== Disk Maintenance (Pruning only unused content) ==="
-            # Prune only dangling images and older build cache to preserve base image layers
-            docker image prune -f || true
-            docker builder prune -f --filter "until=24h" || true
+            echo "=== Disk Status (Before Build) ==="
+            df -h || true
+            docker system df || true
+
+            echo "=== Quick Prune (30s timeout) ==="
+            timeout 30s docker image prune -f || true
             sudo apt-get clean || true
 
             echo "=== Nuclear Git Cleanup (Bypassing config write) ==="
@@ -306,8 +308,13 @@ jobs:
               sleep 10
             done
 
-            echo "=== Cleaning up old Docker images ==="
-            docker image prune -f
+            echo "=== Final Disk Cleanup (2m timeout) ==="
+            timeout 120s docker image prune -f || true
+            timeout 120s docker builder prune -f --filter "until=24h" || true
+
+            echo "=== Final Disk Status ==="
+            df -h || true
+            docker system df || true
 
             echo "=== Deployment complete ==="
 
