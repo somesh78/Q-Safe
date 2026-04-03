@@ -1,12 +1,12 @@
 # Multi-stage build: Frontend + Backend
 # Stage 1: Build React frontend
-FROM node:20-alpine AS frontend-builder
+FROM node:20-bookworm-slim AS frontend-builder
 
 WORKDIR /app/frontend
 
 # Copy frontend files
 COPY frontend/package*.json ./
-RUN npm ci --omit=dev --legacy-peer-deps
+RUN npm ci --legacy-peer-deps
 
 # Suppress ESLint plugin warnings that can cause build failures
 ENV DISABLE_ESLINT_PLUGIN=true
