@@ -313,7 +313,7 @@ export default function P2PSend() {
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allowBroadcast, resolvedStrategy, roomId, status]);
+  }, [allowBroadcast, resolvedStrategy, roomId]);
 
   const startHybridAirGap = async () => {
     const f = fileRef.current;

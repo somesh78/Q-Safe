@@ -244,6 +244,14 @@ jobs:
             docker-compose down --remove-orphans
             docker builder prune -af || true
             # Note: NOT removing volumes; only prune unused images
+
+            # Free ports 80 and 443 if already in use (stale host nginx or leftover containers)
+            echo "=== Freeing ports 80/443 if occupied ==="
+            sudo systemctl stop nginx 2>/dev/null || true
+            sudo fuser -k 80/tcp 2>/dev/null || true
+            sudo fuser -k 443/tcp 2>/dev/null || true
+            sleep 2
+
             docker-compose build --no-cache
             docker-compose up -d
 
@@ -277,6 +285,7 @@ jobs:
                 git reset --hard "$PREV"
                 docker-compose build --no-cache
                 docker-compose up -d
+                sudo systemctl start nginx 2>/dev/null || true
                 echo "Rollback to $PREV complete. Please verify manually."
                 exit 1
               fi
@@ -286,6 +295,9 @@ jobs:
 
             echo "=== Cleaning up old Docker images ==="
             docker image prune -f
+
+            echo "=== Restarting host nginx proxy ==="
+            sudo systemctl start nginx 2>/dev/null || true
 
             echo "=== Deployment complete ==="
 
