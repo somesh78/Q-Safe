@@ -245,8 +245,16 @@ jobs:
 
             echo "=== Rebuilding Docker containers ==="
             docker-compose down --remove-orphans
+            
+            echo "=== Disk usage before cleanup ==="
+            df -h
+
+            echo "=== Docker cleanup ==="
+            docker system prune -af || true
             docker builder prune -af || true
-            # Note: NOT removing volumes; only prune unused images
+            
+            echo "=== Disk usage after cleanup ==="
+            df -h
 
             # Free ports 80 and 443 if already in use (stale host nginx or leftover containers)
             echo "=== Freeing ports 80/443 if occupied ==="
@@ -255,7 +263,7 @@ jobs:
             sudo fuser -k 443/tcp 2>/dev/null || true
             sleep 2
 
-            docker-compose build --no-cache
+            docker-compose build
             docker-compose up -d
 
             echo "=== Waiting for app to start (45s for migrations/collectstatic) ==="
@@ -286,7 +294,7 @@ jobs:
                 docker-compose down --remove-orphans
                 git checkout production
                 git reset --hard "$PREV"
-                docker-compose build --no-cache
+                docker-compose build
                 docker-compose up -d
                 sudo systemctl start nginx 2>/dev/null || true
                 echo "Rollback to $PREV complete. Please verify manually."
