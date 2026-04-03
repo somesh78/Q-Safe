@@ -263,7 +263,7 @@ jobs:
 
             echo "=== Health check ==="
             for i in 1 2 3 4 5 6 7 8 9 10; do
-              STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+              STATUS=$(docker exec q_safe_web curl -sS -o /dev/null -w "%{http_code}" \
                 http://localhost:8000/api/health/ \
                 --connect-timeout 3 --max-time 10 || echo "000")
 
