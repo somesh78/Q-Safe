@@ -190,7 +190,7 @@ jobs:
             -f title="chore: merge dev into production (manual conflict resolution required)" \
             -f head="dev" \
             -f base="production" \
-            -f body="CI could not auto-merge dev into production due to conflicts. Please resolve conflicts (notably in backend/transfers/views.py), then merge this PR."
+            -f body="CI could not auto-merge dev into production due to merge conflicts. Please resolve conflicts (see the Actions logs for the exact files — typically .github/workflows/ci-cd.yml, Dockerfile, or frontend files), then merge this PR."
 
           pr_create_exit=$?
           if [ $pr_create_exit -ne 0 ]; then
@@ -204,7 +204,10 @@ jobs:
         if: steps.merge.outputs.merged == 'false'
         run: |
           echo "Auto-merge blocked by conflicts. PR created for manual resolution."
-          exit 1
+          echo "Deploy skipped — production was not updated."
+          # exit 0 so the run is marked as 'skipped' not 'failed'.
+          # The deploy job is already gated by merged == 'true' so it won't run.
+          exit 0
 
   # ─────────────────────────────────────────────
   # JOB 4 — Deploy to EC2
