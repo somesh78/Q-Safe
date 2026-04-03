@@ -32,6 +32,7 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     ".onrender.com",
+    "web",  # Internal docker-compose service name
 ]
 if config('ALLOWED_HOSTS', default=''):
     ALLOWED_HOSTS += config('ALLOWED_HOSTS').split(',') 
