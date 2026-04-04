@@ -397,11 +397,6 @@ export default function P2PSend() {
     peersRef.current.set(receiverPeerId, peerState);
 
     pc.onicecandidate = (e) => {
-      // 1. Enforce LAN-first candidate filtering (Filter for ONLY host candidates when preferring local)
-      if (preferLocal && e.candidate && !e.candidate.candidate.includes("host")) {
-        console.log("[P2PSend] Skipping non-host candidate to prioritize LAN path:", e.candidate.candidate);
-        return;
-      }
       if (e.candidate) {
         ws.send(JSON.stringify({
           type: "ice_candidate",
@@ -417,29 +412,6 @@ export default function P2PSend() {
 
     pc.onconnectionstatechange = async () => {
       console.log('[P2PSend] Connection state:', pc.connectionState);
-      
-      // Attempt connection type detection if connected successfully
-      if (pc.connectionState === 'connected') {
-        try {
-          const stats = await pc.getStats();
-          stats.forEach(report => {
-            if (report.type === 'candidate-pair' && report.state === 'succeeded') {
-              const local = stats.get(report.localCandidateId);
-              const remote = stats.get(report.remoteCandidateId);
-              
-              if (local?.candidateType === 'host' && remote?.candidateType === 'host') {
-                setConnectionType("lan");
-              } else if (local?.candidateType === 'relay' || remote?.candidateType === 'relay') {
-                setConnectionType("relay");
-              } else {
-                setConnectionType("stun");
-              }
-            }
-          });
-        } catch (err) {
-          console.warn("[P2PSend] Connection detection failed:", err);
-        }
-      }
 
       if (pc.connectionState === "failed" && !peerState.completed) {
         if (peerState.connectTimeout) {
@@ -495,32 +467,22 @@ export default function P2PSend() {
       if (pc.iceConnectionState === 'connected') {
         try {
           const stats = await pc.getStats();
-          let localType = 'unknown';
-          let remoteType = 'unknown';
-          let localProtocol = 'unknown';
-          
-          stats.forEach(report => {
-            if (report.type === 'candidate-pair' && report.state === 'succeeded' && report.nominated) {
-              const local = [...stats.values()].find(s => s.id === report.localCandidateId);
-              const remote = [...stats.values()].find(s => s.id === report.remoteCandidateId);
-              
-              if (local) {
-                localType = local.candidateType;
-                localProtocol = local.protocol;
-              }
-              if (remote) remoteType = remote.candidateType;
+          let localType = '', remoteType = '';
+          stats.forEach(r => {
+            if (r.type === 'candidate-pair' && r.state === 'succeeded') {
+              localType = r.localCandidateId;
+              remoteType = r.remoteCandidateId;
+            }
+            if (r.type === 'local-candidate' && r.id === localType) {
+              localType = r.candidateType;
+            }
+            if (r.type === 'remote-candidate' && r.id === remoteType) {
+              remoteType = r.candidateType;
             }
           });
-
-          console.log(`[P2PSend] Selected path: ${localType} → ${remoteType} | Protocol: ${localProtocol}`);
-          
-          if (localType === 'host' && remoteType === 'host') {
-            setConnectionType("lan");
-          } else if (localType === 'relay' || remoteType === 'relay') {
-            setConnectionType("relay");
-          } else {
-            setConnectionType("stun");
-          }
+          setConnectionType(
+            localType === 'host' && remoteType === 'host' ? 'lan' : 'internet'
+          );
         } catch (err) {
           console.warn("Could not get WebRTC stats:", err);
         }
@@ -731,13 +693,11 @@ export default function P2PSend() {
     }
 
     const isLAN = connectionType === "lan";
-    const useMulti = isLAN; // True for LAN, false (Single Lane) for internet to ensure maximum reliability
-    
     const CHUNK_SIZE = isLAN ? 256 * 1024 : 64 * 1024;
     const totalChunks = Math.ceil(f.size / CHUNK_SIZE);
     let sentBytes = 0;
     const startTime = Date.now();
-    const activeChannels = useMulti ? peer.channels : [peer.channels[0]];
+    const activeChannels = isLAN ? [peer.channels[0], peer.channels[1]] : [peer.channels[0]];
     const NUM_ACTIVE = activeChannels.length;
 
     for (let i = 0; i < totalChunks; i++) {
@@ -1111,11 +1071,11 @@ export default function P2PSend() {
                       padding: "0.2rem 0.6rem", 
                       borderRadius: 12, 
                       fontSize: "0.75rem", 
-                      background: connectionType === "lan" ? "rgba(16, 185, 129, 0.15)" : (connectionType === "relay" ? "rgba(239, 68, 68, 0.15)" : "rgba(59, 130, 246, 0.15)"),
-                      color: connectionType === "lan" ? "#10b981" : (connectionType === "relay" ? "#ef4444" : "#3b82f6"),
+                      background: connectionType === "lan" ? "rgba(16, 185, 129, 0.15)" : "rgba(59, 130, 246, 0.15)",
+                      color: connectionType === "lan" ? "#10b981" : "#3b82f6",
                       marginBottom: "0.5rem"
                     }}>
-                      {connectionType === "lan" ? "⚡ Direct LAN Connection" : (connectionType === "relay" ? "☁ Relayed Connection" : "🌐 Direct STUN Connection")}
+                      {connectionType === "lan" ? "⚡ Direct LAN Connection" : "🌐 Internet Connection"}
                     </div>
                   )}
                   <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
