@@ -14,6 +14,11 @@ from datetime import timedelta
 from pathlib import Path
 from decouple import config
 import os
+import logging
+
+class HealthCheckFilter(logging.Filter):
+    def filter(self, record):
+        return '/api/health/' not in record.getMessage()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -372,10 +377,16 @@ LOGGING = {
             'style': '{',
         },
     },
+    'filters': {
+        'exclude_health': {
+            '()': 'backend.settings.HealthCheckFilter',
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
+            'filters': ['exclude_health'],
         },
     },
     'root': {
@@ -389,6 +400,11 @@ LOGGING = {
             'propagate': False,
         },
         'transfers': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'daphne': {
             'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,

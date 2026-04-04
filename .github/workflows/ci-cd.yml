@@ -117,6 +117,7 @@ jobs:
           REACT_APP_API_URL: https://q-safe.live
           REACT_APP_URL: https://q-safe.live
           CI: false
+          DISABLE_ESLINT_PLUGIN: true
         run: npm run build
 
       - name: Check build output exists

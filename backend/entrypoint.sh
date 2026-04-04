@@ -27,6 +27,12 @@ celery -A backend worker --loglevel=info --concurrency=1 &
 echo "Starting Daphne ASGI server..."
 # Daphne is the ASGI server for Django Channels (supports HTTP + WebSocket).
 # HTTP_TIMEOUT covers large file upload/download requests.
-exec daphne -b 0.0.0.0 -p 8000 \
+# Pipe to grep to filter out verbose AWS health checks while keeping other logs
+daphne -b 0.0.0.0 -p 8000 \
     --http-timeout 18800 \
-    backend.asgi:application
+    backend.asgi:application 2>&1 | grep --line-buffered -v "/api/health/" &
+
+DAPHNE_PID=$!
+# Forward termination signals to Daphne for graceful shutdown
+trap "kill -TERM $DAPHNE_PID" TERM INT
+wait $DAPHNE_PID

@@ -412,29 +412,6 @@ export default function P2PSend() {
 
     pc.onconnectionstatechange = async () => {
       console.log('[P2PSend] Connection state:', pc.connectionState);
-      
-      // Attempt connection type detection if connected successfully
-      if (pc.connectionState === 'connected') {
-        try {
-          const stats = await pc.getStats();
-          stats.forEach(report => {
-            if (report.type === 'candidate-pair' && report.state === 'succeeded') {
-              const local = stats.get(report.localCandidateId);
-              const remote = stats.get(report.remoteCandidateId);
-              
-              if (local?.candidateType === 'host' && remote?.candidateType === 'host') {
-                setConnectionType("lan");
-              } else if (local?.candidateType === 'relay' || remote?.candidateType === 'relay') {
-                setConnectionType("relay");
-              } else {
-                setConnectionType("stun");
-              }
-            }
-          });
-        } catch (err) {
-          console.warn("[P2PSend] Connection detection failed:", err);
-        }
-      }
 
       if (pc.connectionState === "failed" && !peerState.completed) {
         if (peerState.connectTimeout) {
@@ -490,32 +467,35 @@ export default function P2PSend() {
       if (pc.iceConnectionState === 'connected') {
         try {
           const stats = await pc.getStats();
-          let localType = 'unknown';
-          let remoteType = 'unknown';
-          let localProtocol = 'unknown';
-          
+          let localType = '', remoteType = '', protocol = '';
           stats.forEach(report => {
-            if (report.type === 'candidate-pair' && report.state === 'succeeded' && report.nominated) {
-              const local = [...stats.values()].find(s => s.id === report.localCandidateId);
-              const remote = [...stats.values()].find(s => s.id === report.remoteCandidateId);
-              
-              if (local) {
-                localType = local.candidateType;
-                localProtocol = local.protocol;
-              }
-              if (remote) remoteType = remote.candidateType;
+            if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+              stats.forEach(r => {
+                if (r.type === 'local-candidate' && r.id === report.localCandidateId) {
+                  localType = r.candidateType;
+                  protocol = r.protocol;
+                }
+                if (r.type === 'remote-candidate' && r.id === report.remoteCandidateId) {
+                  remoteType = r.candidateType;
+                }
+              });
             }
           });
 
-          console.log(`[P2PSend] Selected path: ${localType} → ${remoteType} | Protocol: ${localProtocol}`);
-          
-          if (localType === 'host' && remoteType === 'host') {
-            setConnectionType("lan");
-          } else if (localType === 'relay' || remoteType === 'relay') {
-            setConnectionType("relay");
-          } else {
-            setConnectionType("stun");
-          }
+          let resolvedType = 'host';
+          if (localType === 'relay' || remoteType === 'relay') resolvedType = 'relay';
+          else if (localType === 'srflx' || remoteType === 'srflx') resolvedType = 'srflx';
+          else if (localType !== 'host' && remoteType !== 'host') resolvedType = 'srflx';
+
+          console.log(`[Q-Safe] Connection type: ${localType || 'unknown'} → ${remoteType || 'unknown'}`);
+          console.log(`[Q-Safe] Protocol: ${protocol || 'unknown'}`);
+
+          setConnectionType({
+            type: resolvedType,
+            local: localType,
+            remote: remoteType,
+            protocol: protocol
+          });
         } catch (err) {
           console.warn("Could not get WebRTC stats:", err);
         }
@@ -725,16 +705,17 @@ export default function P2PSend() {
       cryptoKey = await deriveKey(password, saltBytes);
     }
 
-    const isLAN = connectionType === "lan";
-    // 🚧 PRODUCTION TUNING: LAN uses 2 lanes (stable multi-stream), Internet uses 1 lane (max reliability)
-    const activeChannels = isLAN ? peer.channels.slice(0, 2) : [peer.channels[0]];
-    const NUM_ACTIVE = activeChannels.length;
-    
-    // 📦 PRODUCTION TUNING: 128KB on LAN, 64KB on Internet to prevent SCTP window overflow
-    const CHUNK_SIZE = isLAN ? 128 * 1024 : 64 * 1024;
+    const resolvedType = connectionType?.type || "host";
+    const isLAN = resolvedType === "host";
+    const isRelay = resolvedType === "relay";
+    const CHUNK_SIZE = isLAN ? 256 * 1024 : (isRelay ? 64 * 1024 : 128 * 1024);
+    const NUM_ACTIVE = isLAN ? 2 : 1;
+    console.log(`[Q-Safe] Applying profile: ${CHUNK_SIZE/1024}KB chunks, ${NUM_ACTIVE} channel(s)`);
+
     const totalChunks = Math.ceil(f.size / CHUNK_SIZE);
     let sentBytes = 0;
     const startTime = Date.now();
+    const activeChannels = peer.channels.slice(0, NUM_ACTIVE);
 
     for (let i = 0; i < totalChunks; i++) {
       let channel = activeChannels[i % NUM_ACTIVE];
@@ -1107,16 +1088,26 @@ export default function P2PSend() {
                     Sending…
                   </div>
                   {connectionType && (
-                    <div style={{ 
-                      display: "inline-block", 
-                      padding: "0.2rem 0.6rem", 
-                      borderRadius: 12, 
-                      fontSize: "0.75rem", 
-                      background: connectionType === "lan" ? "rgba(16, 185, 129, 0.15)" : (connectionType === "relay" ? "rgba(239, 68, 68, 0.15)" : "rgba(59, 130, 246, 0.15)"),
-                      color: connectionType === "lan" ? "#10b981" : (connectionType === "relay" ? "#ef4444" : "#3b82f6"),
-                      marginBottom: "0.5rem"
-                    }}>
-                      {connectionType === "lan" ? "⚡ Direct LAN Connection" : (connectionType === "relay" ? "☁ Relayed Connection" : "🌐 Direct STUN Connection")}
+                    <div style={{ textAlign: "center", marginBottom: "0.5rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
+                      <div style={{ 
+                        display: "inline-block", 
+                        padding: "0.2rem 0.6rem", 
+                        borderRadius: 12, 
+                        fontSize: "0.75rem", 
+                        background: connectionType.type === "host" ? "rgba(16, 185, 129, 0.15)" : (connectionType.type === "srflx" ? "rgba(234, 179, 8, 0.15)" : "rgba(239, 68, 68, 0.15)"),
+                        color: connectionType.type === "host" ? "#10b981" : (connectionType.type === "srflx" ? "#eab308" : "#ef4444"),
+                        fontWeight: 600
+                      }}>
+                        {connectionType.type === "host" ? "🟢 LAN (Direct)" : (connectionType.type === "srflx" ? "🟡 Internet (STUN)" : "🔴 Relayed (TURN)")}
+                      </div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-secondary)" }}>
+                        {connectionType.type === "host" ? "~20-50 MB/s expected" : (connectionType.type === "srflx" ? "~2-10 MB/s expected" : "~0.5-4 MB/s expected")}
+                      </div>
+                      {connectionType.type === "host" && connectionType.local === "host" && (
+                        <div style={{ fontSize: "0.65rem", color: "var(--text-secondary)", marginTop: "0.2rem", fontStyle: "italic" }}>
+                          Tip: If speed is low, try disabling mDNS in chrome://flags
+                        </div>
+                      )}
                     </div>
                   )}
                   <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>

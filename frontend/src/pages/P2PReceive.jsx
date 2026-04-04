@@ -120,6 +120,7 @@ export default function P2PReceive() {
   const [progress, setProgress] = useState(0);
   const [manualPassword, setManualPassword] = useState("");
   const [transferSpeed, setTransferSpeed] = useState("");
+  const [connectionType, setConnectionType] = useState(null);
 
   const wsRef = useRef(null);
   const pcRef = useRef(null);
@@ -238,8 +239,44 @@ export default function P2PReceive() {
       }
     };
 
-    pc.oniceconnectionstatechange = () => {
+    pc.oniceconnectionstatechange = async () => {
       console.log('[P2PReceive] ICE state:', pc.iceConnectionState);
+      if (pc.iceConnectionState === 'connected') {
+        try {
+          const stats = await pc.getStats();
+          let localType = '', remoteType = '', protocol = '';
+          stats.forEach(report => {
+            if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+              stats.forEach(r => {
+                if (r.type === 'local-candidate' && r.id === report.localCandidateId) {
+                  localType = r.candidateType;
+                  protocol = r.protocol;
+                }
+                if (r.type === 'remote-candidate' && r.id === report.remoteCandidateId) {
+                  remoteType = r.candidateType;
+                }
+              });
+            }
+          });
+          
+          let resolvedType = 'host';
+          if (localType === 'relay' || remoteType === 'relay') resolvedType = 'relay';
+          else if (localType === 'srflx' || remoteType === 'srflx') resolvedType = 'srflx';
+          else if (localType !== 'host' && remoteType !== 'host') resolvedType = 'srflx';
+
+          console.log(`[Q-Safe] Connection type: ${localType || 'unknown'} → ${remoteType || 'unknown'}`);
+          console.log(`[Q-Safe] Protocol: ${protocol || 'unknown'}`);
+
+          setConnectionType({
+            type: resolvedType,
+            local: localType,
+            remote: remoteType,
+            protocol: protocol
+          });
+        } catch (err) {
+          console.warn("Could not get WebRTC stats:", err);
+        }
+      }
     };
 
     pc.ondatachannel = (event) => {
@@ -511,6 +548,30 @@ export default function P2PReceive() {
                 <div style={{ color: "var(--text-primary)", fontWeight: 600, marginBottom: "0.25rem" }}>
                   Receiving {fileMeta?.name}
                 </div>
+
+                {connectionType && (
+                  <div style={{ textAlign: "center", marginBottom: "0.5rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
+                    <div style={{ 
+                      display: "inline-block", 
+                      padding: "0.2rem 0.6rem", 
+                      borderRadius: 12, 
+                      fontSize: "0.75rem", 
+                      background: connectionType.type === "host" ? "rgba(16, 185, 129, 0.15)" : (connectionType.type === "srflx" ? "rgba(234, 179, 8, 0.15)" : "rgba(239, 68, 68, 0.15)"),
+                      color: connectionType.type === "host" ? "#10b981" : (connectionType.type === "srflx" ? "#eab308" : "#ef4444"),
+                      fontWeight: 600
+                    }}>
+                      {connectionType.type === "host" ? "🟢 LAN (Direct)" : (connectionType.type === "srflx" ? "🟡 Internet (STUN)" : "🔴 Relayed (TURN)")}
+                    </div>
+                    <div style={{ fontSize: "0.7rem", color: "var(--text-secondary)" }}>
+                      {connectionType.type === "host" ? "~20-50 MB/s expected" : (connectionType.type === "srflx" ? "~2-10 MB/s expected" : "~0.5-4 MB/s expected")}
+                    </div>
+                    {connectionType.type === "host" && connectionType.local === "host" && (
+                      <div style={{ fontSize: "0.65rem", color: "var(--text-secondary)", marginTop: "0.2rem", fontStyle: "italic" }}>
+                        Tip: If speed is low, try disabling mDNS in chrome://flags
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: "1.25rem" }}>
                   {fileMeta ? (fileMeta.size / (1024 * 1024)).toFixed(2) : 0} MB · {transferSpeed}
                 </div>
