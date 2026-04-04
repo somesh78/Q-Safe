@@ -427,6 +427,14 @@ EMAIL_BACKEND = config(
     default='django.core.mail.backends.console.EmailBackend'  # Prints to console in dev
 )
 
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    'cleanup-expired-files': {
+        'task': 'transfers.tasks.cleanup_expired_files',
+        'schedule': crontab(minute=0, hour='*/6'),
+    },
+}
+
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)

@@ -75,7 +75,7 @@ export default function Pricing() {
 
                     <div style={{ textAlign: 'left', marginBottom: '30px' }}>
                         {[
-                            'Up to 500 MB per file (online mode)',
+                            'Up to 100 MB per file (online mode)',
                             'Live P2P browser-to-browser transfer (WebRTC)',
                             'Up to 20 MB per file (offline QR mode)',
                             'AES-256 encryption',
@@ -145,7 +145,7 @@ export default function Pricing() {
 
                     {[
                         { q: 'Will Q-Safe always be free?', a: 'The core file encryption and sharing features will remain free. We may introduce optional premium features in the future, but secure file sharing will always have a free tier.' },
-                        { q: 'Are there any usage limits?', a: 'Files are limited to 500 MB for online mode and 20 MB for offline QR mode. You can upload up to 20 files per hour. Links expire after a maximum of 24 hours.' },
+                        { q: 'Are there any usage limits?', a: 'Files are limited to 100 MB for online mode and 20 MB for offline QR mode. You can upload up to 20 files per hour. Links expire after a maximum of 24 hours.' },
                         { q: 'Do you sell my data?', a: 'No. We use a zero-knowledge architecture — we never see your unencrypted files or passwords. We have no data to sell.' },
                         { q: 'Need higher limits or custom features?', a: 'Contact us at support@q-safe.live and we\'ll work with you on a solution.' }
                     ].map((faq, index) => (
