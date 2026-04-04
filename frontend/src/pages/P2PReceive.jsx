@@ -79,21 +79,7 @@ function saveAsBlobUrl(chunks, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
-const ICE_SERVERS = [
-  // Self-Hosted STUN on EC2 bypassing DNS
-  { urls: "stun:52.63.153.228:3478" },
-  
-  // Dedicated Self-Hosted TURN on EC2 (52.63.153.228)
-  {
-    urls: [
-      "turn:52.63.153.228:3478?transport=udp",
-      "turn:52.63.153.228:3478?transport=tcp"
-    ],
-    username: "qsafe",
-    // Make sure to match this exact password in your turnserver.conf
-    credential: "QSAFE_SECURE_PASSWORD_123!"
-  }
-];
+import { getTurnCredentials } from "../services/api";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -210,8 +196,25 @@ export default function P2PReceive() {
 
     pcRef.current?.close();
 
+    let fetchedIceServers = [ { urls: "stun:52.63.153.228:3478" } ];
+    if (transportStrategy !== "lan") {
+      try {
+        const res = await getTurnCredentials();
+        fetchedIceServers = [
+          { urls: "stun:52.63.153.228:3478" },
+          {
+            urls: res.data.urls,
+            username: res.data.username,
+            credential: res.data.password
+          }
+        ];
+      } catch (err) {
+        console.warn("Failed to fetch TURN credentials", err);
+      }
+    }
+
     const pc = new RTCPeerConnection({
-      iceServers: transportStrategy === "lan" ? [] : ICE_SERVERS,
+      iceServers: transportStrategy === "lan" ? [] : fetchedIceServers,
       iceCandidatePoolSize: 10,
       iceTransportPolicy: "all",
     });
@@ -345,7 +348,24 @@ export default function P2PReceive() {
           }
 
           if (msg.type === "transfer_complete") {
-            await finalize();
+            const checkFinalize = () => {
+              if (receivedBytesRef.current >= fileMetaRef.current?.size) {
+                finalize();
+              } else {
+                const waitStart = Date.now();
+                const pollInterval = setInterval(() => {
+                  if (receivedBytesRef.current >= fileMetaRef.current?.size) {
+                    clearInterval(pollInterval);
+                    finalize();
+                  } else if (Date.now() - waitStart > 30000) {
+                    clearInterval(pollInterval);
+                    setError("Transfer timed out waiting for chunks.");
+                    setStatus("error");
+                  }
+                }, 200);
+              }
+            };
+            checkFinalize();
           }
         } else {
           // Parallel Binary chunk received from any channel

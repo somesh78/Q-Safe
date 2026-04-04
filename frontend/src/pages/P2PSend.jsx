@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
 import Header from "../components/Header";
-import { createSession, uploadFile, getJobStatus, downloadJobResult } from "../services/api";
+import { createSession, uploadFile, getJobStatus, downloadJobResult, getTurnCredentials } from "../services/api";
 import "../App.css";
 
 // ─── Web Crypto helpers ───────────────────────────────────────────────────────
@@ -70,21 +70,6 @@ const BUFFER_HIGH_WATERMARK_LAN = 12 * 1024 * 1024; // 12 MB - safetly below bro
 const BUFFER_HIGH_WATERMARK_INTERNET = 1024 * 1024; // 1 MB — strict pacing for slow TURN relays
 const HYBRID_AIRGAP_MAX_BYTES = 2 * 1024 * 1024;
 const LOCAL_CONNECT_TIMEOUT_MS = 25000; // 25s — give ICE more time for host candidates on restrictive WiFi
-const ICE_SERVERS = [
-  // Self-Hosted STUN on EC2 bypassing DNS
-  { urls: "stun:52.63.153.228:3478" },
-  
-  // Dedicated Self-Hosted TURN on EC2 (52.63.153.228)
-  {
-    urls: [
-      "turn:52.63.153.228:3478?transport=udp",
-      "turn:52.63.153.228:3478?transport=tcp"
-    ],
-    username: "qsafe",
-    // Make sure to match this exact password in your turnserver.conf
-    credential: "QSAFE_SECURE_PASSWORD_123!"
-  }
-];
 const ICE_SERVERS_LOCAL_ONLY = [];
 
 function randomRoomId() {
@@ -370,8 +355,25 @@ export default function P2PSend() {
       previousPeer?.dc?.close();
       previousPeer?.pc?.close();
 
+      let fetchedIceServers = [ { urls: "stun:52.63.153.228:3478" } ];
+      if (!preferLocal) {
+        try {
+          const res = await getTurnCredentials();
+          fetchedIceServers = [
+            { urls: "stun:52.63.153.228:3478" },
+            {
+              urls: res.data.urls,
+              username: res.data.username,
+              credential: res.data.password
+            }
+          ];
+        } catch (err) {
+          console.warn("Failed to fetch TURN credentials", err);
+        }
+      }
+
       const pc = new RTCPeerConnection({
-        iceServers: preferLocal ? ICE_SERVERS_LOCAL_ONLY : ICE_SERVERS,
+        iceServers: preferLocal ? ICE_SERVERS_LOCAL_ONLY : fetchedIceServers,
         iceCandidatePoolSize: 10,
         iceTransportPolicy: "all",
       });
