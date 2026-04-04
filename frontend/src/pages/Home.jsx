@@ -5,7 +5,7 @@ import { createSession, uploadFile, getJobStatus, downloadJobResult } from "../s
 import Header from "../components/Header";
 import '../App.css';
 
-const MAX_ONLINE_FILE_SIZE = 50 * 1024 * 1024;
+const MAX_ONLINE_FILE_SIZE = 100 * 1024 * 1024;
 
 export default function Home() {
     const [session, setSession] = useState(null);
@@ -99,7 +99,7 @@ export default function Home() {
         }
 
         if (session.mode === "ONLINE" && file.size > MAX_ONLINE_FILE_SIZE) {
-            alert("Online mode supports files up to 50MB. Please choose a smaller file.");
+            alert("Online mode supports files up to 100MB. Please choose a smaller file.");
             return;
         }
 
@@ -373,7 +373,7 @@ export default function Home() {
                                     <p>Click or Drag file here to upload</p>
                                     {session.mode === 'ONLINE' && (
                                         <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                                            Online mode limit: 50MB
+                                            Online mode limit: 100MB
                                         </p>
                                     )}
                                     <input

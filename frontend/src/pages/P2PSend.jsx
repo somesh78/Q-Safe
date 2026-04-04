@@ -36,6 +36,8 @@ async function encryptChunk(key, plaintext) {
 // ─── WebSocket URL helper ─────────────────────────────────────────────────────
 
 function wsUrl(roomId) {
+  const token = localStorage.getItem('access') || sessionStorage.getItem('access_token');
+  const tokenParam = token ? `?token=${token}` : '';
   const defaultProto = window.location.protocol === "https:" ? "wss:" : "ws:";
   const configured = process.env.REACT_APP_WS_URL || process.env.REACT_APP_API_URL;
 
@@ -52,20 +54,20 @@ function wsUrl(roomId) {
         : (parsed.protocol === "https:" ? "wss:" : "ws:");
       const badHost = !parsed.host || parsed.hostname === "api";
       const host = badHost ? window.location.host : parsed.host;
-      return `${wsProto}//${host}/ws/p2p/${roomId}/`;
+      return `${wsProto}//${host}/ws/p2p/${roomId}/${tokenParam}`;
     } catch {
       // Fallback to same-origin host when env value is malformed.
     }
   }
 
-  return `${defaultProto}//${window.location.host}/ws/p2p/${roomId}/`;
+  return `${defaultProto}//${window.location.host}/ws/p2p/${roomId}/${tokenParam}`;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 // Dynamic chunks and watermarks based on connection type
-const CHUNK_SIZE_LAN = 1024 * 1024; // 1 MB chunks on fast LAN
-const CHUNK_SIZE_INTERNET = 256 * 1024; // 256 KB chunks for internet STUN/TURN
+const CHUNK_SIZE_LAN = 256 * 1024;
+const CHUNK_SIZE_INTERNET = 64 * 1024;
 const BUFFER_HIGH_WATERMARK_LAN = 12 * 1024 * 1024; // 12 MB - safetly below browser 16MB limit to prevent queue overflow
 const BUFFER_HIGH_WATERMARK_INTERNET = 1024 * 1024; // 1 MB — strict pacing for slow TURN relays
 const HYBRID_AIRGAP_MAX_BYTES = 2 * 1024 * 1024;
@@ -109,6 +111,29 @@ export default function P2PSend() {
   // Ref so ws.onmessage closures always read the *current* status, not stale captured value.
   const statusRef = useRef(status);
   useEffect(() => { statusRef.current = status; }, [status]);
+
+  useEffect(() => {
+    return () => {
+      Array.from(peersRef.current.values()).forEach(peer => {
+        peer.channels?.forEach(ch => {
+          ch.onopen = null;
+          ch.onmessage = null;
+          ch.onerror = null;
+          ch.onclose = null;
+          if (ch.readyState !== 'closed') ch.close();
+        });
+        if (peer.pc) {
+          peer.pc.onicecandidate = null;
+          peer.pc.onconnectionstatechange = null;
+          peer.pc.close();
+        }
+      });
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.close();
+      }
+      peersRef.current.clear();
+    };
+  }, []);
 
   const getOpenPeerCount = () => {
     let openCount = 0;
@@ -710,11 +735,13 @@ export default function P2PSend() {
     const resolvedType = connectionType?.type || "host";
     const isLAN = resolvedType === "host";
     const isRelay = resolvedType === "relay";
-    const CHUNK_SIZE = isLAN ? 256 * 1024 : (isRelay ? 64 * 1024 : 128 * 1024);
+    const chunkSize = connectionType === 'lan' 
+      ? CHUNK_SIZE_LAN 
+      : CHUNK_SIZE_INTERNET;
     const NUM_ACTIVE = isLAN ? 2 : 1;
-    console.log(`[Q-Safe] Applying profile: ${CHUNK_SIZE/1024}KB chunks, ${NUM_ACTIVE} channel(s)`);
+    console.log(`[Q-Safe] Applying profile: ${chunkSize/1024}KB chunks, ${NUM_ACTIVE} channel(s)`);
 
-    const totalChunks = Math.ceil(f.size / CHUNK_SIZE);
+    const totalChunks = Math.ceil(f.size / chunkSize);
     let sentBytes = 0;
     const startTime = Date.now();
     const activeChannels = peer.channels.slice(0, NUM_ACTIVE);
@@ -740,7 +767,7 @@ export default function P2PSend() {
 
         await waitForBuffer(channel);
         
-        const slice = f.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        const slice = f.slice(i * chunkSize, (i + 1) * chunkSize);
         const ab = await slice.arrayBuffer();
         let payload;
 

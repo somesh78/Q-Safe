@@ -2,6 +2,8 @@ import json
 import logging
 import uuid
 from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
+from rest_framework_simplejwt.tokens import AccessToken
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +16,11 @@ class P2PSignalingConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
+        token = self._get_token_from_scope()
+        if not await self.authenticate(token):
+            await self.close(code=4001)
+            return
+
         self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
         self.room_group = f"p2p_{self.room_id}"
         # Stable per-connection id used by clients for directed signaling.
@@ -90,3 +97,19 @@ class P2PSignalingConsumer(AsyncWebsocketConsumer):
         payload = dict(event["data"])
         payload["from"] = event["sender"]
         await self.send(text_data=json.dumps(payload))
+
+    def _get_token_from_scope(self):
+        query = dict(
+            x.split('=') for x in 
+            self.scope['query_string'].decode().split('&') 
+            if '=' in x
+        )
+        return query.get('token', '')
+
+    @database_sync_to_async
+    def authenticate(self, token):
+        try:
+            AccessToken(token)
+            return True
+        except Exception:
+            return False

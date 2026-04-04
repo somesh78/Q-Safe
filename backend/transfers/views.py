@@ -161,6 +161,12 @@ def upload_file(request):
     if not session_id or not file or not password:
         return Response({"error": "Session ID, file, and password are required"}, status=400)
     
+    if file.size > 100 * 1024 * 1024:  # 100MB limit for now
+        return Response(
+            {'error': 'File too large. Maximum 100MB for online storage.'},
+            status=400
+        )
+    
     # Validate options
     if max_downloads < 1 or max_downloads > 100:
         return Response({"error": "Max downloads must be between 1 and 100"}, status=400)

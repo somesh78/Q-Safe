@@ -31,6 +31,8 @@ async function decryptChunk(key, buffer) {
 // ─── WebSocket URL helper ─────────────────────────────────────────────────────
 
 function wsUrl(roomId) {
+  const token = localStorage.getItem('access') || sessionStorage.getItem('access_token');
+  const tokenParam = token ? `?token=${token}` : '';
   const defaultProto = window.location.protocol === "https:" ? "wss:" : "ws:";
   const configured = process.env.REACT_APP_WS_URL || process.env.REACT_APP_API_URL;
 
@@ -47,13 +49,13 @@ function wsUrl(roomId) {
         : (parsed.protocol === "https:" ? "wss:" : "ws:");
       const badHost = !parsed.host || parsed.hostname === "api";
       const host = badHost ? window.location.host : parsed.host;
-      return `${wsProto}//${host}/ws/p2p/${roomId}/`;
+      return `${wsProto}//${host}/ws/p2p/${roomId}/${tokenParam}`;
     } catch {
       // Fallback to same-origin host when env value is malformed.
     }
   }
 
-  return `${defaultProto}//${window.location.host}/ws/p2p/${roomId}/`;
+  return `${defaultProto}//${window.location.host}/ws/p2p/${roomId}/${tokenParam}`;
 }
 
 // ─── Download helpers ─────────────────────────────────────────────────────────
