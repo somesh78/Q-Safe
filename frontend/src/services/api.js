@@ -113,4 +113,8 @@ export const submitContactMessage = (payload) => {
     return API.post('/contact/', payload);
 };
 
+export const getTurnCredentials = () => {
+    return API.get('/turn-credentials/');
+};
+
 export default API;

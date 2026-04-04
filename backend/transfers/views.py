@@ -499,7 +499,7 @@ def download_online_file(request, signed_token):
         if not encrypted_file.allowed_ip:
             encrypted_file.allowed_ip = ip
             encrypted_file.save()
-        elif encrypted_file.allowed_ip != ip and encrypted_file.download_count > 0:
+        elif encrypted_file.allowed_ip != ip:
             log_audit(encrypted_file, ip, request, "FAILED", "IP locked")
             return Response({"error": "This file is locked to a different IP address"}, status=403)
 
@@ -778,4 +778,55 @@ def resend_verification_email(request):
         return Response({
             'error': 'Failed to send verification email. Please try again later.'
         }, status=500)
+
+import time
+import hmac
+import base64
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_turn_credentials(request):
+    turn_secret = config('TURN_SECRET', default='QSAFE_SECURE_PASSWORD_123!')
+    ttl = 3600
+    timestamp = int(time.time()) + ttl
+    username = f"{timestamp}:{request.user.username}"
+    
+    mac = hmac.new(
+        turn_secret.encode(),
+        username.encode(),
+        hashlib.sha1
+    )
+    password = base64.b64encode(mac.digest()).decode()
+    
+    return Response({
+        "username": username,
+        "password": password,
+        "ttl": ttl,
+        "urls": [
+            "turn:52.63.153.228:3478?transport=udp",
+            "turn:52.63.153.228:3478?transport=tcp"
+        ]
+    })
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@ratelimit(key="ip", rate="5/h", block=True)
+def contact_message(request):
+    from .models import ContactMessage
+    name = request.data.get('name')
+    email = request.data.get('email')
+    subject = request.data.get('subject', 'Contact Form')
+    message = request.data.get('message')
+    
+    if not name or not email or not message:
+        return Response({"error": "Name, email, and message are required"}, status=400)
+        
+    ContactMessage.objects.create(
+        name=name,
+        email=email,
+        subject=subject,
+        message=message
+    )
+    return Response({"message": "Message received"})
 

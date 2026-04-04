@@ -15,4 +15,7 @@ urlpatterns = [
     # Email verification
     path('verify-email/<str:uid>/<str:token>/', verify_email),
     path('resend-verification/', resend_verification_email),
+    
+    path('turn-credentials/', get_turn_credentials),
+    path('contact/', contact_message),
 ]
