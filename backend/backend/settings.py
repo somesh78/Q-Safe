@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'django_ratelimit',
     'rest_framework',
+    'django_celery_beat',
     'social_django',
     'transfers',
 ]

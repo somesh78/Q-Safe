@@ -33,45 +33,47 @@ function App() {
     <BrowserRouter>
       <ErrorBoundary>
         <ThemeProvider>
-          <Routes>
+          <div className="app-container">
+            <Routes>
 
-            {/* Public */}
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/download/:token" element={<OnlineDownload />} />
-            <Route path="/verify-email/:uid/:token" element={<VerifyEmail />} />
-            <Route path="/receive/:roomId" element={<P2PReceive />} />
-            <Route path="/p2p/:roomId" element={<P2PReceive />} />
+              {/* Public */}
+              <Route path="/" element={<Landing />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/download/:token" element={<OnlineDownload />} />
+              <Route path="/verify-email/:uid/:token" element={<VerifyEmail />} />
+              <Route path="/receive/:roomId" element={<P2PReceive />} />
+              <Route path="/p2p/:roomId" element={<P2PReceive />} />
 
-            {/* Footer Pages - Product */}
-            <Route path="/features" element={<Features />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/security" element={<Security />} />
+              {/* Footer Pages - Product */}
+              <Route path="/features" element={<Features />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/security" element={<Security />} />
 
-            {/* Footer Pages - Company */}
-            <Route path="/about" element={<About />} />
-            <Route path="/blog" element={<Blog />} />
-            <Route path="/contact" element={<Contact />} />
+              {/* Footer Pages - Company */}
+              <Route path="/about" element={<About />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/contact" element={<Contact />} />
 
-            {/* Footer Pages - Legal */}
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/compliance" element={<Compliance />} />
+              {/* Footer Pages - Legal */}
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/compliance" element={<Compliance />} />
 
-            {/* Protected */}
-            <Route element={<PrivateRoute />}>
-              <Route path="/app" element={<Home />} />
-              <Route path="/audit" element={<Audit />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/reconstruct" element={<Reconstruct />} />
-              <Route path="/send" element={<P2PSend />} />
-            </Route>
+              {/* Protected */}
+              <Route element={<PrivateRoute />}>
+                <Route path="/app" element={<Home />} />
+                <Route path="/audit" element={<Audit />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/reconstruct" element={<Reconstruct />} />
+                <Route path="/send" element={<P2PSend />} />
+              </Route>
 
-            {/* 404 Catch-all */}
-            <Route path="*" element={<NotFound />} />
+              {/* 404 Catch-all */}
+              <Route path="*" element={<NotFound />} />
 
-          </Routes>
+            </Routes>
+          </div>
         </ThemeProvider>
       </ErrorBoundary>
     </BrowserRouter>

@@ -33,7 +33,7 @@ export default function Contact() {
       });
       setTimeout(() => setSubmitted(false), 3000);
     } catch (err) {
-      setError('Something went wrong. Please try again or email support@q-safe.live.');
+      setError('Something went wrong. Please try again or email qsafe14@gmail.com.');
     } finally {
       setSubmitting(false);
     }
@@ -48,8 +48,8 @@ export default function Contact() {
       icon: '📧',
       title: 'Email Support',
       description: 'Get help from our support team',
-      contact: 'support@q-safe.live',
-      action: 'mailto:support@q-safe.live'
+      contact: 'qsafe14@gmail.com',
+      action: 'mailto:qsafe14@gmail.com'
     },
     {
       icon: '💼',
@@ -68,7 +68,7 @@ export default function Contact() {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #060606, #0a0a0a)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary, #060606)' }}>
       <Header />
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 20px' }}>
@@ -104,7 +104,7 @@ export default function Contact() {
           {contactMethods.map((method, index) => (
             <a key={index} href={method.action} style={{
               background: 'linear-gradient(135deg, #0a0a0a, #111)',
-              border: '1px solid #222',
+              border: '1px solid var(--border-color, #222)',
               borderRadius: '12px',
               padding: '30px',
               textAlign: 'center',
@@ -118,7 +118,7 @@ export default function Contact() {
                 e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 212, 255, 0.2)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#222';
+                e.currentTarget.style.borderColor = 'var(--border-color, #222)';
                 e.currentTarget.style.transform = 'translateY(0)';
                 e.currentTarget.style.boxShadow = 'none';
               }}>
@@ -153,8 +153,8 @@ export default function Contact() {
         {/* Contact Form */}
         <div style={{ maxWidth: '700px', margin: '0 auto' }}>
           <div style={{
-            background: '#0a0a0a',
-            border: '1px solid #222',
+            background: 'var(--bg-card, #0a0a0a)',
+            border: '1px solid var(--border-color, #222)',
             borderRadius: '16px',
             padding: '50px'
           }}>
@@ -187,8 +187,8 @@ export default function Contact() {
                   style={{
                     width: '100%',
                     padding: '12px 15px',
-                    background: '#060606',
-                    border: '1px solid #333',
+                    background: 'var(--bg-primary, #060606)',
+                    border: '1px solid var(--border-color, #333)',
                     borderRadius: '8px',
                     color: '#fff',
                     fontSize: '1rem',
@@ -196,7 +196,7 @@ export default function Contact() {
                     transition: 'border-color 0.3s ease'
                   }}
                   onFocus={(e) => e.target.style.borderColor = '#00d4ff'}
-                  onBlur={(e) => e.target.style.borderColor = '#333'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--border-color, #333)'}
                 >
                   <option value="general">General Inquiry</option>
                   <option value="support">Technical Support</option>
@@ -226,8 +226,8 @@ export default function Contact() {
                   style={{
                     width: '100%',
                     padding: '12px 15px',
-                    background: '#060606',
-                    border: '1px solid #333',
+                    background: 'var(--bg-primary, #060606)',
+                    border: '1px solid var(--border-color, #333)',
                     borderRadius: '8px',
                     color: '#fff',
                     fontSize: '1rem',
@@ -235,7 +235,7 @@ export default function Contact() {
                     transition: 'border-color 0.3s ease'
                   }}
                   onFocus={(e) => e.target.style.borderColor = '#00d4ff'}
-                  onBlur={(e) => e.target.style.borderColor = '#333'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--border-color, #333)'}
                 />
               </div>
 
@@ -259,8 +259,8 @@ export default function Contact() {
                   style={{
                     width: '100%',
                     padding: '12px 15px',
-                    background: '#060606',
-                    border: '1px solid #333',
+                    background: 'var(--bg-primary, #060606)',
+                    border: '1px solid var(--border-color, #333)',
                     borderRadius: '8px',
                     color: '#fff',
                     fontSize: '1rem',
@@ -268,7 +268,7 @@ export default function Contact() {
                     transition: 'border-color 0.3s ease'
                   }}
                   onFocus={(e) => e.target.style.borderColor = '#00d4ff'}
-                  onBlur={(e) => e.target.style.borderColor = '#333'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--border-color, #333)'}
                 />
               </div>
 
@@ -292,8 +292,8 @@ export default function Contact() {
                   style={{
                     width: '100%',
                     padding: '12px 15px',
-                    background: '#060606',
-                    border: '1px solid #333',
+                    background: 'var(--bg-primary, #060606)',
+                    border: '1px solid var(--border-color, #333)',
                     borderRadius: '8px',
                     color: '#fff',
                     fontSize: '1rem',
@@ -301,7 +301,7 @@ export default function Contact() {
                     transition: 'border-color 0.3s ease'
                   }}
                   onFocus={(e) => e.target.style.borderColor = '#00d4ff'}
-                  onBlur={(e) => e.target.style.borderColor = '#333'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--border-color, #333)'}
                 />
               </div>
 
@@ -325,8 +325,8 @@ export default function Contact() {
                   style={{
                     width: '100%',
                     padding: '12px 15px',
-                    background: '#060606',
-                    border: '1px solid #333',
+                    background: 'var(--bg-primary, #060606)',
+                    border: '1px solid var(--border-color, #333)',
                     borderRadius: '8px',
                     color: '#fff',
                     fontSize: '1rem',
@@ -336,7 +336,7 @@ export default function Contact() {
                     transition: 'border-color 0.3s ease'
                   }}
                   onFocus={(e) => e.target.style.borderColor = '#00d4ff'}
-                  onBlur={(e) => e.target.style.borderColor = '#333'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--border-color, #333)'}
                 />
               </div>
 
@@ -398,7 +398,7 @@ export default function Contact() {
           marginTop: '60px',
           padding: '40px',
           background: 'linear-gradient(135deg, #0a0a0a, #111)',
-          border: '1px solid #222',
+          border: '1px solid var(--border-color, #222)',
           borderRadius: '12px'
         }}>
           <h3 style={{
