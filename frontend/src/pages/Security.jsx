@@ -57,7 +57,7 @@ export default function Security() {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #060606, #0a0a0a)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary, #060606)' }}>
       <Header />
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 20px' }}>
@@ -93,7 +93,7 @@ export default function Security() {
           {securityFeatures.map((feature, index) => (
             <div key={index} style={{
               background: 'linear-gradient(135deg, #0a0a0a, #111)',
-              border: '1px solid #222',
+              border: '1px solid var(--border-color, #222)',
               borderRadius: '12px',
               padding: '30px',
               transition: 'all 0.3s ease'
@@ -104,7 +104,7 @@ export default function Security() {
                 e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 212, 255, 0.2)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#222';
+                e.currentTarget.style.borderColor = 'var(--border-color, #222)';
                 e.currentTarget.style.transform = 'translateY(0)';
                 e.currentTarget.style.boxShadow = 'none';
               }}>
@@ -148,8 +148,8 @@ export default function Security() {
           }}>
             {protectionLayers.map((layer, index) => (
               <div key={index} style={{
-                background: '#0a0a0a',
-                border: '1px solid #222',
+                background: 'var(--bg-card, #0a0a0a)',
+                border: '1px solid var(--border-color, #222)',
                 borderRadius: '12px',
                 padding: '30px',
                 borderTop: '3px solid #00d4ff'
@@ -189,7 +189,7 @@ export default function Security() {
         {/* Compliance Section */}
         <div style={{
           background: 'linear-gradient(135deg, #0a0a0a, #111)',
-          border: '1px solid #222',
+          border: '1px solid var(--border-color, #222)',
           borderRadius: '16px',
           padding: '50px',
           marginBottom: '60px'
@@ -240,8 +240,8 @@ export default function Security() {
 
         {/* Security Practices */}
         <div style={{
-          background: '#0a0a0a',
-          border: '1px solid #222',
+          background: 'var(--bg-card, #0a0a0a)',
+          border: '1px solid var(--border-color, #222)',
           borderRadius: '16px',
           padding: '50px',
           marginBottom: '60px'
@@ -307,7 +307,7 @@ export default function Security() {
           <Link to="/contact" style={{
             display: 'inline-block',
             padding: '15px 40px',
-            background: '#060606',
+            background: 'var(--bg-primary, #060606)',
             color: '#00d4ff',
             textDecoration: 'none',
             borderRadius: '8px',

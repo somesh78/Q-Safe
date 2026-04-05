@@ -5,7 +5,7 @@ import Footer from '../components/Footer';
 
 export default function Pricing() {
     return (
-        <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #060606, #0a0a0a)' }}>
+        <div style={{ minHeight: '100vh', background: 'var(--bg-primary, #060606)' }}>
             <Header />
 
             <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '80px 20px' }}>
@@ -127,8 +127,8 @@ export default function Pricing() {
 
                 {/* FAQ-style info */}
                 <div style={{
-                    background: '#0a0a0a',
-                    border: '1px solid #222',
+                    background: 'var(--bg-card, #0a0a0a)',
+                    border: '1px solid var(--border-color, #222)',
                     borderRadius: '16px',
                     padding: '40px',
                     marginBottom: '60px'

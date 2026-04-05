@@ -102,17 +102,17 @@ export default function Footer() {
                 fontSize: '0.85rem',
                 margin: 0
               }}>
-                GitHub: username | LinkedIn: username
+                GitHub: <a href="https://github.com/somesh78" style={{color: '#8e8e8e'}}>@somesh78</a> | LinkedIn: <a href="https://www.linkedin.com/in/somesh-rajput/" style={{color: '#8e8e8e'}}>somesh-rajput</a>
               </p>
               <a
-                href="mailto:somesh.rajput.cs.h23@gla.ac.in"
+                href="mailto:qsafe14@gmail.com"
                 style={{
                   color: '#8e8e8e',
                   fontSize: '0.85rem',
                   textDecoration: 'none'
                 }}
               >
-                somesh.rajput.cs.h23@gla.ac.in
+                qsafe14@gmail.com
               </a>
             </div>
           </div>
