@@ -3,7 +3,6 @@ import logging
 import uuid
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from rest_framework_simplejwt.tokens import AccessToken
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +107,7 @@ class P2PSignalingConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def authenticate(self, token):
+        from rest_framework_simplejwt.tokens import AccessToken
         try:
             AccessToken(token)
             return True
