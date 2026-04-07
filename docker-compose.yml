@@ -64,11 +64,15 @@ services:
 
   celerybeat:
     build: .
+    container_name: q_safe_celerybeat
     command: celery -A backend beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file: .env
     depends_on:
-      - redis
-      - web
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    restart: on-failure
 
   nginx:
     image: nginx:stable-alpine

@@ -52,17 +52,25 @@ class P2PSignalingConsumer(AsyncWebsocketConsumer):
             await self.close(code=1011)
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.room_group, self.channel_name)
-        # Notify the other peer so it can update UI
-        await self.channel_layer.group_send(
-            self.room_group,
-            {
-                "type": "relay_message",
-                "data": {"type": "peer_disconnected"},
-                "sender": self.peer_id,
-            },
-        )
-        logger.info(f"[P2P] Peer disconnected from room {self.room_id}")
+        # Guard: room_group is only set if connect() authenticated and succeeded.
+        # If auth failed, connect() called self.close() early and room_group was
+        # never assigned — accessing it here would raise AttributeError.
+        if not hasattr(self, "room_group"):
+            return
+        try:
+            await self.channel_layer.group_discard(self.room_group, self.channel_name)
+            # Notify the other peer so it can update UI
+            await self.channel_layer.group_send(
+                self.room_group,
+                {
+                    "type": "relay_message",
+                    "data": {"type": "peer_disconnected"},
+                    "sender": self.peer_id,
+                },
+            )
+        except Exception:
+            pass  # channel layer may already be gone
+        logger.info(f"[P2P] Peer disconnected from room {getattr(self, 'room_id', '?')}")
 
     async def receive(self, text_data=None, bytes_data=None):
         if text_data is None:
