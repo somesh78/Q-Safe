@@ -16,9 +16,12 @@ class P2PSignalingConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         token = self._get_token_from_scope()
-        if not await self.authenticate(token):
-            await self.close(code=4001)
-            return
+        # We perform authentication but DO NOT close on failure.
+        # Anonymous receivers connecting via external links/QR codes will not have
+        # an auth token. The room_id (UUID) and E2E encryption hash provide security.
+        self.is_authenticated = await self.authenticate(token)
+        if not self.is_authenticated:
+            logger.info(f"[P2P] Anonymous connection to room")
 
         self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
         self.room_group = f"p2p_{self.room_id}"
