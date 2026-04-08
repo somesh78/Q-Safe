@@ -1,0 +1,323 @@
+name: Q-Safe CI/CD Pipeline
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch: # allows manual trigger from GitHub UI
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # ─────────────────────────────────────────────
+  # JOB 1 — Backend checks
+  # ─────────────────────────────────────────────
+  backend-check:
+    name: Backend — Install & Django Check
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      SECRET_KEY: ci-test-secret-key-not-real
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      REDIS_URL: redis://localhost:6379/0
+      DATABASE_URL: sqlite:///ci-test.db
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libzbar0 libzbar-dev
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Django system check
+        working-directory: backend
+        run: |
+          python manage.py check --deploy 2>&1 | grep -v "^System check" || true
+          python manage.py check
+
+      - name: Verify migrations are up to date
+        working-directory: backend
+        run: |
+          python manage.py migrate --run-syncdb
+          python manage.py migrate --check
+
+      - name: Smoke-test critical imports
+        working-directory: backend
+        run: |
+          python -c "
+          import django, os
+          os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
+          django.setup()
+          from django.contrib.auth.models import User
+          print('Django imports: OK')
+          "
+
+  # ─────────────────────────────────────────────
+  # JOB 2 — Frontend build
+  # ─────────────────────────────────────────────
+  frontend-build:
+    name: Frontend — Install & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci --legacy-peer-deps
+
+      - name: Build React app
+        working-directory: frontend
+        env:
+          REACT_APP_API_URL: https://q-safe.live
+          REACT_APP_URL: https://q-safe.live
+          CI: false
+          DISABLE_ESLINT_PLUGIN: true
+        run: npm run build
+
+      - name: Check build output exists
+        run: |
+          test -f frontend/build/index.html || (echo "Build failed — index.html missing" && exit 1)
+          test -d frontend/build/static || (echo "Build failed — static assets missing" && exit 1)
+          echo "Build output verified OK"
+
+  # ─────────────────────────────────────────────
+  # JOB 3 — Merge dev → production
+  # ─────────────────────────────────────────────
+  merge-to-production:
+    name: Merge dev → production
+    runs-on: ubuntu-latest
+    needs: [backend-check, frontend-build]
+    if: success()
+    outputs:
+      merged: ${{ steps.merge.outputs.merged }}
+
+    steps:
+      - name: Checkout repo (full history needed for merge)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge dev into production
+        id: merge
+        run: |
+          set +e
+          git checkout production
+          git merge dev --no-ff -m "chore: auto-merge dev → production [CI passed] $(date -u '+%Y-%m-%d %H:%M UTC')"
+          merge_exit=$?
+
+          if [ $merge_exit -eq 0 ]; then
+            git push origin production
+            echo "Merged dev → production successfully"
+            echo "merged=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Auto-merge conflict detected. Falling back to PR flow."
+          git merge --abort || true
+          echo "merged=false" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Create PR for manual conflict resolution
+        if: steps.merge.outputs.merged == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          set +e
+
+          existing_pr=$(gh api \
+            "repos/${{ github.repository }}/pulls?state=open&head=${{ github.repository_owner }}:dev&base=production" \
+            --jq '.[0].number')
+
+          if [ -n "$existing_pr" ] && [ "$existing_pr" != "null" ]; then
+            echo "Conflict PR already exists: #$existing_pr"
+            exit 0
+          fi
+
+          gh api \
+            --method POST \
+            "repos/${{ github.repository }}/pulls" \
+            -f title="chore: merge dev into production (manual conflict resolution required)" \
+            -f head="dev" \
+            -f base="production" \
+            -f body="CI could not auto-merge dev into production due to merge conflicts. Please resolve conflicts (see the Actions logs for the exact files — typically .github/workflows/ci-cd.yml, Dockerfile, or frontend files), then merge this PR."
+
+          pr_create_exit=$?
+          if [ $pr_create_exit -ne 0 ]; then
+            echo "Warning: Failed to create PR automatically (token/repo policy may block this)."
+            echo "Please create PR manually: dev -> production"
+          fi
+
+          exit 0
+
+      - name: Mark job as blocked by conflicts
+        if: steps.merge.outputs.merged == 'false'
+        run: |
+          echo "Auto-merge blocked by conflicts. PR created for manual resolution."
+          echo "Deploy skipped — production was not updated."
+          # exit 0 so the run is marked as 'skipped' not 'failed'.
+          # The deploy job is already gated by merged == 'true' so it won't run.
+          exit 0
+
+  # ─────────────────────────────────────────────
+  # JOB 4 — Deploy to EC2
+  # ─────────────────────────────────────────────
+  deploy-to-ec2:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: [merge-to-production]
+    if: needs.merge-to-production.outputs.merged == 'true'
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          timeout: 300s
+          command_timeout: 30m
+          script: |
+            set -e
+
+            echo "=== Starting deployment ==="
+            cd ~/Q-Safe
+
+            echo "=== Pulling latest production ==="
+            git remote set-url origin https://${{ github.repository_owner }}:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git
+            git fetch origin
+            git checkout production
+            git pull --ff-only origin production
+
+            echo "=== Recording current production commit for rollback ==="
+            PREV=$(git rev-parse HEAD)
+            echo "Previous commit: $PREV"
+
+            echo "=== Rebuilding Docker containers ==="
+            docker-compose down --remove-orphans
+            
+            echo "=== Disk usage before cleanup ==="
+            df -h
+
+            echo "=== Docker cleanup ==="
+            docker system prune -af || true
+            docker builder prune -af || true
+            
+            echo "=== Disk usage after cleanup ==="
+            df -h
+
+            # Free ports 80 and 443 if already in use (stale host nginx or leftover containers)
+            echo "=== Freeing ports 80/443 if occupied ==="
+            sudo systemctl stop nginx 2>/dev/null || true
+            sudo fuser -k 80/tcp 2>/dev/null || true
+            sudo fuser -k 443/tcp 2>/dev/null || true
+            sleep 2
+
+            docker-compose build
+            docker-compose up -d
+
+            echo "=== Waiting for app to start (45s for migrations/collectstatic) ==="
+            sleep 45
+
+            echo "=== Health check ==="
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              STATUS=$(docker exec q_safe_web curl -sS -o /dev/null -w "%{http_code}" \
+                http://localhost:8000/api/health/ \
+                --connect-timeout 3 --max-time 10 || echo "000")
+
+              if [ "$STATUS" = "200" ]; then
+                echo "Health check passed (HTTP $STATUS)"
+                break
+              fi
+
+              echo "Attempt $i failed (HTTP $STATUS). Container status:"
+              docker-compose ps || true
+
+              if [ $i -eq 10 ]; then
+                echo "Health check FAILED after $i attempts (HTTP $STATUS)"
+                echo "=== Rolling back to $PREV ==="
+                echo "=== docker-compose logs (web, last 200 lines) ==="
+                docker-compose logs --tail=200 web || true
+                echo "=== docker-compose logs (redis, last 200 lines) ==="
+                docker-compose logs --tail=200 redis || true
+                echo "=== Performing rollback ==="
+                docker-compose down --remove-orphans
+                git checkout production
+                git reset --hard "$PREV"
+                docker-compose build
+                docker-compose up -d
+                sudo systemctl start nginx 2>/dev/null || true
+                echo "Rollback to $PREV complete. Please verify manually."
+                exit 1
+              fi
+
+              sleep 10
+            done
+
+            echo "=== Cleaning up old Docker images ==="
+            docker image prune -f
+
+            echo "=== Restarting host nginx proxy ==="
+            sudo systemctl start nginx 2>/dev/null || true
+
+            echo "=== Deployment complete ==="
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Deployment FAILED. Check the SSH logs above."
+          echo "Production branch was merged but EC2 deploy failed."
+          echo "Manually SSH in and check: docker-compose logs"
+          exit 1

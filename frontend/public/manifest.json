@@ -1,6 +1,7 @@
 {
   "short_name": "Q-Safe",
-  "name": "Q-Safe - Secure File Transfer",
+  "name": "Q-Safe - Secure File Sharing & Encrypted QR Transfer",
+  "description": "Military-grade file encryption and secure transfer via QR codes. Self-destructing links, air-gapped transfers, and complete audit trails.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -18,8 +19,11 @@
       "sizes": "512x512"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "theme_color": "#00d4ff",
-  "background_color": "#060606"
+  "background_color": "#060606",
+  "orientation": "any",
+  "categories": ["security", "utilities", "productivity"]
 }

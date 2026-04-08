@@ -85,7 +85,7 @@ export const uploadFile = (file, sessionId, password, options = {}) => {
     // For offline mode, don't use blob responseType (we'll get job_id JSON)
     // For online mode, keep blob for backward compatibility with QR code image
     return API.post('/upload/', form, {
-        timeout: 120000, // 2 minutes
+        timeout: 900000, // 15 minutes for larger uploads on slower networks
     });
 };
 
@@ -113,9 +113,8 @@ export const submitContactMessage = (payload) => {
     return API.post('/contact/', payload);
 };
 
-// Fetch blog posts for the marketing site
-export const fetchBlogPosts = () => {
-    return API.get('/blog/');
+export const getTurnCredentials = () => {
+    return API.get('/turn-credentials/');
 };
 
 export default API;

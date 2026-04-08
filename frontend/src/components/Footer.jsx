@@ -84,6 +84,37 @@ export default function Footer() {
             }}>
               Secure file sharing for everyone.
             </p>
+            <div style={{
+              marginTop: '18px',
+              display: 'grid',
+              gap: '8px'
+            }}>
+              <p style={{
+                color: '#d7d7d7',
+                fontSize: '0.9rem',
+                margin: 0,
+                fontWeight: 600
+              }}>
+                Somesh Rajput
+              </p>
+              <p style={{
+                color: '#8e8e8e',
+                fontSize: '0.85rem',
+                margin: 0
+              }}>
+                GitHub: <a href="https://github.com/somesh78" style={{color: '#8e8e8e'}}>@somesh78</a> | LinkedIn: <a href="https://www.linkedin.com/in/somesh-rajput/" style={{color: '#8e8e8e'}}>somesh-rajput</a>
+              </p>
+              <a
+                href="mailto:qsafe14@gmail.com"
+                style={{
+                  color: '#8e8e8e',
+                  fontSize: '0.85rem',
+                  textDecoration: 'none'
+                }}
+              >
+                qsafe14@gmail.com
+              </a>
+            </div>
           </div>
 
           {/* Footer Links */}

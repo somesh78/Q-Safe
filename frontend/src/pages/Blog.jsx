@@ -1,70 +1,67 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { fetchBlogPosts } from '../services/api';
+
+const TAGS = [
+  { label: 'All', value: '' },
+  { label: 'Cybersecurity', value: 'cybersecurity' },
+  { label: 'Encryption', value: 'encryption' },
+  { label: 'Privacy', value: 'privacy' },
+  { label: 'Security', value: 'security' },
+  { label: 'DevOps', value: 'devops' },
+];
+
+const PAGE_SIZE = 9;
 
 export default function Blog() {
-  const [posts, setPosts] = useState([]);
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [articles, setArticles] = useState([]);
+  const [activeTag, setActiveTag] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [expandedSlug, setExpandedSlug] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const loadPosts = useCallback(async () => {
+  const fetchArticles = useCallback(async (tag) => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetchBlogPosts();
-      const data = Array.isArray(res.data) ? res.data : res.data?.results || [];
-      const normalized = data.map((item, idx) => ({
-        slug: item.slug || item.id?.toString() || `post-${idx}`,
-        title: item.title || 'Untitled',
-        excerpt:
-          item.excerpt || item.summary || item.content?.slice(0, 180) || 'No summary available.',
-        content: item.content || item.body || '',
-        date: item.date || item.published_at || item.created_at || '—',
-        category: item.category || 'General',
-        readTime:
-          item.readTime || item.read_time || (item.read_time_minutes ? `${item.read_time_minutes} min read` : 'Read'),
-        tags: item.tags || [],
-        image: item.image || '📝'
-      }));
-      setPosts(normalized);
+      const tagParam = tag || 'cybersecurity';
+      const res = await fetch(
+        `https://dev.to/api/articles?tag=${tagParam}&per_page=30&top=30`
+      );
+      if (!res.ok) throw new Error('Failed to fetch');
+      const data = await res.json();
+      setArticles(data);
     } catch (err) {
-      setError('Unable to load blog posts right now. Please try again.');
+      setError('Unable to load articles right now. Please try again.');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadPosts();
-  }, [loadPosts]);
+    fetchArticles(activeTag);
+  }, [activeTag, fetchArticles]);
 
-  const categories = useMemo(
-    () => ['All', ...Array.from(new Set(posts.map((post) => post.category)))],
-    [posts]
+  const filteredArticles = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return articles;
+    return articles.filter((a) => {
+      const haystack = `${a.title} ${a.description} ${(a.tag_list || []).join(' ')} ${a.user?.name || ''}`.toLowerCase();
+      return haystack.includes(term);
+    });
+  }, [articles, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredArticles.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedArticles = filteredArticles.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE
   );
 
-  const filteredPosts = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    return posts.filter((post) => {
-      const matchesCategory = activeCategory === 'All' || post.category === activeCategory;
-      if (!term) return matchesCategory;
-      const haystack = `${post.title} ${post.excerpt} ${post.content} ${post.category} ${(post.tags || []).join(' ')}`.toLowerCase();
-      return matchesCategory && haystack.includes(term);
-    });
-  }, [activeCategory, searchTerm, posts]);
-
-  const pageSize = 6;
-  const totalPages = Math.max(1, Math.ceil(filteredPosts.length / pageSize));
-  const currentPageSafe = Math.min(currentPage, totalPages);
-  const paginatedPosts = filteredPosts.slice((currentPageSafe - 1) * pageSize, currentPageSafe * pageSize);
-
-  const handleCategoryChange = (category) => {
-    setActiveCategory(category);
+  const handleTagChange = (tag) => {
+    setActiveTag(tag);
+    setSearchTerm('');
     setCurrentPage(1);
   };
 
@@ -73,206 +70,169 @@ export default function Blog() {
     setCurrentPage(1);
   };
 
-  const toggleExpand = (slug) => {
-    setExpandedSlug((prev) => (prev === slug ? null : slug));
-  };
-
-  const goToPage = (page) => {
-    const next = Math.min(Math.max(page, 1), totalPages);
-    setCurrentPage(next);
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric'
+    });
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #060606, #0a0a0a)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary, #060606)' }}>
       <Header />
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 20px' }}>
         {/* Hero */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <h1
-            style={{
-              fontSize: '3rem',
-              fontWeight: '700',
-              color: '#fff',
-              marginBottom: '16px',
-              fontFamily: "'Plus Jakarta Sans', sans-serif"
-            }}
-          >
-            Q-Safe Blog
+          <h1 style={{
+            fontSize: 'clamp(2rem, 4vw, 3rem)',
+            fontWeight: '800',
+            color: 'var(--text-primary, #fff)',
+            marginBottom: '16px',
+            fontFamily: 'var(--font-display)',
+            letterSpacing: '-0.03em'
+          }}>
+            Security & Privacy Insights
           </h1>
-          <p
-            style={{
-              fontSize: '1.1rem',
-              color: '#888',
-              maxWidth: '760px',
-              margin: '0 auto',
-              lineHeight: '1.6'
-            }}
-          >
-            Insights on secure file sharing, compliance, and the product roadmap. Search, filter, and read detailed guidance without placeholders.
+          <p style={{
+            fontSize: '1.125rem',
+            color: 'var(--text-secondary, #888)',
+            maxWidth: '650px',
+            margin: '0 auto',
+            lineHeight: '1.7'
+          }}>
+            Curated articles on cybersecurity, encryption, privacy, and secure file sharing from the developer community.
           </p>
         </div>
 
-        {/* Search + Filters */}
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '15px',
-            alignItems: 'center',
-            marginBottom: '24px'
-          }}
-        >
+        {/* Search + Tag Filters */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '15px',
+          alignItems: 'center',
+          marginBottom: '32px'
+        }}>
           <input
             type="search"
-            placeholder="Search posts..."
+            placeholder="Search articles..."
             value={searchTerm}
             onChange={handleSearchChange}
             style={{
               flex: '1 1 280px',
               minWidth: '220px',
-              padding: '12px 14px',
-              background: '#060606',
-              border: '1px solid #222',
+              padding: '12px 16px',
+              background: 'var(--bg-card, #0a0a0a)',
+              border: '1px solid var(--border-color, #222)',
               borderRadius: '10px',
-              color: '#fff',
-              fontSize: '1rem'
+              color: 'var(--text-primary, #fff)',
+              fontSize: '1rem',
+              transition: 'border-color 0.3s ease'
             }}
+            onFocus={(e) => { e.target.style.borderColor = 'var(--accent-primary, #00d4ff)'; }}
+            onBlur={(e) => { e.target.style.borderColor = 'var(--border-color, #222)'; }}
           />
 
-          <div
-            style={{
-              display: 'flex',
-              gap: '10px',
-              overflowX: 'auto',
-              paddingBottom: '5px'
-            }}
-          >
-            {categories.map((category) => (
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            overflowX: 'auto',
+            paddingBottom: '4px',
+            flexWrap: 'wrap'
+          }}>
+            {TAGS.map((tag) => (
               <button
-                key={category}
+                key={tag.value}
                 style={{
-                  padding: '10px 16px',
-                  background:
-                    activeCategory === category
-                      ? 'linear-gradient(135deg, #00d4ff, #0099cc)'
-                      : '#0a0a0a',
-                  color: '#fff',
-                  border: activeCategory === category ? '1px solid #00d4ff' : '1px solid #333',
-                  borderRadius: '12px',
+                  padding: '8px 16px',
+                  background: activeTag === tag.value
+                    ? 'linear-gradient(135deg, #00d4ff, #0099cc)'
+                    : 'var(--bg-card, #0a0a0a)',
+                  color: activeTag === tag.value ? '#fff' : 'var(--text-secondary, #aaa)',
+                  border: activeTag === tag.value ? '1px solid #00d4ff' : '1px solid var(--border-color, #333)',
+                  borderRadius: '10px',
                   fontWeight: '600',
+                  fontSize: '0.875rem',
                   cursor: 'pointer',
                   transition: 'all 0.3s ease',
                   whiteSpace: 'nowrap'
                 }}
-                onClick={() => handleCategoryChange(category)}
+                onClick={() => handleTagChange(tag.value)}
                 onMouseEnter={(e) => {
-                  if (activeCategory !== category) {
-                    e.currentTarget.style.borderColor = '#00d4ff';
-                  }
+                  if (activeTag !== tag.value) e.currentTarget.style.borderColor = '#00d4ff';
                 }}
                 onMouseLeave={(e) => {
-                  if (activeCategory !== category) {
-                    e.currentTarget.style.borderColor = '#333';
-                  }
+                  if (activeTag !== tag.value) e.currentTarget.style.borderColor = 'var(--border-color, #333)';
                 }}
               >
-                {category}
+                {tag.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Posts Grid */}
+        {/* Content */}
         {loading ? (
-          <div
-            style={{
-              background: '#0a0a0a',
-              border: '1px solid #222',
-              borderRadius: '12px',
-              padding: '40px',
-              textAlign: 'center',
-              color: '#ccc'
-            }}
-          >
-            <p style={{ margin: 0 }}>Loading posts...</p>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+            gap: '24px',
+            marginBottom: '32px'
+          }}>
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} style={{
+                background: 'var(--bg-card, #0a0a0a)',
+                border: '1px solid var(--border-color, #222)',
+                borderRadius: '12px',
+                height: '380px',
+                animation: 'pulse 1.5s ease-in-out infinite'
+              }} />
+            ))}
           </div>
         ) : error ? (
-          <div
-            style={{
-              background: '#0a0a0a',
-              border: '1px solid #332222',
-              borderRadius: '12px',
-              padding: '40px',
-              textAlign: 'center',
-              color: '#ff8f8f'
-            }}
-          >
-            <p style={{ marginBottom: '16px' }}>{error}</p>
+          <div style={{
+            background: 'var(--bg-card, #0a0a0a)',
+            border: '1px solid rgba(255,100,100,0.3)',
+            borderRadius: '12px',
+            padding: '48px',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '16px' }}>⚠️</div>
+            <p style={{ color: '#ff8f8f', marginBottom: '20px', fontSize: '1.05rem' }}>{error}</p>
             <button
-              onClick={loadPosts}
+              onClick={() => fetchArticles(activeTag)}
               style={{
-                padding: '10px 18px',
-                background: 'linear-gradient(135deg, #ff6b6b, #ff9f7f)',
-                color: '#0a0a0a',
+                padding: '10px 20px',
+                background: 'linear-gradient(135deg, #00d4ff, #0099cc)',
+                color: '#fff',
                 border: 'none',
                 borderRadius: '10px',
-                fontWeight: '700',
-                cursor: 'pointer'
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'transform 0.2s ease'
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
               Retry
             </button>
           </div>
-        ) : posts.length === 0 ? (
-          <div
-            style={{
-              background: '#0a0a0a',
-              border: '1px solid #222',
-              borderRadius: '12px',
-              padding: '40px',
-              textAlign: 'center',
-              color: '#ccc'
-            }}
-          >
-            <p style={{ marginBottom: '16px' }}>No posts available yet. Check back soon.</p>
-            <button
-              onClick={loadPosts}
-              style={{
-                padding: '10px 18px',
-                background: 'linear-gradient(135deg, #00d4ff, #0099cc)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '10px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              Refresh
-            </button>
-          </div>
-        ) : paginatedPosts.length === 0 ? (
-          <div
-            style={{
-              background: '#0a0a0a',
-              border: '1px solid #222',
-              borderRadius: '12px',
-              padding: '40px',
-              textAlign: 'center',
-              color: '#ccc'
-            }}
-          >
-            <p style={{ marginBottom: '20px' }}>
-              No posts match your filters. Try clearing search or picking a different category.
+        ) : filteredArticles.length === 0 ? (
+          <div style={{
+            background: 'var(--bg-card, #0a0a0a)',
+            border: '1px solid var(--border-color, #222)',
+            borderRadius: '12px',
+            padding: '48px',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🔍</div>
+            <p style={{ color: 'var(--text-secondary, #aaa)', marginBottom: '20px', fontSize: '1.05rem' }}>
+              No articles match "<strong>{searchTerm}</strong>". Try a different search term.
             </p>
             <button
-              onClick={() => {
-                setSearchTerm('');
-                setActiveCategory('All');
-                setCurrentPage(1);
-              }}
+              onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
               style={{
-                padding: '10px 18px',
+                padding: '10px 20px',
                 background: 'linear-gradient(135deg, #00d4ff, #0099cc)',
                 color: '#fff',
                 border: 'none',
@@ -281,205 +241,241 @@ export default function Blog() {
                 cursor: 'pointer'
               }}
             >
-              Reset Filters
+              Clear Search
             </button>
           </div>
         ) : (
-          <div
-            style={{
+          <>
+            {/* Results count */}
+            <p style={{
+              color: 'var(--text-secondary, #888)',
+              fontSize: '0.9rem',
+              marginBottom: '16px'
+            }}>
+              Showing {paginatedArticles.length} of {filteredArticles.length} articles
+            </p>
+
+            {/* Articles Grid */}
+            <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-              gap: '30px',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+              gap: '24px',
               marginBottom: '32px'
-            }}
-          >
-            {paginatedPosts.map((post) => {
-              const isExpanded = expandedSlug === post.slug;
-              const body = isExpanded ? post.content : post.excerpt;
-              return (
-                <article
-                  key={post.slug}
-                  style={{
-                    background: 'linear-gradient(135deg, #0a0a0a, #111)',
-                    border: '1px solid #222',
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#00d4ff';
-                    e.currentTarget.style.transform = 'translateY(-5px)';
-                    e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 212, 255, 0.2)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#222';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
+            }}>
+              {paginatedArticles.map((article) => (
+                <a
+                  key={article.id}
+                  href={article.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: 'none', display: 'block' }}
                 >
-                  <div
+                  <article
                     style={{
-                      background: 'linear-gradient(135deg, #00d4ff, #0099cc)',
+                      background: 'var(--bg-card, #0a0a0a)',
+                      border: '1px solid var(--border-color, #222)',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      transition: 'all 0.3s ease',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#00d4ff';
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 212, 255, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border-color, #222)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    {/* Cover Image */}
+                    <div style={{
                       height: '180px',
+                      background: article.cover_image
+                        ? `url(${article.cover_image}) center/cover`
+                        : 'linear-gradient(135deg, #00d4ff22, #0099cc22)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '4rem'
-                    }}
-                  >
-                    {post.image}
-                  </div>
-
-                  <div style={{ padding: '25px' }}>
-                    <div
-                      style={{
+                      position: 'relative'
+                    }}>
+                      {!article.cover_image && (
+                        <span style={{ fontSize: '3.5rem', opacity: 0.5 }}>🔒</span>
+                      )}
+                      {/* External link badge */}
+                      <span style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        padding: '4px 10px',
+                        background: 'rgba(0, 0, 0, 0.7)',
+                        backdropFilter: 'blur(4px)',
+                        borderRadius: '6px',
+                        color: '#aaa',
+                        fontSize: '0.7rem',
+                        fontWeight: '600',
+                        letterSpacing: '0.5px',
                         display: 'flex',
-                        justifyContent: 'space-between',
                         alignItems: 'center',
-                        marginBottom: '10px'
-                      }}
-                    >
-                      <span
-                        style={{
-                          padding: '5px 12px',
-                          background: 'rgba(0, 212, 255, 0.1)',
-                          border: '1px solid #00d4ff',
-                          borderRadius: '15px',
-                          color: '#00d4ff',
-                          fontSize: '0.8rem',
-                          fontWeight: '600'
-                        }}
-                      >
-                        {post.category}
+                        gap: '4px'
+                      }}>
+                        External ↗
                       </span>
-                      <span style={{ fontSize: '0.85rem', color: '#888' }}>{post.readTime}</span>
                     </div>
 
-                    <h3
-                      style={{
-                        fontSize: '1.5rem',
-                        fontWeight: '700',
-                        color: '#fff',
-                        margin: '8px 0 12px'
-                      }}
-                    >
-                      {post.title}
-                    </h3>
-
-                    <p
-                      style={{
-                        fontSize: '0.95rem',
-                        color: '#aaa',
-                        lineHeight: '1.6',
-                        marginBottom: '16px'
-                      }}
-                    >
-                      {body}
-                    </p>
-
-                    {post.tags && post.tags.length > 0 && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: '8px',
-                          marginBottom: '14px'
-                        }}
-                      >
-                        {post.tags.map((tag) => (
+                    {/* Content */}
+                    <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                      {/* Tags */}
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '6px',
+                        marginBottom: '10px'
+                      }}>
+                        {(article.tag_list || []).slice(0, 3).map((tag) => (
                           <span
                             key={tag}
                             style={{
-                              padding: '6px 10px',
-                              borderRadius: '10px',
-                              border: '1px solid #222',
-                              background: '#0b0b0b',
-                              color: '#8ad8ff',
-                              fontSize: '0.85rem'
+                              padding: '3px 10px',
+                              background: 'rgba(0, 212, 255, 0.08)',
+                              border: '1px solid rgba(0, 212, 255, 0.25)',
+                              borderRadius: '8px',
+                              color: '#00d4ff',
+                              fontSize: '0.75rem',
+                              fontWeight: '600'
                             }}
                           >
-                            #{tag}
+                            {tag}
                           </span>
                         ))}
                       </div>
-                    )}
 
-                    <div
-                      style={{
+                      {/* Title */}
+                      <h3 style={{
+                        fontSize: '1.2rem',
+                        fontWeight: '700',
+                        color: 'var(--text-primary, #fff)',
+                        margin: '0 0 8px',
+                        lineHeight: '1.4',
+                        fontFamily: 'var(--font-display)'
+                      }}>
+                        {article.title}
+                      </h3>
+
+                      {/* Description */}
+                      <p style={{
+                        fontSize: '0.9rem',
+                        color: 'var(--text-secondary, #aaa)',
+                        lineHeight: '1.6',
+                        marginBottom: '16px',
+                        flex: 1
+                      }}>
+                        {article.description?.slice(0, 140)}{article.description?.length > 140 ? '...' : ''}
+                      </p>
+
+                      {/* Footer: author + date + reading time */}
+                      <div style={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         paddingTop: '12px',
-                        borderTop: '1px solid #222'
-                      }}
-                    >
-                      <span style={{ fontSize: '0.85rem', color: '#888' }}>{post.date}</span>
-                      <button
-                        onClick={() => toggleExpand(post.slug)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#00d4ff',
-                          fontWeight: '700',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {isExpanded ? 'Show Less' : 'Read Details'}
-                      </button>
+                        borderTop: '1px solid var(--border-color, #1a1a1a)',
+                        marginTop: 'auto'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {article.user?.profile_image && (
+                            <img
+                              src={article.user.profile_image}
+                              alt={article.user.name}
+                              style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '50%',
+                                objectFit: 'cover'
+                              }}
+                            />
+                          )}
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #888)' }}>
+                            {article.user?.name}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #888)' }}>
+                            {formatDate(article.published_at)}
+                          </span>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #666)' }}>
+                            {article.reading_time_minutes} min
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
+                  </article>
+                </a>
+              ))}
+            </div>
 
-        {/* Pagination */}
-        {!loading && !error && posts.length > 0 && filteredPosts.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '12px',
-              marginBottom: '60px'
-            }}
-          >
-            <button
-              onClick={() => goToPage(currentPageSafe - 1)}
-              disabled={currentPageSafe <= 1}
-              style={{
-                padding: '10px 14px',
-                borderRadius: '10px',
-                border: '1px solid #222',
-                background: currentPageSafe <= 1 ? '#0b0b0b' : '#111',
-                color: '#fff',
-                cursor: currentPageSafe <= 1 ? 'not-allowed' : 'pointer'
-              }}
-            >
-              Prev
-            </button>
-            <span style={{ color: '#ccc', fontWeight: '600' }}>
-              Page {currentPageSafe} of {totalPages}
-            </span>
-            <button
-              onClick={() => goToPage(currentPageSafe + 1)}
-              disabled={currentPageSafe >= totalPages}
-              style={{
-                padding: '10px 14px',
-                borderRadius: '10px',
-                border: '1px solid #222',
-                background: currentPageSafe >= totalPages ? '#0b0b0b' : '#111',
-                color: '#fff',
-                cursor: currentPageSafe >= totalPages ? 'not-allowed' : 'pointer'
-              }}
-            >
-              Next
-            </button>
-          </div>
+            {/* Pagination — only show when more than 1 page */}
+            {totalPages > 1 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px',
+                marginBottom: '40px'
+              }}>
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, safePage - 1))}
+                  disabled={safePage <= 1}
+                  style={{
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border-color, #222)',
+                    background: safePage <= 1 ? 'var(--bg-card, #0b0b0b)' : 'var(--bg-card-hover, #111)',
+                    color: 'var(--text-primary, #fff)',
+                    cursor: safePage <= 1 ? 'not-allowed' : 'pointer',
+                    opacity: safePage <= 1 ? 0.5 : 1,
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  ← Prev
+                </button>
+                <span style={{ color: 'var(--text-secondary, #ccc)', fontWeight: '600', fontSize: '0.9rem' }}>
+                  Page {safePage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, safePage + 1))}
+                  disabled={safePage >= totalPages}
+                  style={{
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border-color, #222)',
+                    background: safePage >= totalPages ? 'var(--bg-card, #0b0b0b)' : 'var(--bg-card-hover, #111)',
+                    color: 'var(--text-primary, #fff)',
+                    cursor: safePage >= totalPages ? 'not-allowed' : 'pointer',
+                    opacity: safePage >= totalPages ? 0.5 : 1,
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
+
       <Footer />
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.7; }
+        }
+      `}</style>
     </div>
   );
 }

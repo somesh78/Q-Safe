@@ -5,14 +5,23 @@ from django.contrib import admin
 from django.contrib.auth.models import User
 from django.urls import path, include, re_path
 from django.views.generic import TemplateView
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, FileResponse, Http404
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import serializers
 from decouple import config
 from urllib.parse import urlencode
+from pathlib import Path
 import os
+
+
+def serve_static_file(request, filename, content_type):
+    """Serve a static file from the React frontend build directory."""
+    file_path = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) / 'frontend_build' / filename
+    if file_path.exists():
+        return FileResponse(open(file_path, 'rb'), content_type=content_type)
+    raise Http404
 
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -91,6 +100,11 @@ def google_auth_callback(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # SEO files — must be before the catch-all
+    path('robots.txt', lambda r: serve_static_file(r, 'robots.txt', 'text/plain'), name='robots_txt'),
+    path('sitemap.xml', lambda r: serve_static_file(r, 'sitemap.xml', 'application/xml'), name='sitemap_xml'),
+    path('manifest.json', lambda r: serve_static_file(r, 'manifest.json', 'application/json'), name='manifest_json'),
 
     # Health check
     path('api/health/', health_check, name='health_check'),

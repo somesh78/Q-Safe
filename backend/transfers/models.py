@@ -21,6 +21,12 @@ class UploadSession(models.Model):
     password = models.CharField(max_length=500, null=True, blank=True)  # For async task access
     original_filename = models.CharField(max_length=255, null=True, blank=True)  # For async task
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'is_active', 'created_at']),
+            models.Index(fields=['-created_at']),
+        ]
 
 class UploadedFile(models.Model):
     session = models.ForeignKey(UploadSession, on_delete=models.CASCADE, related_name='files')
@@ -49,6 +55,13 @@ class OnlineEncryptedFile(models.Model):
     allowed_ip = models.GenericIPAddressField(null=True, blank=True)
 
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['token']),  # Fast token lookups for downloads
+            models.Index(fields=['expires_at']),  # For cleanup jobs
+            models.Index(fields=['-uploaded_at']),  # For user file listings
+        ]
 
 class DownloadAudit(models.Model):
     file = models.ForeignKey(OnlineEncryptedFile, on_delete=models.CASCADE, related_name='audits')
@@ -57,6 +70,12 @@ class DownloadAudit(models.Model):
     status = models.CharField(max_length=20)
     reason = models.CharField(max_length=100, null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['-timestamp']),  # For audit log queries
+            models.Index(fields=['file', '-timestamp']),  # For file-specific audits
+        ]
     
     def __str__(self):
         return f"{self.file.original_filename} - {self.status}"
@@ -88,6 +107,12 @@ class OfflineJob(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'status', '-created_at']),  # For job listings
+            models.Index(fields=['status', 'created_at']),  # For cleanup/processing
+        ]
     
     def __str__(self):
         return f"Job {self.job_id} - {self.status}"

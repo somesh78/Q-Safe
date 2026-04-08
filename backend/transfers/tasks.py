@@ -140,3 +140,20 @@ def generate_offline_qr_codes(self, session_id, user_id):
         
         # Re-raise for Celery to mark task as failed
         raise
+
+@shared_task
+def cleanup_expired_files():
+    from .models import OnlineEncryptedFile
+    from django.utils import timezone
+    expired = OnlineEncryptedFile.objects.filter(expires_at__lt=timezone.now())
+    for f in expired:
+        try:
+            # Delete from Supabase storage
+            from supabase import create_client, Client
+            from django.conf import settings
+            supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
+            supabase.storage.from_('uploads').remove([f.storage_path])
+        except Exception:
+            pass
+        f.delete()
+    return f"Cleaned up {expired.count()} expired files"

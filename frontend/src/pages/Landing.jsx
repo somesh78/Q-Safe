@@ -20,8 +20,8 @@ export default function Landing() {
                         <span className="text-gradient">military-grade security</span>
                     </h1>
                     <p className="hero-subtitle">
-                        Q-Safe combines end-to-end encryption with self-destructing links to give you 
-                        complete control over your sensitive data. Share confidently, knowing your files 
+                        Q-Safe combines end-to-end encryption with self-destructing links to give you
+                        complete control over your sensitive data. Share confidently, knowing your files
                         are protected every step of the way.
                     </p>
 
@@ -31,7 +31,7 @@ export default function Landing() {
                             style={{ padding: '1.125rem 2.25rem', fontSize: '1.0625rem' }}
                             onClick={() => navigate(isLoggedIn ? "/app" : "/signup")}
                         >
-                            {isLoggedIn ? 'Go to Dashboard →' : 'Start free trial →'}
+                            {isLoggedIn ? 'Go to Dashboard →' : 'Create free account →'}
                         </button>
                         <button
                             className="btn-secondary"
@@ -43,11 +43,11 @@ export default function Landing() {
                     </div>
 
                     {/* Trust Indicators */}
-                    <div style={{ 
-                        marginTop: '3.5rem', 
-                        display: 'flex', 
-                        gap: '3rem', 
-                        justifyContent: 'center', 
+                    <div style={{
+                        marginTop: '3.5rem',
+                        display: 'flex',
+                        gap: '3rem',
+                        justifyContent: 'center',
                         flexWrap: 'wrap',
                         color: 'var(--text-secondary)',
                         fontSize: '0.9375rem',
@@ -69,15 +69,15 @@ export default function Landing() {
                 </section>
 
                 {/* Main Features Section */}
-                <section id="features" style={{ 
-                    marginTop: '8rem', 
-                    width: '100%', 
+                <section id="features" style={{
+                    marginTop: '8rem',
+                    width: '100%',
                     maxWidth: '1200px',
                     marginBottom: '6rem'
                 }}>
                     <div style={{ textAlign: 'center', marginBottom: '5rem' }}>
-                        <h2 style={{ 
-                            fontSize: 'clamp(2rem, 4vw, 3rem)', 
+                        <h2 style={{
+                            fontSize: 'clamp(2rem, 4vw, 3rem)',
                             fontWeight: '800',
                             fontFamily: 'var(--font-display)',
                             marginBottom: '1rem',
@@ -86,23 +86,27 @@ export default function Landing() {
                         }}>
                             Complete control over<br />your sensitive data
                         </h2>
-                        <p style={{ 
-                            fontSize: '1.125rem', 
-                            color: 'var(--text-secondary)', 
-                            maxWidth: '600px', 
+                        <p style={{
+                            fontSize: '1.125rem',
+                            color: 'var(--text-secondary)',
+                            maxWidth: '600px',
                             margin: '0 auto',
                             lineHeight: '1.7'
                         }}>
-                            Two powerful transfer modes designed for different security requirements.
-                            Choose the method that fits your workflow.
+                            Three powerful transfer modes designed for different security requirements.
+                            Choose the method that best fits your workflow.
                         </p>
                     </div>
 
                     <div className="mode-grid">
-                        <div className="mode-card animate-fade-in stagger-1" style={{ cursor: 'default' }}>
+                        <div
+                            className="mode-card animate-fade-in stagger-1"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => navigate(isLoggedIn ? '/app' : '/signup')}
+                        >
                             <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>🌐</div>
-                            <h3 style={{ 
-                                fontSize: '1.75rem', 
+                            <h3 style={{
+                                fontSize: '1.75rem',
                                 fontWeight: '700',
                                 marginBottom: '1rem',
                                 fontFamily: 'var(--font-display)'
@@ -110,12 +114,12 @@ export default function Landing() {
                                 Online Sharing
                             </h3>
                             <p style={{ fontSize: '1.0625rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
-                                Upload files up to 50MB and generate secure, one-time links. Set custom expiration times, 
+                                Upload files up to 500MB and generate secure, one-time links. Set custom expiration times,
                                 download limits, and optional IP locking for maximum security.
                             </p>
-                            <ul style={{ 
-                                listStyle: 'none', 
-                                padding: 0, 
+                            <ul style={{
+                                listStyle: 'none',
+                                padding: 0,
                                 margin: 0,
                                 fontSize: '0.9375rem',
                                 color: 'var(--text-secondary)'
@@ -139,10 +143,58 @@ export default function Landing() {
                             </ul>
                         </div>
 
-                        <div className="mode-card animate-fade-in stagger-2" style={{ cursor: 'default' }}>
+                        <div
+                            className="mode-card animate-fade-in stagger-2"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => navigate('/send')}
+                        >
+                            <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>⚡</div>
+                            <h3 style={{
+                                fontSize: '1.75rem',
+                                fontWeight: '700',
+                                marginBottom: '1rem',
+                                fontFamily: 'var(--font-display)'
+                            }}>
+                                P2P Direct Transfer
+                            </h3>
+                            <p style={{ fontSize: '1.0625rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
+                                Transfer files directly browser-to-browser using WebRTC. Data does not rest on server storage,
+                                and transfer remains active only while both peers are online.
+                            </p>
+                            <ul style={{
+                                listStyle: 'none',
+                                padding: 0,
+                                margin: 0,
+                                fontSize: '0.9375rem',
+                                color: 'var(--text-secondary)'
+                            }}>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>Browser-to-browser transport</span>
+                                </li>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>No server-side file storage</span>
+                                </li>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>Optional password encryption</span>
+                                </li>
+                                <li style={{ padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ color: 'var(--accent-primary)' }}>✓</span>
+                                    <span>Ideal for instant live transfers</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div
+                            className="mode-card animate-fade-in stagger-3"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => navigate(isLoggedIn ? '/app' : '/signup')}
+                        >
                             <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>📴</div>
-                            <h3 style={{ 
-                                fontSize: '1.75rem', 
+                            <h3 style={{
+                                fontSize: '1.75rem',
                                 fontWeight: '700',
                                 marginBottom: '1rem',
                                 fontFamily: 'var(--font-display)'
@@ -150,12 +202,12 @@ export default function Landing() {
                                 Offline Air-Gap
                             </h3>
                             <p style={{ fontSize: '1.0625rem', lineHeight: '1.7', marginBottom: '1.5rem' }}>
-                                Transfer files between devices that never connect to the internet. Your file is converted 
+                                Transfer files between devices that never connect to the internet. Your file is converted
                                 into scannable QR codes for truly air-gapped security.
                             </p>
-                            <ul style={{ 
-                                listStyle: 'none', 
-                                padding: 0, 
+                            <ul style={{
+                                listStyle: 'none',
+                                padding: 0,
                                 margin: 0,
                                 fontSize: '0.9375rem',
                                 color: 'var(--text-secondary)'
@@ -182,15 +234,15 @@ export default function Landing() {
                 </section>
 
                 {/* Security Features */}
-                <section style={{ 
-                    marginTop: '6rem', 
+                <section style={{
+                    marginTop: '6rem',
                     marginBottom: '6rem',
-                    width: '100%', 
-                    maxWidth: '1200px' 
+                    width: '100%',
+                    maxWidth: '1200px'
                 }}>
                     <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
-                        <h2 style={{ 
-                            fontSize: 'clamp(2rem, 4vw, 3rem)', 
+                        <h2 style={{
+                            fontSize: 'clamp(2rem, 4vw, 3rem)',
                             fontWeight: '800',
                             fontFamily: 'var(--font-display)',
                             marginBottom: '1rem',
@@ -198,22 +250,22 @@ export default function Landing() {
                         }}>
                             Enterprise-grade security<br />for everyone
                         </h2>
-                        <p style={{ 
-                            fontSize: '1.125rem', 
-                            color: 'var(--text-secondary)', 
-                            maxWidth: '650px', 
+                        <p style={{
+                            fontSize: '1.125rem',
+                            color: 'var(--text-secondary)',
+                            maxWidth: '650px',
                             margin: '0 auto',
                             lineHeight: '1.7'
                         }}>
-                            Your data is protected with the same encryption standards used by governments 
+                            Your data is protected with the same encryption standards used by governments
                             and financial institutions worldwide.
                         </p>
                     </div>
 
-                    <div style={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-                        gap: '2rem' 
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                        gap: '2rem'
                     }}>
                         {[
                             {
@@ -247,10 +299,10 @@ export default function Landing() {
                                 desc: 'No setup required. Start sharing files securely in seconds without any configuration or installation.'
                             }
                         ].map((feature, idx) => (
-                            <div 
+                            <div
                                 key={idx}
                                 className={`animate-fade-in stagger-${idx + 1}`}
-                                style={{ 
+                                style={{
                                     padding: '2rem',
                                     background: 'var(--bg-card)',
                                     border: '1px solid var(--border-color)',
@@ -267,8 +319,8 @@ export default function Landing() {
                                 }}
                             >
                                 <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>{feature.icon}</div>
-                                <h4 style={{ 
-                                    fontSize: '1.25rem', 
+                                <h4 style={{
+                                    fontSize: '1.25rem',
                                     fontWeight: '600',
                                     marginBottom: '0.75rem',
                                     fontFamily: 'var(--font-display)'
@@ -284,15 +336,15 @@ export default function Landing() {
                 </section>
 
                 {/* Use Cases */}
-                <section style={{ 
+                <section style={{
                     marginTop: '6rem',
                     marginBottom: '6rem',
-                    width: '100%', 
-                    maxWidth: '1200px' 
+                    width: '100%',
+                    maxWidth: '1200px'
                 }}>
                     <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
-                        <h2 style={{ 
-                            fontSize: 'clamp(2rem, 4vw, 3rem)', 
+                        <h2 style={{
+                            fontSize: 'clamp(2rem, 4vw, 3rem)',
                             fontWeight: '800',
                             fontFamily: 'var(--font-display)',
                             marginBottom: '1rem',
@@ -302,10 +354,10 @@ export default function Landing() {
                         </h2>
                     </div>
 
-                    <div style={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-                        gap: '2rem' 
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                        gap: '2rem'
                     }}>
                         {[
                             { icon: '👔', title: 'Legal Professionals', desc: 'Share case files and sensitive documents with clients while maintaining attorney-client privilege.' },
@@ -315,10 +367,10 @@ export default function Landing() {
                             { icon: '🔬', title: 'Research Institutions', desc: 'Air-gapped transfer for sensitive research data in high-security laboratory environments.' },
                             { icon: '🛡️', title: 'Security Consultants', desc: 'Deliver security audits and penetration test results without exposing client data.' }
                         ].map((useCase, idx) => (
-                            <div 
+                            <div
                                 key={idx}
                                 className={`animate-fade-in stagger-${idx + 1}`}
-                                style={{ 
+                                style={{
                                     padding: '2rem',
                                     background: 'var(--bg-card)',
                                     border: '1px solid var(--border-color)',
@@ -336,8 +388,8 @@ export default function Landing() {
                                 }}
                             >
                                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{useCase.icon}</div>
-                                <h4 style={{ 
-                                    fontSize: '1.25rem', 
+                                <h4 style={{
+                                    fontSize: '1.25rem',
                                     fontWeight: '600',
                                     marginBottom: '0.75rem',
                                     fontFamily: 'var(--font-display)'
@@ -353,7 +405,7 @@ export default function Landing() {
                 </section>
 
                 {/* CTA Section */}
-                <section style={{ 
+                <section style={{
                     marginTop: '6rem',
                     marginBottom: '4rem',
                     textAlign: 'center',
@@ -364,8 +416,8 @@ export default function Landing() {
                     maxWidth: '900px',
                     width: '100%'
                 }}>
-                    <h2 style={{ 
-                        fontSize: 'clamp(2rem, 4vw, 2.75rem)', 
+                    <h2 style={{
+                        fontSize: 'clamp(2rem, 4vw, 2.75rem)',
                         fontWeight: '800',
                         fontFamily: 'var(--font-display)',
                         marginBottom: '1.5rem',
@@ -373,14 +425,14 @@ export default function Landing() {
                     }}>
                         Start sharing files securely<br />in less than 30 seconds
                     </h2>
-                    <p style={{ 
-                        fontSize: '1.125rem', 
-                        color: 'var(--text-secondary)', 
-                        maxWidth: '600px', 
+                    <p style={{
+                        fontSize: '1.125rem',
+                        color: 'var(--text-secondary)',
+                        maxWidth: '600px',
                         margin: '0 auto 2.5rem',
                         lineHeight: '1.7'
                     }}>
-                        Join thousands of professionals who trust Q-Safe with their most sensitive data. 
+                        Start sharing files with military-grade encryption today.
                         No credit card required.
                     </p>
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -392,12 +444,12 @@ export default function Landing() {
                             {isLoggedIn ? 'Go to Dashboard →' : 'Create free account →'}
                         </button>
                     </div>
-                    <p style={{ 
-                        marginTop: '1.5rem', 
-                        fontSize: '0.875rem', 
-                        color: 'var(--text-secondary)' 
+                    <p style={{
+                        marginTop: '1.5rem',
+                        fontSize: '0.875rem',
+                        color: 'var(--text-secondary)'
                     }}>
-                        Free forever • No credit card • 50MB file limit
+                        Free forever • No credit card • 500MB file limit
                     </p>
                 </section>
             </main>

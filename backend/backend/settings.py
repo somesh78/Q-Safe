@@ -14,6 +14,11 @@ from datetime import timedelta
 from pathlib import Path
 from decouple import config
 import os
+import logging
+
+class HealthCheckFilter(logging.Filter):
+    def filter(self, record):
+        return '/api/health/' not in record.getMessage()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,6 +37,7 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     ".onrender.com",
+    "web",  # Internal docker-compose service name
 ]
 if config('ALLOWED_HOSTS', default=''):
     ALLOWED_HOSTS += config('ALLOWED_HOSTS').split(',') 
@@ -39,6 +45,8 @@ if config('ALLOWED_HOSTS', default=''):
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -49,6 +57,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'django_ratelimit',
     'rest_framework',
+    'django_celery_beat',
     'social_django',
     'transfers',
 ]
@@ -96,11 +105,45 @@ else:
     RATELIMIT_ENABLE = False  # Disable rate limiting in local development without Redis
 
 
+# ── Django Channels — WebSocket channel layer ───────────────────────────────
+# Default to in-memory because this deployment runs as a single Daphne instance.
+# This avoids Redis becoming a hard dependency for WebRTC signaling.
+# To use Redis explicitly in a multi-instance deployment, set:
+# CHANNEL_LAYER_BACKEND=redis
+CHANNEL_LAYER_BACKEND = config('CHANNEL_LAYER_BACKEND', default='memory')
+
+if CHANNEL_LAYER_BACKEND == 'redis':
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [os.environ.get("REDIS_URL", "redis://localhost:6379/0")],
+            },
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        },
+    }
+
 # Trust the X-Forwarded-Proto header from Nginx (HTTPS termination)
 # This makes Django aware it's behind HTTPS, so social-auth generates
 # https:// redirect URIs instead of http://
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+
+# Session & CSRF cookies — required for OAuth state to survive the redirect round-trip.
+# SameSite=Lax (not Strict) is mandatory: Google redirects back cross-site and
+# Strict would block the session cookie on that return request, causing AuthStateMissing.
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+# Tell social-auth to build https:// redirect URIs when behind a proxy
+SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
 
 MIDDLEWARE = [
     'django_ratelimit.middleware.RatelimitMiddleware',
@@ -228,32 +271,37 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'backend.wsgi.application'
+ASGI_APPLICATION = 'backend.asgi.application'
 
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 # Use PostgreSQL in production (when DATABASE_URL is set), SQLite for development
+# For Supabase: Use connection pooler URL (port 6543) for better performance
+# Format: postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
-    # Production: PostgreSQL or SQLite via DATABASE_URL
+    # Production: PostgreSQL (Supabase or any PostgreSQL provider)
     import dj_database_url
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=300,  # Reduce to 5 minutes for memory efficiency
+            conn_max_age=600,  # 10 minutes - optimal for connection pooling
             conn_health_checks=True,  # Check connection health before reusing
         )
     }
-    # SSL configuration only for PostgreSQL connections
+    # Optimize for PostgreSQL/Supabase
     if DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql':
         DATABASES['default'].setdefault('OPTIONS', {})
-        # SSL configuration for PostgreSQL - prefer SSL but don't fail if unavailable
-        DATABASES['default']['OPTIONS']['sslmode'] = 'prefer'
+        # SSL/TLS configuration for secure connections
+        DATABASES['default']['OPTIONS']['sslmode'] = 'require'  # Enforce SSL for Supabase
         DATABASES['default']['OPTIONS']['connect_timeout'] = 10
-    # Don't use ATOMIC_REQUESTS with connection pooling to avoid blocking
-    # DATABASES['default']['ATOMIC_REQUESTS'] = True
+        # Performance optimizations
+        DATABASES['default']['OPTIONS']['options'] = '-c statement_timeout=30000'  # 30s query timeout
+        # Connection pooling works best without ATOMIC_REQUESTS
+        # DATABASES['default']['ATOMIC_REQUESTS'] = True
 else:
     # Development: SQLite
     DATABASES = {
@@ -298,8 +346,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = '/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+WHITENOISE_ROOT = os.path.join(BASE_DIR, 'frontend_build')
 
 # React frontend build files
 REACT_BUILD_DIR = BASE_DIR / 'frontend_build'
@@ -330,10 +379,16 @@ LOGGING = {
             'style': '{',
         },
     },
+    'filters': {
+        'exclude_health': {
+            '()': 'backend.settings.HealthCheckFilter',
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
+            'filters': ['exclude_health'],
         },
     },
     'root': {
@@ -351,13 +406,20 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'daphne': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
 
 # File Upload Settings (optimized for low-traffic EC2 with ~1GB RAM)
 # Files larger than 5MB are streamed to disk, preventing memory exhaustion
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB - larger files written to disk (saves RAM)
-DATA_UPLOAD_MAX_MEMORY_SIZE = 55 * 1024 * 1024  # 55MB - maximum request body size
+ONLINE_MAX_FILE_SIZE_MB = config('ONLINE_MAX_FILE_SIZE_MB', default=500, cast=int)
+# Keep a small buffer above file size for multipart/form-data overhead.
+DATA_UPLOAD_MAX_MEMORY_SIZE = (ONLINE_MAX_FILE_SIZE_MB + 5) * 1024 * 1024
 
 # ── Email Configuration ──
 # Use Gmail SMTP in production, console backend in development
@@ -365,6 +427,14 @@ EMAIL_BACKEND = config(
     'EMAIL_BACKEND',
     default='django.core.mail.backends.console.EmailBackend'  # Prints to console in dev
 )
+
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    'cleanup-expired-files': {
+        'task': 'transfers.tasks.cleanup_expired_files',
+        'schedule': crontab(minute=0, hour='*/6'),
+    },
+}
 
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)

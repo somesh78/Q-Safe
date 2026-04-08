@@ -5,6 +5,8 @@ import { createSession, uploadFile, getJobStatus, downloadJobResult } from "../s
 import Header from "../components/Header";
 import '../App.css';
 
+const MAX_ONLINE_FILE_SIZE = 100 * 1024 * 1024;
+
 export default function Home() {
     const [session, setSession] = useState(null);
     const [uploadResult, setUploadResult] = useState(null);
@@ -22,6 +24,8 @@ export default function Home() {
     const [maxDownloads, setMaxDownloads] = useState(3);
     const [expiryHours, setExpiryHours] = useState(1);
     const [enableIpLock, setEnableIpLock] = useState(true);
+    const [customMaxDownloads, setCustomMaxDownloads] = useState(false);
+    const [customExpiryHours, setCustomExpiryHours] = useState(false);
 
     const navigate = useNavigate();
 
@@ -87,8 +91,15 @@ export default function Home() {
     };
 
     const handleFileUpload = async (file) => {
+        if (!file) return;
+
         if (!password) {
             alert("Please enter a password before uploading the file.");
+            return;
+        }
+
+        if (session.mode === "ONLINE" && file.size > MAX_ONLINE_FILE_SIZE) {
+            alert("Online mode supports files up to 100MB. Please choose a smaller file.");
             return;
         }
 
@@ -140,7 +151,7 @@ export default function Home() {
                             </h1>
                             <p style={{ fontSize: '1.05rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
                                 Select the transfer method that best fits your security requirements. 
-                                Both modes use military-grade AES-256 encryption to keep your data safe.
+                                All modes use military-grade AES-256 encryption to keep your data safe.
                             </p>
                         </div>
                         
@@ -149,7 +160,7 @@ export default function Home() {
                             <div className="mode-card animate-fade-in stagger-1" onClick={() => handleModeSelect("ONLINE")}>
                                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🌐</div>
                                 <h3>Online Secure Share</h3>
-                                <p style={{ marginBottom: '1rem' }}>Upload files (max 50MB) and generate a secure, self-destructing QR link. Perfect for quick internet-based sharing.</p>
+                                <p style={{ marginBottom: '1rem' }}>Upload files (up to 50MB) and generate a secure, self-destructing QR link. Perfect for quick internet-based sharing.</p>
                                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                                     <div style={{ marginBottom: '0.5rem' }}>✓ Custom expiration times</div>
                                     <div style={{ marginBottom: '0.5rem' }}>✓ IP address locking</div>
@@ -157,8 +168,20 @@ export default function Home() {
                                 </div>
                             </div>
 
+                            {/* P2P Mode Card */}
+                            <div className="mode-card animate-fade-in stagger-2" onClick={() => navigate("/send")}>
+                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚡</div>
+                                <h3>P2P Direct Transfer</h3>
+                                <p style={{ marginBottom: '1rem' }}>Send files browser-to-browser with WebRTC. Nothing is stored on the server, and the transfer stays live only while both peers are connected.</p>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                    <div style={{ marginBottom: '0.5rem' }}>✓ No server-side file storage</div>
+                                    <div style={{ marginBottom: '0.5rem' }}>✓ Direct browser-to-browser link</div>
+                                    <div>✓ Optional password encryption</div>
+                                </div>
+                            </div>
+
                             {/* Offline Mode Card */}
-                            <div className="mode-card animate-fade-in stagger-2" onClick={() => handleModeSelect("OFFLINE")}>
+                            <div className="mode-card animate-fade-in stagger-3" onClick={() => handleModeSelect("OFFLINE")}>
                                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📴</div>
                                 <h3>Offline Air-Gap</h3>
                                 <p style={{ marginBottom: '1rem' }}>Convert sensitive files into a series of QR codes. Reconstruct them on another device without any internet connection.</p>
@@ -170,7 +193,7 @@ export default function Home() {
                             </div>
 
                             {/* Reconstruct Card */}
-                            <div className="mode-card animate-fade-in stagger-3" onClick={() => navigate("/reconstruct")}>
+                            <div className="mode-card animate-fade-in stagger-4" onClick={() => navigate("/reconstruct")}>
                                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🧩</div>
                                 <h3>Reconstruct File</h3>
                                 <p style={{ marginBottom: '1rem' }}>Have a ZIP of QR codes or a series of images? Reassemble your original file here.</p>
@@ -238,28 +261,86 @@ export default function Home() {
                                         <label style={{ display: "block", marginBottom: "5px", fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)' }}>
                                             Max Downloads
                                         </label>
-                                        <input
+                                        <select
                                             className="input-field"
-                                            type="number"
-                                            min="1"
-                                            max="10"
-                                            value={maxDownloads}
-                                            onChange={(e) => setMaxDownloads(parseInt(e.target.value) || 3)}
-                                        />
+                                            value={customMaxDownloads ? 'custom' : maxDownloads}
+                                            onChange={(e) => {
+                                                if (e.target.value === 'custom') {
+                                                    setCustomMaxDownloads(true);
+                                                    setMaxDownloads(1);
+                                                } else {
+                                                    setCustomMaxDownloads(false);
+                                                    setMaxDownloads(parseInt(e.target.value));
+                                                }
+                                            }}
+                                            style={{ cursor: 'pointer' }}
+                                        >
+                                            <option value={1}>1</option>
+                                            <option value={3}>3</option>
+                                            <option value={5}>5</option>
+                                            <option value={10}>10</option>
+                                            <option value="custom">Custom</option>
+                                        </select>
+                                        {customMaxDownloads && (
+                                            <input
+                                                className="input-field"
+                                                type="number"
+                                                min="1"
+                                                max="100"
+                                                value={maxDownloads}
+                                                onChange={(e) => {
+                                                    const val = parseInt(e.target.value);
+                                                    if (val >= 1) setMaxDownloads(val);
+                                                    else if (e.target.value === '') setMaxDownloads('');
+                                                }}
+                                                onBlur={() => { if (!maxDownloads || maxDownloads < 1) setMaxDownloads(1); }}
+                                                placeholder="Enter number (min 1)"
+                                                style={{ marginTop: '0.5rem' }}
+                                            />
+                                        )}
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Link expires after this many downloads</span>
                                     </div>
                                     <div>
                                         <label style={{ display: "block", marginBottom: "5px", fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)' }}>
                                             Expiry (Hours)
                                         </label>
-                                        <input
+                                        <select
                                             className="input-field"
-                                            type="number"
-                                            min="1"
-                                            max="24"
-                                            value={expiryHours}
-                                            onChange={(e) => setExpiryHours(parseInt(e.target.value) || 1)}
-                                        />
+                                            value={customExpiryHours ? 'custom' : expiryHours}
+                                            onChange={(e) => {
+                                                if (e.target.value === 'custom') {
+                                                    setCustomExpiryHours(true);
+                                                    setExpiryHours(1);
+                                                } else {
+                                                    setCustomExpiryHours(false);
+                                                    setExpiryHours(parseInt(e.target.value));
+                                                }
+                                            }}
+                                            style={{ cursor: 'pointer' }}
+                                        >
+                                            <option value={1}>1 hour</option>
+                                            <option value={6}>6 hours</option>
+                                            <option value={12}>12 hours</option>
+                                            <option value={24}>24 hours</option>
+                                            <option value="custom">Custom</option>
+                                        </select>
+                                        {customExpiryHours && (
+                                            <input
+                                                className="input-field"
+                                                type="number"
+                                                min="1"
+                                                max="72"
+                                                value={expiryHours}
+                                                onChange={(e) => {
+                                                    const val = parseInt(e.target.value);
+                                                    if (val >= 1) setExpiryHours(val);
+                                                    else if (e.target.value === '') setExpiryHours('');
+                                                }}
+                                                onBlur={() => { if (!expiryHours || expiryHours < 1) setExpiryHours(1); }}
+                                                placeholder="Enter hours (min 1)"
+                                                style={{ marginTop: '0.5rem' }}
+                                            />
+                                        )}
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Auto-delete after this time period</span>
                                     </div>
                                 </div>
@@ -290,6 +371,11 @@ export default function Home() {
                                 <div className="upload-zone">
                                     <div className="upload-icon">📁</div>
                                     <p>Click or Drag file here to upload</p>
+                                    {session.mode === 'ONLINE' && (
+                                        <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                                            Online mode limit: 100MB
+                                        </p>
+                                    )}
                                     <input
                                         type="file"
                                         onChange={(e) => handleFileUpload(e.target.files[0])}

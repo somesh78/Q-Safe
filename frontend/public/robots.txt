@@ -1,9 +1,13 @@
 User-agent: *
 Allow: /
-Disallow: /app
-Disallow: /dashboard
-Disallow: /audit
-Disallow: /reconstruct
-Disallow: /verify-email
+Disallow: /app/
+Disallow: /dashboard/
+Disallow: /audit/
+Disallow: /reconstruct/
+Disallow: /send/
+Disallow: /download/
+Disallow: /verify-email/
+Disallow: /receive/
+Disallow: /p2p/
 
 Sitemap: https://q-safe.live/sitemap.xml

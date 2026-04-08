@@ -3,20 +3,20 @@ import logging
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from django.http import HttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django.db.utils import OperationalError
 
 from transfers.serializers import DownloadAuditSerializer
-from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile, OfflineJob, ContactMessage, UserProfile
-from .email_utils import generate_verification_token, send_verification_email
-from .services.encryption import encrypt_file, decrypt_file
+from .models import DownloadAudit, UploadSession, UploadedFile, OnlineEncryptedFile, OfflineJob, UserProfile
+from .services.encryption import encrypt_file, encrypt_file_chunks, decrypt_file, decrypt_stream_chunks, LegacyEncryptedFormatError
 from .services.qr_generator import generate_qr, generate_qr_url
 from .services.chunking import chunk_bytes
 from .services.zipper import create_zip
 from .services.storage import get_storage
 from .tasks import generate_offline_qr_codes
+from .email_utils import generate_verification_token, send_verification_email
 import base64, uuid,zipfile, json, base64, hashlib
 from pyzbar.pyzbar import decode as qr_decode, ZBarSymbol
 from PIL import Image as PILImage
@@ -30,9 +30,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 logger = logging.getLogger(__name__)
 
-# File size limits optimized for low-traffic deployment on ~1GB RAM EC2
-# With few concurrent users, we can be more aggressive
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB for online mode (streaming to disk + Supabase storage)
+# File size limits (online limit is configurable via env var)
+ONLINE_MAX_FILE_SIZE_MB = config('ONLINE_MAX_FILE_SIZE_MB', default=500, cast=int)
+MAX_FILE_SIZE = ONLINE_MAX_FILE_SIZE_MB * 1024 * 1024
 MAX_OFFLINE_FILE_SIZE = 20 * 1024 * 1024  # 20MB for offline mode (~11,000 QR codes)
 
 signer = TimestampSigner()
@@ -65,151 +65,50 @@ def log_audit(file, ip, request, status, reason=None):
     )
 
 
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def blog_posts(request):
-    """Public marketing blog feed for the frontend."""
-    posts = [
-        {
-            "slug": "end-to-end-encryption-explained",
-            "title": "Understanding End-to-End Encryption",
-            "excerpt": "How E2EE protects files from device to recipient and what to watch for when evaluating vendors.",
-            "content": "End-to-end encryption keeps data encrypted from the moment it leaves your device until it is decrypted by the intended recipient. In this guide we cover key exchange, forward secrecy, and why QR-based offline exchange matters for zero-trust file sharing.",
-            "date": "February 10, 2026",
-            "category": "Security",
-            "read_time": "5 min read",
-            "tags": ["E2EE", "Zero Trust", "Key Management"],
-            "image": "🔒"
-        },
-        {
-            "slug": "secure-file-sharing-checklist",
-            "title": "Best Practices for Secure File Sharing",
-            "excerpt": "A step-by-step checklist for teams sharing sensitive files internally or with vendors.",
-            "content": "From access scoping and password policies to IP allowlists and download caps, this checklist shows how to ship files safely without slowing collaboration. Includes a ready-to-use runbook for incident response.",
-            "date": "February 5, 2026",
-            "category": "Guides",
-            "read_time": "7 min read",
-            "tags": ["Runbook", "Governance", "IP Lock"],
-            "image": "📁"
-        },
-        {
-            "slug": "offline-qr-mode",
-            "title": "Introducing Offline QR Mode",
-            "excerpt": "Exchange files in air-gapped environments using rotating QR frames—no internet required.",
-            "content": "Offline QR mode slices your payload into encrypted frames, rotates QR codes, and reconstructs the file on the receiving device. Ideal for classified networks and lab environments. We cover performance limits, retry logic, and checksum validation.",
-            "date": "January 28, 2026",
-            "category": "Features",
-            "read_time": "4 min read",
-            "tags": ["Air-gapped", "QR", "Offline"],
-            "image": "📱"
-        },
-        {
-            "slug": "gdpr-compliance-data-protection",
-            "title": "GDPR Compliance and Data Protection",
-            "excerpt": "How Q-Safe aligns with GDPR requirements for data minimization, access controls, and auditability.",
-            "content": "We detail our data retention defaults, encryption controls, subprocessor posture, and how customers can fulfill data subject requests using audit exports. Mapped to Articles 5, 25, and 32 with practical guidance.",
-            "date": "January 20, 2026",
-            "category": "Compliance",
-            "read_time": "6 min read",
-            "tags": ["GDPR", "Audit", "Retention"],
-            "image": "⚖️"
-        },
-        {
-            "slug": "aes-256-encryption",
-            "title": "AES-256 Encryption Explained",
-            "excerpt": "A concise primer on AES-256, modes of operation, and why we pair it with strong key derivation.",
-            "content": "AES-256 provides confidentiality when paired with secure key handling. We discuss GCM vs CBC, IV reuse pitfalls, and why we enforce PBKDF2+HMAC with high iteration counts for user-supplied passwords.",
-            "date": "January 12, 2026",
-            "category": "Technology",
-            "read_time": "8 min read",
-            "tags": ["AES-256", "KDF", "Crypto"],
-            "image": "🛡️"
-        },
-        {
-            "slug": "remote-work-file-transfers",
-            "title": "Securing Remote Work File Transfers",
-            "excerpt": "Patterns for distributed teams to ship sensitive files without VPN bottlenecks.",
-            "content": "Covers device posture checks, short-lived download links, IP locking per session, and automated expiry. Includes a template for vendor onboarding and offboarding.",
-            "date": "January 3, 2026",
-            "category": "Enterprise",
-            "read_time": "5 min read",
-            "tags": ["Remote Work", "Zero Trust", "Policy"],
-            "image": "💼"
-        },
-    ]
-    return Response(posts)
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-@ratelimit(key="ip", rate="10/h", block=True)
-def contact_form(request):
-    """Accept contact form submissions and store in database."""
-    name = request.data.get('name', '').strip()
-    email = request.data.get('email', '').strip()
-    subject = request.data.get('subject', '').strip()
-    message = request.data.get('message', '').strip()
-    msg_type = request.data.get('type', 'general').strip()
-
-    # Validate required fields
-    if not name or not email or not subject or not message:
-        return Response({'error': 'All fields are required'}, status=400)
-
-    if len(message) < 10:
-        return Response({'error': 'Message must be at least 10 characters'}, status=400)
-
-    if msg_type not in dict(ContactMessage.TYPE_CHOICES):
-        msg_type = 'general'
-
-    ContactMessage.objects.create(
-        name=name,
-        email=email,
-        subject=subject,
-        message=message,
-        type=msg_type,
-    )
-
-    logger.info(f"[CONTACT] New message from {name} ({email}): {subject}")
-    return Response({'message': 'Your message has been received. We will get back to you soon.'}, status=201)
-
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @ratelimit(key="ip", rate="5/h", block=True)  # Limit 5 signups per hour per IP
 def signup(request):
-    email = request.data.get('email', '').strip().lower()
+    raw_email = request.data.get('email', '')
+    raw_username = request.data.get('username')
     password = request.data.get('password')
-    username = request.data.get('username', '').strip()
+
+    email = raw_email.strip().lower()
 
     if not email or not password:
         return Response({'error': 'Email and password are required'}, status=400)
 
-    # Use email as username if username not provided
-    if not username:
-        username = email
+    username = raw_username.strip() if raw_username and raw_username.strip() else email
 
     # Validate password strength
     password_error = validate_password_strength(password)
     if password_error:
         return Response({"error": password_error}, status=400)
 
-    # Check email uniqueness (primary identifier)
     if User.objects.filter(email=email).exists():
-        return Response({'error': 'An account with this email already exists'}, status=400)
+         return Response({'error': 'Email already exists'}, status=400)
 
     if User.objects.filter(username=username).exists():
-        return Response({'error': 'This username is already taken'}, status=400)
+        return Response({'error': 'Username already exists'}, status=400)
 
-    user = User.objects.create_user(username=username, password=password, email=email)
-
+    # Create user account
+    user = User.objects.create_user(username=username, email=email, password=password)
+    
     # Send verification email
     try:
         uid, token = generate_verification_token(user)
         send_verification_email(user, uid, token)
-        return Response({'message': 'Account created! Please check your email to verify your account.'})
+        logger.info(f"[SIGNUP] Verification email sent to {email}")
+        return Response({
+            'message': 'Account created! Please check your email to verify your account before logging in.'
+        })
     except Exception as e:
-        logger.error(f"[SIGNUP] Failed to send verification email: {e}")
-        return Response({'message': 'Account created. Email verification could not be sent — try resending from your dashboard.'})
+        logger.error(f"[SIGNUP] Failed to send verification email to {email}: {e}")
+        # Account still created, just email failed
+        return Response({
+            'message': 'Account created! However, we could not send the verification email. Please contact support.',
+            'warning': 'Email delivery failed'
+        })
 
 @csrf_exempt
 @api_view(['POST'])
@@ -222,57 +121,6 @@ def logout(request):
         return Response({"message": "Logged out successfully"})
     except Exception as e:
         return Response({"error": str(e)}, status=400)
-
-
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def verify_email(request, uid, token):
-    """Verify a user's email address using the token from the verification email."""
-    from django.utils.http import urlsafe_base64_decode
-    from django.contrib.auth.tokens import default_token_generator
-
-    try:
-        user_id = urlsafe_base64_decode(uid).decode()
-        user = User.objects.get(pk=user_id)
-    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-        return Response({'error': 'Invalid verification link'}, status=400)
-
-    if not default_token_generator.check_token(user, token):
-        return Response({'error': 'Verification link has expired or is invalid'}, status=400)
-
-    # Mark user as verified
-    profile, _ = UserProfile.objects.get_or_create(user=user)
-    profile.is_verified = True
-    profile.save()
-
-    logger.info(f"[VERIFY] User {user.username} email verified successfully")
-    return Response({'message': 'Email verified successfully! You can now log in.'})
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-@ratelimit(key="ip", rate="5/h", block=True)
-def resend_verification(request):
-    """Resend verification email for users who haven't verified yet."""
-    email = request.data.get('email', '').strip()
-
-    if not email:
-        return Response({'error': 'Email is required'}, status=400)
-
-    try:
-        user = User.objects.get(email=email)
-    except User.DoesNotExist:
-        # Don't reveal if email exists
-        return Response({'message': 'If an account with that email exists, a verification email has been sent.'})
-
-    profile, _ = UserProfile.objects.get_or_create(user=user)
-    if profile.is_verified:
-        return Response({'message': 'This email is already verified.'})
-
-    uid, token = generate_verification_token(user)
-    send_verification_email(user, uid, token)
-
-    return Response({'message': 'If an account with that email exists, a verification email has been sent.'})
 
 @csrf_exempt
 @api_view(['POST'])
@@ -313,19 +161,19 @@ def upload_file(request):
     if not session_id or not file or not password:
         return Response({"error": "Session ID, file, and password are required"}, status=400)
     
-    # Validate options
-    if max_downloads < 1 or max_downloads > 10:
-        return Response({"error": "Max downloads must be between 1 and 10"}, status=400)
-    
-    if expiry_hours < 1 or expiry_hours > 24:
-        return Response({"error": "Expiry hours must be between 1 and 24"}, status=400)
-    
-    if file.size > MAX_FILE_SIZE:
+    if file.size > 100 * 1024 * 1024:  # 100MB limit for now
         return Response(
-            {"error": "File too large"},
-            status=413
-    )
-
+            {'error': 'File too large. Maximum 100MB for online storage.'},
+            status=400
+        )
+    
+    # Validate options
+    if max_downloads < 1 or max_downloads > 100:
+        return Response({"error": "Max downloads must be between 1 and 100"}, status=400)
+    
+    if expiry_hours < 1 or expiry_hours > 72:
+        return Response({"error": "Expiry hours must be between 1 and 72"}, status=400)
+    
     try:
         session = UploadSession.objects.get(session_id=session_id, is_active=True, user=request.user)
     except UploadSession.DoesNotExist:
@@ -340,15 +188,19 @@ def upload_file(request):
             }, status=413)
     
     if session.mode == "ONLINE":
+        if file.size > MAX_FILE_SIZE:
+            return Response({
+                "error": f"Online mode limited to {ONLINE_MAX_FILE_SIZE_MB}MB.",
+                "max_size_mb": ONLINE_MAX_FILE_SIZE_MB
+            }, status=413)
+
         password = request.data.get("password")
 
         if not password:
             return Response({"error": "Password is required for online mode"}, status=400)
         
-        # Encrypt file
-        file_data = file.read()
-        encrypted_data = encrypt_file(file_data, password)
-        del file_data
+        # Encrypt file from upload chunks to avoid loading full plaintext into memory.
+        encrypted_data = encrypt_file_chunks(file.chunks(), password)
         
         # Generate token first
         file_token = uuid.uuid4()
@@ -412,9 +264,8 @@ def upload_file(request):
         if not password:
             return Response({"error": "Password is required for offline mode"}, status=400)
         
-        # Read and encrypt file data
-        file_data = file.read()
-        encrypted_data = encrypt_file(file_data, password)
+        # Encrypt file from upload chunks to avoid loading full plaintext into memory.
+        encrypted_data = encrypt_file_chunks(file.chunks(), password)
         logger.info(f"[OFFLINE MODE] Encrypted data size: {len(encrypted_data)} bytes")
         
         # Store encrypted chunks in UploadedFile for the task to process
@@ -619,13 +470,14 @@ def download_online_file(request, signed_token):
     password = request.data.get("password")
     ip = request.META.get("REMOTE_ADDR")
 
-    # Debug logging (never log passwords or full request data)
+    # Debug logging
     logger.info(f"[DOWNLOAD] Received request - Token: {signed_token[:20]}...")
     logger.info(f"[DOWNLOAD] Password received: {bool(password)}")
+    logger.info(f"[DOWNLOAD] Request data: {request.data}")
 
     try:
-        # Allow tokens up to 24 hours (matches the maximum user-configurable expiry)
-        token = signer.unsign(signed_token, max_age=86400)
+        # Match the expiry time with OnlineEncryptedFile.expires_at (1 hour)
+        token = signer.unsign(signed_token, max_age=3600)
         logger.info(f"[DOWNLOAD] Token unsigned successfully: {token}")
     except SignatureExpired:
         logger.warning(f"[DOWNLOAD] Token expired: {signed_token}")
@@ -639,7 +491,8 @@ def download_online_file(request, signed_token):
         return Response({"error": "Password required"}, status=400)
 
     try:
-        encrypted_file = OnlineEncryptedFile.objects.get(token=token)
+        # Optimize query - load session data preemptively for audit logging
+        encrypted_file = OnlineEncryptedFile.objects.select_related('session').get(token=token)
         logger.info(f"[DOWNLOAD] Found encrypted file: {encrypted_file.original_filename}")
         logger.info(f"[DOWNLOAD] File path: {encrypted_file.file_path}")
         logger.info(f"[DOWNLOAD] Download count: {encrypted_file.download_count}")
@@ -652,7 +505,7 @@ def download_online_file(request, signed_token):
         if not encrypted_file.allowed_ip:
             encrypted_file.allowed_ip = ip
             encrypted_file.save()
-        elif encrypted_file.allowed_ip != ip and encrypted_file.download_count > 0:
+        elif encrypted_file.allowed_ip != ip:
             log_audit(encrypted_file, ip, request, "FAILED", "IP locked")
             return Response({"error": "This file is locked to a different IP address"}, status=403)
 
@@ -674,13 +527,30 @@ def download_online_file(request, signed_token):
         return Response({"error": "Download limit reached"}, status=429)
 
     try:
-        logger.info(f"[DOWNLOAD] Downloading from Supabase Storage...")
         storage = get_storage()
-        encrypted_data = storage.download_file(encrypted_file.file_path)
-        
-        logger.info(f"[DOWNLOAD] Starting decryption...")
-        decrypted = decrypt_file(encrypted_data, password)
-        logger.info(f"[DOWNLOAD] Decryption successful! Decrypted size: {len(decrypted)} bytes")
+        logger.info(f"[DOWNLOAD] Opening streamed download from Supabase Storage...")
+        stream_ctx = storage.open_download_stream(encrypted_file.file_path)
+        upstream = stream_ctx.__enter__()
+
+        try:
+            decrypted_chunks = decrypt_stream_chunks(upstream.iter_bytes(chunk_size=65536), password)
+            first_chunk = next(decrypted_chunks, b"")
+            stream_mode = "v2"
+            logger.info("[DOWNLOAD] Using streamed v2 decryption path")
+        except LegacyEncryptedFormatError:
+            # Backward compatibility for files encrypted with the old format.
+            stream_ctx.__exit__(None, None, None)
+            stream_ctx = None
+            upstream = None
+
+            logger.info("[DOWNLOAD] Legacy encrypted format detected, using compatibility path")
+            encrypted_data = storage.download_file(encrypted_file.file_path)
+            decrypted = decrypt_file(encrypted_data, password)
+            stream_mode = "legacy"
+        except Exception:
+            if stream_ctx:
+                stream_ctx.__exit__(None, None, None)
+            raise
 
         encrypted_file.failed_attempts = 0
         encrypted_file.locked_until = None
@@ -701,7 +571,20 @@ def download_online_file(request, signed_token):
     will_delete = encrypted_file.download_count >= encrypted_file.max_downloads
     
     # Create response before committing changes
-    response = HttpResponse(decrypted, content_type="application/octet-stream")
+    if stream_mode == "v2":
+        def response_stream():
+            try:
+                if first_chunk:
+                    yield first_chunk
+                for chunk in decrypted_chunks:
+                    yield chunk
+            finally:
+                stream_ctx.__exit__(None, None, None)
+
+        response = StreamingHttpResponse(response_stream(), content_type="application/octet-stream")
+    else:
+        response = HttpResponse(decrypted, content_type="application/octet-stream")
+
     response["Content-Disposition"] = f'attachment; filename="{encrypted_file.original_filename}"'
 
     # Log audit BEFORE potentially deleting the file
@@ -727,8 +610,13 @@ def download_online_file(request, signed_token):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def audit_logs(request):
+    # Optimize query with select_related to reduce database hits
     logs = DownloadAudit.objects.filter(
         file__session__user=request.user
+    ).select_related(
+        'file',
+        'file__session', 
+        'user'
     ).order_by('-timestamp')[:100]
 
     serializer = DownloadAuditSerializer(logs, many=True)
@@ -756,15 +644,7 @@ def user_files(request):
             "created_at": f.uploaded_at,
         })
 
-    # Include user info
-    profile, _ = UserProfile.objects.get_or_create(user=request.user)
-    user_info = {
-        "username": request.user.username,
-        "email": request.user.email or '',
-        "is_verified": profile.is_verified,
-    }
-
-    return Response({"files": result, "user": user_info})
+    return Response(result)
 
 
 @api_view(['GET'])
@@ -772,7 +652,11 @@ def user_files(request):
 def job_status(request, job_id):
     """Get status of an offline QR generation job"""
     try:
-        job = OfflineJob.objects.get(job_id=job_id, user=request.user)
+        # Optimize with select_related for session data
+        job = OfflineJob.objects.select_related('session', 'user').get(
+            job_id=job_id, 
+            user=request.user
+        )
         
         return Response({
             "job_id": str(job.job_id),
@@ -796,7 +680,11 @@ def job_status(request, job_id):
 def job_download(request, job_id):
     """Download completed QR code ZIP file"""
     try:
-        job = OfflineJob.objects.get(job_id=job_id, user=request.user)
+        # Optimize query - no related data needed for download
+        job = OfflineJob.objects.only(
+            'job_id', 'user_id', 'status', 'result_file', 
+            'original_filename', 'error_message'
+        ).get(job_id=job_id, user=request.user)
         
         if job.status != 'COMPLETED':
             return Response({
@@ -819,4 +707,132 @@ def job_download(request, job_id):
         
     except OfflineJob.DoesNotExist:
         return Response({"error": "Job not found"}, status=404)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def verify_email(request, uid, token):
+    """
+    Verify user's email address using the token sent to their email.
+    Called when user clicks the verification link.
+    """
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_decode
+    from django.utils.encoding import force_str
+    
+    try:
+        # Decode the user ID
+        user_id = force_str(urlsafe_base64_decode(uid))
+        user = User.objects.get(pk=user_id)
+        
+        # Verify the token (automatically checks if expired - 24 hours default)
+        if not default_token_generator.check_token(user, token):
+            logger.warning(f"[VERIFY] Invalid or expired token for user {user.username}")
+            return Response({
+                'error': 'Invalid or expired verification link. Please request a new one.'
+            }, status=400)
+        
+        # Mark user as verified
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        if profile.is_verified:
+            logger.info(f"[VERIFY] User {user.username} already verified")
+            return Response({
+                'message': 'Your email is already verified! You can log in now.'
+            })
+        
+        profile.is_verified = True
+        profile.save()
+        
+        logger.info(f"[VERIFY] Successfully verified email for user {user.username}")
+        return Response({
+            'message': 'Email verified successfully! You can now log in.',
+            'verified': True
+        })
+        
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist) as e:
+        logger.error(f"[VERIFY] Verification failed: {e}")
+        return Response({
+            'error': 'Invalid verification link.'
+        }, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@ratelimit(key="user", rate="3/h", block=True)
+def resend_verification_email(request):
+    """
+    Resend verification email to the authenticated user.
+    Rate limited to prevent abuse.
+    """
+    user = request.user
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    
+    if profile.is_verified:
+        return Response({
+            'message': 'Your email is already verified!'
+        })
+    
+    try:
+        uid, token = generate_verification_token(user)
+        send_verification_email(user, uid, token)
+        logger.info(f"[RESEND] Verification email resent to {user.email}")
+        return Response({
+            'message': 'Verification email sent! Please check your inbox.'
+        })
+    except Exception as e:
+        logger.error(f"[RESEND] Failed to send verification email: {e}")
+        return Response({
+            'error': 'Failed to send verification email. Please try again later.'
+        }, status=500)
+
+import time
+import hmac
+import base64
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_turn_credentials(request):
+    turn_secret = config('TURN_SECRET', default='QSAFE_SECURE_PASSWORD_123!')
+    ttl = 3600
+    timestamp = int(time.time()) + ttl
+    username = f"{timestamp}:{request.user.username}"
+    
+    mac = hmac.new(
+        turn_secret.encode(),
+        username.encode(),
+        hashlib.sha1
+    )
+    password = base64.b64encode(mac.digest()).decode()
+    
+    return Response({
+        "username": username,
+        "password": password,
+        "ttl": ttl,
+        "urls": [
+            "turn:52.63.153.228:3478?transport=udp",
+            "turn:52.63.153.228:3478?transport=tcp"
+        ]
+    })
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@ratelimit(key="ip", rate="5/h", block=True)
+def contact_message(request):
+    from .models import ContactMessage
+    name = request.data.get('name')
+    email = request.data.get('email')
+    subject = request.data.get('subject', 'Contact Form')
+    message = request.data.get('message')
+    
+    if not name or not email or not message:
+        return Response({"error": "Name, email, and message are required"}, status=400)
+        
+    ContactMessage.objects.create(
+        name=name,
+        email=email,
+        subject=subject,
+        message=message
+    )
+    return Response({"message": "Message received"})
 

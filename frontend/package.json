@@ -9,6 +9,7 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.13.2",
     "jwt-decode": "^4.0.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-router-dom": "^7.12.0",
@@ -38,5 +39,25 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "typescript": "^4.9.5"
+  },
+  "overrides": {
+    "schema-utils@^2.0.0": {
+      "ajv": "6.12.6",
+      "ajv-keywords": "3.5.2"
+    },
+    "schema-utils@^3.0.0": {
+      "ajv": "6.12.6",
+      "ajv-keywords": "3.5.2"
+    },
+    "fork-ts-checker-webpack-plugin": {
+      "ajv": "6.12.6",
+      "ajv-keywords": "3.5.2"
+    },
+    "ajv": "^8.12.0",
+    "ajv-keywords": "^5.1.0",
+    "ajv-formats": "^2.1.1"
   }
 }

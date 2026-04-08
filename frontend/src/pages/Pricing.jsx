@@ -5,7 +5,7 @@ import Footer from '../components/Footer';
 
 export default function Pricing() {
     return (
-        <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #060606, #0a0a0a)' }}>
+        <div style={{ minHeight: '100vh', background: 'var(--bg-primary, #060606)' }}>
             <Header />
 
             <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '80px 20px' }}>
@@ -75,7 +75,8 @@ export default function Pricing() {
 
                     <div style={{ textAlign: 'left', marginBottom: '30px' }}>
                         {[
-                            'Up to 50 MB per file (online mode)',
+                            'Up to 100 MB per file (online mode)',
+                            'Live P2P browser-to-browser transfer (WebRTC)',
                             'Up to 20 MB per file (offline QR mode)',
                             'AES-256 encryption',
                             'QR code generation',
@@ -89,7 +90,7 @@ export default function Pricing() {
                         ].map((feature, index) => (
                             <div key={index} style={{
                                 padding: '12px 0',
-                                borderBottom: index < 10 ? '1px solid #1a1a1a' : 'none',
+                                borderBottom: index < 11 ? '1px solid #1a1a1a' : 'none',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '12px'
@@ -126,8 +127,8 @@ export default function Pricing() {
 
                 {/* FAQ-style info */}
                 <div style={{
-                    background: '#0a0a0a',
-                    border: '1px solid #222',
+                    background: 'var(--bg-card, #0a0a0a)',
+                    border: '1px solid var(--border-color, #222)',
                     borderRadius: '16px',
                     padding: '40px',
                     marginBottom: '60px'
@@ -144,7 +145,7 @@ export default function Pricing() {
 
                     {[
                         { q: 'Will Q-Safe always be free?', a: 'The core file encryption and sharing features will remain free. We may introduce optional premium features in the future, but secure file sharing will always have a free tier.' },
-                        { q: 'Are there any usage limits?', a: 'Files are limited to 50 MB for online mode and 20 MB for offline QR mode. You can upload up to 20 files per hour. Links expire after a maximum of 24 hours.' },
+                        { q: 'Are there any usage limits?', a: 'Files are limited to 100 MB for online mode and 20 MB for offline QR mode. You can upload up to 20 files per hour. Links expire after a maximum of 24 hours.' },
                         { q: 'Do you sell my data?', a: 'No. We use a zero-knowledge architecture — we never see your unencrypted files or passwords. We have no data to sell.' },
                         { q: 'Need higher limits or custom features?', a: 'Contact us at support@q-safe.live and we\'ll work with you on a solution.' }
                     ].map((faq, index) => (

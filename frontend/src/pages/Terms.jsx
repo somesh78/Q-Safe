@@ -5,7 +5,7 @@ import Footer from '../components/Footer';
 
 export default function Terms() {
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #060606, #0a0a0a)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary, #060606)' }}>
       <Header />
       
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '80px 20px' }}>
@@ -67,8 +67,8 @@ export default function Terms() {
 
         {/* 1. Acceptance of Terms */}
         <div style={{
-          background: '#0a0a0a',
-          border: '1px solid #222',
+          background: 'var(--bg-card, #0a0a0a)',
+          border: '1px solid var(--border-color, #222)',
           borderRadius: '12px',
           padding: '40px',
           marginBottom: '30px'
@@ -94,8 +94,8 @@ export default function Terms() {
 
         {/* 2. Service Description */}
         <div style={{
-          background: '#0a0a0a',
-          border: '1px solid #222',
+          background: 'var(--bg-card, #0a0a0a)',
+          border: '1px solid var(--border-color, #222)',
           borderRadius: '12px',
           padding: '40px',
           marginBottom: '30px'
@@ -141,8 +141,8 @@ export default function Terms() {
 
         {/* 3. Account Registration */}
         <div style={{
-          background: '#0a0a0a',
-          border: '1px solid #222',
+          background: 'var(--bg-card, #0a0a0a)',
+          border: '1px solid var(--border-color, #222)',
           borderRadius: '12px',
           padding: '40px',
           marginBottom: '30px'
@@ -187,8 +187,8 @@ export default function Terms() {
 
         {/* 4. Acceptable Use */}
         <div style={{
-          background: '#0a0a0a',
-          border: '1px solid #222',
+          background: 'var(--bg-card, #0a0a0a)',
+          border: '1px solid var(--border-color, #222)',
           borderRadius: '12px',
           padding: '40px',
           marginBottom: '30px'
@@ -236,8 +236,8 @@ export default function Terms() {
 
         {/* 5. Data Ownership */}
         <div style={{
-          background: '#0a0a0a',
-          border: '1px solid #222',
+          background: 'var(--bg-card, #0a0a0a)',
+          border: '1px solid var(--border-color, #222)',
           borderRadius: '12px',
           padding: '40px',
           marginBottom: '30px'
@@ -282,8 +282,8 @@ export default function Terms() {
 
         {/* 6. Limitation of Liability */}
         <div style={{
-          background: '#0a0a0a',
-          border: '1px solid #222',
+          background: 'var(--bg-card, #0a0a0a)',
+          border: '1px solid var(--border-color, #222)',
           borderRadius: '12px',
           padding: '40px',
           marginBottom: '30px'
@@ -333,8 +333,8 @@ export default function Terms() {
 
         {/* 7. Pricing & Payments */}
         <div style={{
-          background: '#0a0a0a',
-          border: '1px solid #222',
+          background: 'var(--bg-card, #0a0a0a)',
+          border: '1px solid var(--border-color, #222)',
           borderRadius: '12px',
           padding: '40px',
           marginBottom: '30px'
@@ -361,8 +361,8 @@ export default function Terms() {
 
         {/* 8. Termination */}
         <div style={{
-          background: '#0a0a0a',
-          border: '1px solid #222',
+          background: 'var(--bg-card, #0a0a0a)',
+          border: '1px solid var(--border-color, #222)',
           borderRadius: '12px',
           padding: '40px',
           marginBottom: '30px'
@@ -388,8 +388,8 @@ export default function Terms() {
 
         {/* 9. Governing Law */}
         <div style={{
-          background: '#0a0a0a',
-          border: '1px solid #222',
+          background: 'var(--bg-card, #0a0a0a)',
+          border: '1px solid var(--border-color, #222)',
           borderRadius: '12px',
           padding: '40px',
           marginBottom: '40px'
@@ -438,7 +438,7 @@ export default function Terms() {
           <Link to="/contact" style={{
             display: 'inline-block',
             padding: '12px 30px',
-            background: '#060606',
+            background: 'var(--bg-primary, #060606)',
             color: '#00d4ff',
             textDecoration: 'none',
             borderRadius: '8px',
