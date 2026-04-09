@@ -197,19 +197,27 @@ export default function P2PReceive() {
     setStatus("waiting");
 
     pcRef.current?.close();
-
-    let fetchedIceServers = [ { urls: "stun:52.63.153.228:3478" } ];
+    
+    // Default to a known STUN server
+    let fetchedIceServers = [ { urls: "stun:stun.l.google.com:19302" } ];
+    
     if (transportStrategy !== "lan") {
       try {
         const res = await getTurnCredentials();
-        fetchedIceServers = [
-          { urls: "stun:52.63.153.228:3478" },
-          {
-            urls: res.data.urls,
-            username: res.data.username,
-            credential: res.data.password
-          }
-        ];
+        // Use the list of iceServers returned by the API
+        if (res.data.iceServers) {
+          fetchedIceServers = res.data.iceServers;
+        } else {
+          // Backward compatibility: build from single credentials
+          fetchedIceServers = [
+            { urls: "stun:stun.l.google.com:19302" },
+            {
+              urls: res.data.urls,
+              username: res.data.username,
+              credential: res.data.password
+            }
+          ];
+        }
       } catch (err) {
         console.warn("[Q-Safe] Could not fetch TURN credentials, proceeding without relay");
         fetchedIceServers = [{ urls: 'stun:stun.l.google.com:19302' }];

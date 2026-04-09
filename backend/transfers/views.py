@@ -1,5 +1,10 @@
 from io import BytesIO
 import logging
+import os
+import requests as http_requests
+import time
+import hmac
+import hashlib
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -793,28 +798,45 @@ import base64
 @permission_classes([AllowAny])
 @ratelimit(key='ip', rate='60/m', block=True)
 def get_turn_credentials(request):
-    turn_secret = config('TURN_SECRET', default='QSAFE_SECURE_PASSWORD_123!')
-    ttl = 3600
-    timestamp = int(time.time()) + ttl
-    user_identifier = request.user.username if request.user.is_authenticated else "anonymous"
-    username = f"{timestamp}:{user_identifier}"
+    METERED_API_KEY = os.environ.get('METERED_API_KEY', '4GlX5t_TvdYdaqeXygPtRiUZ6vnUroy7eKhiipzIfHqzMTOw')
+    METERED_APP_NAME = os.environ.get('METERED_APP_NAME', 'qsafe')
     
-    mac = hmac.new(
-        turn_secret.encode(),
-        username.encode(),
-        hashlib.sha1
-    )
-    password = base64.b64encode(mac.digest()).decode()
-    
-    return Response({
-        "username": username,
-        "password": password,
-        "ttl": ttl,
-        "urls": [
-            "turn:52.63.153.228:3478?transport=udp",
-            "turn:52.63.153.228:3478?transport=tcp"
-        ]
-    })
+    try:
+        # Fetch relay credentials from Metered.ca (Managed TURN)
+        response = http_requests.get(
+            f"https://{METERED_APP_NAME}.metered.live/api/v1/turn/credentials",
+            params={"apiKey": METERED_API_KEY},
+            timeout=5
+        )
+        response.raise_for_status()
+        ice_servers = response.json()
+        return Response({"iceServers": ice_servers})
+    except Exception as e:
+        logger.warning(f"Metered.ca TURN fetch failed: {e}. Falling back to self-hosted Coturn.")
+        # Fallback to self-hosted coturn if Metered fails
+        secret = config('TURN_SECRET', default='QSAFE_SECURE_PASSWORD_123!')
+        ttl = 3600
+        timestamp = int(time.time()) + ttl
+        user_identifier = request.user.username if request.user.is_authenticated else "anonymous"
+        username = f"{timestamp}:{user_identifier}"
+        
+        password = base64.b64encode(
+            hmac.new(secret.encode(), username.encode(), hashlib.sha1).digest()
+        ).decode()
+        
+        return Response({
+            "iceServers": [
+                {"urls": "stun:stun.l.google.com:19302"},
+                {
+                    "urls": [
+                        "turn:52.63.153.228:3478?transport=udp",
+                        "turn:52.63.153.228:3478?transport=tcp"
+                    ],
+                    "username": username,
+                    "credential": password
+                }
+            ]
+        })
 
 @csrf_exempt
 @api_view(['POST'])
