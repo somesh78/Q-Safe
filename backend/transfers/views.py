@@ -798,53 +798,25 @@ import base64
 @permission_classes([AllowAny])
 @ratelimit(key='ip', rate='60/m', block=True)
 def get_turn_credentials(request):
-    METERED_API_KEY = os.environ.get('METERED_API_KEY', '4GlX5t_TvdYdaqeXygPtRiUZ6vnUroy7eKhiipzIfHqzMTOw')
-    METERED_APP_NAME = os.environ.get('METERED_APP_NAME', 'qsafe')
-    
-    if 'metered.live' in METERED_APP_NAME:
-        base = METERED_APP_NAME
-    else:
-        base = f"{METERED_APP_NAME}.metered.live"
-    url = f"https://{base}/api/v1/turn/credentials"
-
-    try:
-        # Fetch relay credentials from Metered.ca (Managed TURN)
-        response = http_requests.get(
-            url,
-            params={"apiKey": METERED_API_KEY},
-            timeout=5
-        )
-        response.raise_for_status()
-        ice_servers = response.json()
-        # Return the array directly for better compatibility with RTCPeerConnection
-        return Response(ice_servers)
-    except Exception as e:
-        logger.warning(f"Metered.ca TURN fetch failed: {e}. Falling back to self-hosted Coturn.")
-        # Fallback to self-hosted coturn if Metered fails
-        secret = config('TURN_SECRET', default='QSAFE_SECURE_PASSWORD_123!')
-        ttl = 3600
-        timestamp = int(time.time()) + ttl
-        user_identifier = request.user.username if request.user.is_authenticated else "anonymous"
-        username = f"{timestamp}:{user_identifier}"
-        
-        password = base64.b64encode(
-            hmac.new(secret.encode(), username.encode(), hashlib.sha1).digest()
-        ).decode()
-        
-        # Structure fallback as separate objects to avoid arrays in 'urls'
-        return Response([
-            {"urls": "stun:stun.l.google.com:19302"},
-            {
-                "urls": f"turn:52.63.153.228:3478?transport=udp",
-                "username": username,
-                "credential": password
-            },
-            {
-                "urls": f"turn:52.63.153.228:3478?transport=tcp",
-                "username": username,
-                "credential": password
-            }
-        ])
+    import hmac, hashlib, base64, time
+    secret = os.environ.get('TURN_SECRET', 'QSAFE_SECURE_PASSWORD_123!')
+    username = f"{int(time.time()) + 3600}:qsafe"
+    password = base64.b64encode(
+        hmac.new(secret.encode(), username.encode(), hashlib.sha1).digest()
+    ).decode()
+    return Response([
+        {"urls": "stun:stun.l.google.com:19302"},
+        {
+            "urls": "turn:3.110.107.233:3478?transport=udp",
+            "username": username, 
+            "credential": password
+        },
+        {
+            "urls": "turn:3.110.107.233:3478?transport=tcp",
+            "username": username, 
+            "credential": password
+        }
+    ])
 
 @csrf_exempt
 @api_view(['POST'])
