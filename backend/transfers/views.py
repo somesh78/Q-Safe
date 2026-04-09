@@ -790,12 +790,14 @@ import hmac
 import base64
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
+@ratelimit(key='ip', rate='60/m', block=True)
 def get_turn_credentials(request):
     turn_secret = config('TURN_SECRET', default='QSAFE_SECURE_PASSWORD_123!')
     ttl = 3600
     timestamp = int(time.time()) + ttl
-    username = f"{timestamp}:{request.user.username}"
+    user_identifier = request.user.username if request.user.is_authenticated else "anonymous"
+    username = f"{timestamp}:{user_identifier}"
     
     mac = hmac.new(
         turn_secret.encode(),
