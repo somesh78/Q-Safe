@@ -801,16 +801,23 @@ def get_turn_credentials(request):
     METERED_API_KEY = os.environ.get('METERED_API_KEY', '4GlX5t_TvdYdaqeXygPtRiUZ6vnUroy7eKhiipzIfHqzMTOw')
     METERED_APP_NAME = os.environ.get('METERED_APP_NAME', 'qsafe')
     
+    if 'metered.live' in METERED_APP_NAME:
+        base = METERED_APP_NAME
+    else:
+        base = f"{METERED_APP_NAME}.metered.live"
+    url = f"https://{base}/api/v1/turn/credentials"
+
     try:
         # Fetch relay credentials from Metered.ca (Managed TURN)
         response = http_requests.get(
-            f"https://{METERED_APP_NAME}.metered.live/api/v1/turn/credentials",
+            url,
             params={"apiKey": METERED_API_KEY},
             timeout=5
         )
         response.raise_for_status()
         ice_servers = response.json()
-        return Response({"iceServers": ice_servers})
+        # Return the array directly for better compatibility with RTCPeerConnection
+        return Response(ice_servers)
     except Exception as e:
         logger.warning(f"Metered.ca TURN fetch failed: {e}. Falling back to self-hosted Coturn.")
         # Fallback to self-hosted coturn if Metered fails
@@ -824,19 +831,20 @@ def get_turn_credentials(request):
             hmac.new(secret.encode(), username.encode(), hashlib.sha1).digest()
         ).decode()
         
-        return Response({
-            "iceServers": [
-                {"urls": "stun:stun.l.google.com:19302"},
-                {
-                    "urls": [
-                        "turn:52.63.153.228:3478?transport=udp",
-                        "turn:52.63.153.228:3478?transport=tcp"
-                    ],
-                    "username": username,
-                    "credential": password
-                }
-            ]
-        })
+        # Structure fallback as separate objects to avoid arrays in 'urls'
+        return Response([
+            {"urls": "stun:stun.l.google.com:19302"},
+            {
+                "urls": f"turn:52.63.153.228:3478?transport=udp",
+                "username": username,
+                "credential": password
+            },
+            {
+                "urls": f"turn:52.63.153.228:3478?transport=tcp",
+                "username": username,
+                "credential": password
+            }
+        ])
 
 @csrf_exempt
 @api_view(['POST'])

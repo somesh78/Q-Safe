@@ -386,11 +386,14 @@ export default function P2PSend() {
       if (!preferLocal) {
         try {
           const res = await getTurnCredentials();
-          // Use the list of iceServers returned by the API
-          if (res.data.iceServers) {
+          // The API now returns the iceServers array directly
+          if (Array.isArray(res.data)) {
+            fetchedIceServers = res.data;
+          } else if (res.data.iceServers) {
+            // Backward compatibility for legacy response objects
             fetchedIceServers = res.data.iceServers;
           } else {
-            // Backward compatibility: build from single credentials
+            // Backward compatibility: build from single credentials if present
             fetchedIceServers = [
               { urls: "stun:stun.l.google.com:19302" },
               {
