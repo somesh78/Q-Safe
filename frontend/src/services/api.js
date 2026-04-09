@@ -27,6 +27,9 @@ API.interceptors.response.use(
             !originalRequest._retry &&
             !originalRequest.url.includes('/token/refresh/') // Never retry refresh requests
         ) {
+            if (originalRequest.url.includes('turn-credentials')) {
+                return Promise.reject(error);
+            }
             originalRequest._retry = true;
             const refresh = localStorage.getItem('refresh');
 

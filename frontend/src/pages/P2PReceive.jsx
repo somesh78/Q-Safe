@@ -211,7 +211,8 @@ export default function P2PReceive() {
           }
         ];
       } catch (err) {
-        console.warn("Failed to fetch TURN credentials", err);
+        console.warn("[Q-Safe] Could not fetch TURN credentials, proceeding without relay");
+        fetchedIceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
       }
     }
 
