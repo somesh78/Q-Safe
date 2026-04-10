@@ -153,7 +153,6 @@ export default function P2PSend() {
   const hybridAirGapEligible = strategy === "auto" && !!file && file.size <= HYBRID_AIRGAP_MAX_BYTES;
 
   const shareQuery = new URLSearchParams({
-    strategy: resolvedStrategy,
     multi: allowBroadcast ? "1" : "0",
   }).toString();
 
