@@ -266,7 +266,7 @@ jobs:
             sleep 2
 
             docker-compose build
-            docker-compose up -d
+            docker-compose up -d --build
 
             echo "=== Waiting for app to start (45s for migrations/collectstatic) ==="
             sleep 45
@@ -296,8 +296,8 @@ jobs:
                 docker-compose down --remove-orphans
                 git checkout production
                 git reset --hard "$PREV"
-                docker-compose build
-                docker-compose up -d
+                docker-compose -f docker-compose.yml build
+                docker-compose -f docker-compose.yml up -d --build
                 sudo systemctl start nginx 2>/dev/null || true
                 echo "Rollback to $PREV complete. Please verify manually."
                 exit 1
