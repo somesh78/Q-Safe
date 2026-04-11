@@ -235,15 +235,16 @@ jobs:
             echo "=== Starting deployment ==="
             cd ~/Q-Safe
 
+            echo "=== Recording current production commit for rollback ==="
+            PREV=$(git rev-parse HEAD)
+            echo "Previous commit: $PREV"
+
             echo "=== Pulling latest production ==="
             git remote set-url origin https://${{ github.repository_owner }}:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git
             git fetch origin
             git checkout production
-            git pull --ff-only origin production
-
-            echo "=== Recording current production commit for rollback ==="
-            PREV=$(git rev-parse HEAD)
-            echo "Previous commit: $PREV"
+            git reset --hard origin/production
+            git clean -fd
 
             echo "=== Rebuilding Docker containers ==="
             docker-compose down --remove-orphans
