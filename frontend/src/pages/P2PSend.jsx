@@ -153,7 +153,6 @@ export default function P2PSend() {
   const hybridAirGapEligible = strategy === "auto" && !!file && file.size <= HYBRID_AIRGAP_MAX_BYTES;
 
   const shareQuery = new URLSearchParams({
-    strategy: resolvedStrategy,
     multi: allowBroadcast ? "1" : "0",
   }).toString();
 
@@ -743,14 +742,15 @@ export default function P2PSend() {
       cryptoKey = await deriveKey(password, saltBytes);
     }
 
-    const resolvedType = connectionType?.type || "host";
-    const isLAN = resolvedType === "host";
-    const isRelay = resolvedType === "relay";
-    const chunkSize = connectionType === 'lan' 
-      ? CHUNK_SIZE_LAN 
-      : CHUNK_SIZE_INTERNET;
-    const NUM_ACTIVE = isLAN ? 2 : 1;
-    console.log(`[Q-Safe] Applying profile: ${chunkSize/1024}KB chunks, ${NUM_ACTIVE} channel(s)`);
+    const remoteType = connectionType?.remote || "host";
+    const isDirect = remoteType === "host" || remoteType === "prflx";
+    const isRelay = remoteType === "relay";
+
+    const chunkSize = isDirect ? CHUNK_SIZE_LAN : CHUNK_SIZE_INTERNET;
+    const NUM_ACTIVE = isDirect ? 4 : (isRelay ? 1 : 2);
+    
+    console.log(`[Q-Safe] Connection: ${connectionType?.local || '?' } → ${remoteType}`);
+    console.log(`[Q-Safe] Profile: ${chunkSize/1024}KB chunks, ${NUM_ACTIVE} channel(s)`);
 
     const totalChunks = Math.ceil(f.size / chunkSize);
     let sentBytes = 0;

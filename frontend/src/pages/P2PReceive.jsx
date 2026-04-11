@@ -201,34 +201,29 @@ export default function P2PReceive() {
     // Default to a known STUN server
     let fetchedIceServers = [ { urls: "stun:stun.l.google.com:19302" } ];
     
-    if (transportStrategy !== "lan") {
-      try {
-        const res = await getTurnCredentials();
-        // The API now returns the iceServers array directly
-        if (Array.isArray(res.data)) {
-          fetchedIceServers = res.data;
-        } else if (res.data.iceServers) {
-          // Backward compatibility for legacy response objects
-          fetchedIceServers = res.data.iceServers;
-        } else {
-          // Backward compatibility: build from single credentials if present
-          fetchedIceServers = [
-            { urls: "stun:stun.l.google.com:19302" },
-            {
-              urls: res.data.urls,
-              username: res.data.username,
-              credential: res.data.password
-            }
-          ];
-        }
-      } catch (err) {
-        console.warn("[Q-Safe] Could not fetch TURN credentials, proceeding without relay");
-        fetchedIceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+    try {
+      const res = await getTurnCredentials();
+      if (Array.isArray(res.data)) {
+        fetchedIceServers = res.data;
+      } else if (res.data.iceServers) {
+        fetchedIceServers = res.data.iceServers;
+      } else {
+        fetchedIceServers = [
+          { urls: "stun:stun.l.google.com:19302" },
+          {
+            urls: res.data.urls,
+            username: res.data.username,
+            credential: res.data.password
+          }
+        ];
       }
+    } catch (err) {
+      console.warn("[Q-Safe] Could not fetch TURN credentials, proceeding without relay");
+      fetchedIceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
     }
 
     const pc = new RTCPeerConnection({
-      iceServers: transportStrategy === "lan" ? [] : fetchedIceServers,
+      iceServers: fetchedIceServers,
       iceCandidatePoolSize: 10,
       iceTransportPolicy: "all",
     });
