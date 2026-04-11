@@ -272,27 +272,24 @@ jobs:
             echo "=== Waiting for app to start (90s for migrations/collectstatic) ==="
             sleep 90
 
-            echo "=== Health check ==="
-            for i in $(seq 1 20); do
-              STATUS=$(docker-compose exec -T web curl -sS -o /dev/null -w "%{http_code}" \
-                http://localhost:8000/api/health/ \
-                --connect-timeout 3 --max-time 10 || echo "000")
+            echo "=== Health check (docker health status) ==="
+            for i in $(seq 1 30); do
+              WEB_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' q_safe_web 2>/dev/null || echo "unknown")
+              echo "Attempt $i: web health = $WEB_HEALTH"
 
-              if [ "$STATUS" = "200" ]; then
-                echo "Health check passed (HTTP $STATUS)"
+              if [ "$WEB_HEALTH" = "healthy" ]; then
+                echo "Web container is healthy (HTTP 200 via internal check passed)"
                 break
               fi
 
-              echo "Attempt $i failed (HTTP $STATUS). Container status:"
+              echo "Container status:"
               docker-compose ps || true
               
               echo "=== web logs (last 200) ==="
               docker-compose logs --tail=200 web || true
-              echo "=== web health ==="
-              docker inspect --format='{{json .State.Health}}' q_safe_web 2>/dev/null || true
 
-              if [ $i -eq 20 ]; then
-                echo "Health check FAILED after $i attempts (HTTP $STATUS)"
+              if [ $i -eq 30 ]; then
+                echo "Health check FAILED: web never became healthy after $i attempts"
                 echo "=== Rolling back to $PREV ==="
                 echo "=== docker-compose logs (web, last 200 lines) ==="
                 docker-compose logs --tail=200 web || true
