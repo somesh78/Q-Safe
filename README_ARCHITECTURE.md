@@ -23,10 +23,10 @@ Q-Safe is a secure, Peer-to-Peer (P2P) file transfer web application that priori
 *   **Cloud Storage**: Supabase (utilizes the `service_role` key to securely write/delete `ONLINE` mode payloads)
 
 ### Infrastructure & Deployment
-*   **Target Environment**: AWS EC2 (Sydney `ap-southeast-2` region) — heavily optimized for smaller instances (~1GB RAM constraints)
+*   **Target Environment**: AWS EC2 (Mumbai `ap-south-1` region) — heavily optimized for smaller instances (~1GB RAM constraints)
 *   **Containerization**: Multi-container Docker (web, redis, celerybeat) orchestrated by `docker-compose.yml`
 *   **Reverse Proxy**: Nginx (handling SSL/TLS port 443 mapping securely to internal Docker `web:8000`)
-*   **Network Traversal**: External `coturn` server utilized for STUN/TURN ICE candidate negotiation on restrictive networks.
+*   **Network Traversal**: Self-hosted `coturn` server located on the Mumbai instance (IP: `3.110.107.233`) handles STUN/TURN ICE candidate negotiation, bypassing external reliance on Metered.ca.
 
 ---
 
@@ -37,8 +37,8 @@ Q-Safe is a secure, Peer-to-Peer (P2P) file transfer web application that priori
 *   **Dynamic TURN Credentials**: Implemented an ephemeral TURN credential API (`/api/turn-credentials/`). The frontend requests these dynamically before connection, which relies on HMAC-SHA1 hashes and the `TURN_SECRET`. This removed highly insecure hardcoded plain-text credentials from the frontend bundle.
 *   **Memory Leak Mitigations**: Strict React `useEffect` teardown logic exists in `P2PSend.jsx` to forcefully close all datachannels, clear callbacks, and destroy `RTCPeerConnections` when connections fail, complete, or unmount.
 *   **Chunk Profile Tuning (Congestion Control)**: WebRTC data channels chunk large files based on network detection:
-    *   **LAN Setup**: 256KB chunks using 2 parallel channels.
-    *   **Internet/Relay Setup**: 64KB chunks utilizing 1 channel to prevent aggressive data bottlenecks on weaker NAT environments.
+    *   **LAN Setup**: 256KB chunks using 4 parallel channels for high-throughput local links.
+    *   **Internet/Relay Setup**: 64KB chunks utilizing 1 channel to prevent aggressive data bottlenecks on weaker NAT environments or TURN relays.
 *   **Finalization Syncing**: Implemented a 30-second receiver polling safety net during the WebRTC `transfer_complete` phase to prevent race conditions where signaling disconnected before the final byte chunk arrived.
 
 ### Online Mode (Cloud Storage)

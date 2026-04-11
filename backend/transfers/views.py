@@ -799,7 +799,7 @@ import base64
 @ratelimit(key='ip', rate='60/m', block=True)
 def get_turn_credentials(request):
     import hmac, hashlib, base64, time
-    secret = os.environ.get('TURN_SECRET', '')
+    secret = os.environ.get('TURN_SECRET', 'QSAFE_SECURE_PASSWORD_123!')
     username = f"{int(time.time()) + 3600}:qsafe"
     password = base64.b64encode(
         hmac.new(secret.encode(), username.encode(), hashlib.sha1).digest()
