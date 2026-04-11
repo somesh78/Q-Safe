@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eux
 
 echo "Collecting static files..."
 python manage.py collectstatic --noinput

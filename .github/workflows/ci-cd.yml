@@ -269,12 +269,12 @@ jobs:
             docker-compose build
             docker-compose up -d --build
 
-            echo "=== Waiting for app to start (45s for migrations/collectstatic) ==="
-            sleep 45
+            echo "=== Waiting for app to start (90s for migrations/collectstatic) ==="
+            sleep 90
 
             echo "=== Health check ==="
-            for i in 1 2 3 4 5 6 7 8 9 10; do
-              STATUS=$(docker exec q_safe_web curl -sS -o /dev/null -w "%{http_code}" \
+            for i in $(seq 1 20); do
+              STATUS=$(docker-compose exec -T web curl -sS -o /dev/null -w "%{http_code}" \
                 http://localhost:8000/api/health/ \
                 --connect-timeout 3 --max-time 10 || echo "000")
 
@@ -285,8 +285,13 @@ jobs:
 
               echo "Attempt $i failed (HTTP $STATUS). Container status:"
               docker-compose ps || true
+              
+              echo "=== web logs (last 200) ==="
+              docker-compose logs --tail=200 web || true
+              echo "=== web health ==="
+              docker inspect --format='{{json .State.Health}}' q_safe_web 2>/dev/null || true
 
-              if [ $i -eq 10 ]; then
+              if [ $i -eq 20 ]; then
                 echo "Health check FAILED after $i attempts (HTTP $STATUS)"
                 echo "=== Rolling back to $PREV ==="
                 echo "=== docker-compose logs (web, last 200 lines) ==="
