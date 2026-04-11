@@ -304,7 +304,7 @@ jobs:
                 git reset --hard "$PREV"
                 docker-compose -f docker-compose.yml build
                 docker-compose -f docker-compose.yml up -d --build
-                sudo systemctl start nginx 2>/dev/null || true
+                # sudo systemctl start nginx 2>/dev/null || true # Disabled to avoid conflict with container Nginx
                 echo "Rollback to $PREV complete. Please verify manually."
                 exit 1
               fi
@@ -315,8 +315,7 @@ jobs:
             echo "=== Cleaning up old Docker images ==="
             docker image prune -f
 
-            echo "=== Restarting host nginx proxy ==="
-            sudo systemctl start nginx 2>/dev/null || true
+            # sudo systemctl start nginx 2>/dev/null || true # Disabled to avoid conflict with container Nginx
 
             echo "=== Deployment complete ==="
 
